@@ -1,4 +1,5 @@
 import 'package:appstore_dashboard/api/asc_client.dart';
+import 'package:appstore_dashboard/api/models.dart';
 import 'package:appstore_dashboard/api/testflight.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -76,5 +77,70 @@ void main() {
     ]);
     expect(fake.log[0].body!['data'], [{'type': 'builds', 'id': 'B1'}, {'type': 'builds', 'id': 'B2'}]);
     expect(fake.log[3].body!['data']['relationships']['build']['data'], {'type': 'builds', 'id': 'B2'});
+  });
+
+  test('expiring a build sends one PATCH with expired: true', () async {
+    final fake = FakeAsc((r) => json({'data': {'type': 'builds', 'id': 'B1'}}));
+    await expireBuild(fake.client, 'B1');
+    expect(fake.log.single.method, 'PATCH');
+    expect(fake.log.single.path, '/v1/builds/B1');
+    expect(fake.log.single.body, {
+      'data': {'type': 'builds', 'id': 'B1', 'attributes': {'expired': true}}
+    });
+  });
+
+  group('build uploads', () {
+    BuildUpload up(String short, String num, String state, String uploaded, {List<String> errors = const []}) => BuildUpload(Resource(
+          id: 'U$num',
+          type: 'buildUploads',
+          attributes: {
+            'cfBundleShortVersionString': short,
+            'cfBundleVersion': num,
+            'uploadedDate': uploaded,
+            'state': {'state': state, 'errors': [for (final e in errors) {'description': e}]},
+          },
+          relationships: const {},
+        ));
+    final now = DateTime.utc(2026, 11, 10, 12);
+
+    test('state text and warnings come straight from Apple', () {
+      final u = BuildUpload(Resource(id: 'U', type: 'buildUploads', relationships: const {}, attributes: {
+        'cfBundleShortVersionString': '1.0',
+        'cfBundleVersion': '9',
+        'state': {
+          'state': 'PROCESSING',
+          'errors': [],
+          'warnings': [{'code': '90683', 'description': 'Missing purpose string'}],
+        },
+      }));
+      expect(u.stateLabel, 'Processing');
+      expect(u.warnings, ['Missing purpose string']);
+      expect(betaStateLabel('MISSING_EXPORT_COMPLIANCE'), 'Missing export compliance');
+      expect(betaStateLabel('SOMETHING_NEW'), 'Something new');
+      expect(betaStateLabel(null), '');
+    });
+
+    test('a processing upload is listed because /v1/builds does not have it yet', () {
+      final u = up('2.0.0', '2', 'PROCESSING', '2026-11-10T11:00:00Z');
+      expect(pendingUploads([u], {buildKey('2.0.0', '1')}, now: now), [u]);
+      expect(u.processing, isTrue);
+      expect(u.label, '2.0.0 (2)');
+    });
+
+    test('an upload that already became a build is not repeated, and the same build number under another version is not confused', () {
+      final done = up('2.0.0', '1', 'COMPLETE', '2026-11-10T11:50:00Z');
+      expect(pendingUploads([done], {buildKey('2.0.0', '1')}, now: now), isEmpty);
+      final sameNumber = up('2.1.0', '1', 'PROCESSING', '2026-11-10T11:50:00Z');
+      expect(pendingUploads([sameNumber], {buildKey('2.0.0', '1')}, now: now), [sameNumber]);
+    });
+
+    test('finished uploads only linger for an hour; failures for a week', () {
+      expect(pendingUploads([up('1.0', '3', 'COMPLETE', '2026-11-10T11:30:00Z')], {}, now: now), hasLength(1), reason: 'Apple lags before the build appears');
+      expect(pendingUploads([up('1.0', '3', 'COMPLETE', '2026-11-10T09:00:00Z')], {}, now: now), isEmpty);
+      final failed = up('1.0', '4', 'FAILED', '2026-11-05T09:00:00Z', errors: ['Invalid binary']);
+      expect(pendingUploads([failed], {}, now: now), [failed]);
+      expect(failed.errors, ['Invalid binary']);
+      expect(pendingUploads([up('1.0', '5', 'FAILED', '2026-10-01T09:00:00Z')], {}, now: now), isEmpty);
+    });
   });
 }

@@ -170,3 +170,109 @@ Future<bool> addTester(AscClient c, String groupId, {required String email, Stri
     return true;
   }
 }
+
+/// Apple has no endpoint that deletes a build. Expiring it is the closest thing: it leaves TestFlight and can no longer be
+/// chosen for a submission. It cannot be undone, and Apple refuses it for a build on a released version.
+Map<String, dynamic> expireBuildBody(String id) => {
+      'data': {
+        'type': 'builds',
+        'id': id,
+        'attributes': {'expired': true},
+      },
+    };
+
+Future<void> expireBuild(AscClient c, String id) async {
+  await c.patch('/v1/builds/$id', expireBuildBody(id));
+}
+
+/// A delivery to App Store Connect. While Apple processes it there is no build yet, so `/v1/builds` does not list it:
+/// only `/v1/apps/{id}/buildUploads` does. Without this a fresh upload is invisible until processing ends.
+class BuildUpload {
+  BuildUpload(this.resource);
+  final Resource resource;
+
+  String get id => resource.id;
+  String get shortVersion => resource.str('cfBundleShortVersionString') ?? '—';
+  String get buildNumber => resource.str('cfBundleVersion') ?? '—';
+  String get label => '$shortVersion ($buildNumber)';
+  DateTime? get uploaded => resource.date('uploadedDate') ?? resource.date('createdDate');
+
+  Map<String, dynamic> get _state => (resource.attributes['state'] as Map?)?.cast<String, dynamic>() ?? const {};
+  String get state => _state['state']?.toString() ?? 'PROCESSING';
+  bool get processing => state == 'PROCESSING' || state == 'AWAITING_UPLOAD';
+  bool get failed => state == 'FAILED';
+
+  /// What Apple is doing with the delivery, in words: AWAITING_UPLOAD, PROCESSING, FAILED or COMPLETE.
+  String get stateLabel => switch (state) {
+        'AWAITING_UPLOAD' => 'Waiting for the file',
+        'PROCESSING' => 'Processing',
+        'FAILED' => 'Failed',
+        'COMPLETE' => 'Processed',
+        final other => other[0] + other.substring(1).toLowerCase().replaceAll('_', ' '),
+      };
+
+  /// Apple's non-fatal notices (for example a missing Info.plist purpose string).
+  List<String> get warnings => [
+        for (final e in (_state['warnings'] as List? ?? const []))
+          if (e is Map && e['description'] != null) e['description'].toString(),
+      ];
+
+  /// Apple's error descriptions, when processing failed.
+  List<String> get errors => [
+        for (final e in (_state['errors'] as List? ?? const []))
+          if (e is Map && e['description'] != null) e['description'].toString(),
+      ];
+}
+
+Future<List<BuildUpload>> loadBuildUploads(AscClient c, String appId) async {
+  final page = await c.page('/v1/apps/$appId/buildUploads', {'limit': '20'});
+  return [for (final r in page.data) BuildUpload(r)];
+}
+
+/// Key that ties an upload to the build Apple made from it: version (1.2.3) and build number.
+String buildKey(String shortVersion, String buildNumber) => '$shortVersion|$buildNumber';
+
+/// The uploads that deserve a row of their own: still processing, failed in the last week, or finished moments ago but not
+/// yet listed as a build (Apple lags by a short while). Uploads that already became a build ([knownBuilds], by [buildKey])
+/// are not repeated.
+List<BuildUpload> pendingUploads(List<BuildUpload> uploads, Set<String> knownBuilds, {DateTime? now}) {
+  final at = now ?? DateTime.now();
+  bool within(BuildUpload u, Duration d) => u.uploaded == null || at.difference(u.uploaded!) < d;
+  return [
+    for (final u in uploads)
+      if (!knownBuilds.contains(buildKey(u.shortVersion, u.buildNumber)) && within(u, u.processing || u.failed ? const Duration(days: 7) : const Duration(hours: 1))) u,
+  ];
+}
+
+/// TestFlight state of a build in plain words, from buildBetaDetails (internal/external build state).
+String betaStateLabel(String? s) => switch (s) {
+      null || '' => '',
+      'PROCESSING' => 'Processing',
+      'PROCESSING_EXCEPTION' => 'Processing problem',
+      'MISSING_EXPORT_COMPLIANCE' => 'Missing export compliance',
+      'READY_FOR_BETA_TESTING' => 'Ready to test',
+      'IN_BETA_TESTING' => 'In testing',
+      'EXPIRED' => 'Expired',
+      'IN_EXPORT_COMPLIANCE_REVIEW' => 'Export compliance review',
+      'READY_FOR_BETA_SUBMISSION' => 'Ready for beta review',
+      'WAITING_FOR_BETA_REVIEW' => 'Waiting for beta review',
+      'IN_BETA_REVIEW' => 'In beta review',
+      'BETA_REJECTED' => 'Beta rejected',
+      'BETA_APPROVED' => 'Beta approved',
+      final other => other[0] + other.substring(1).toLowerCase().replaceAll('_', ' '),
+    };
+
+/// Build id -> its buildBetaDetails, in one light request.
+Future<Map<String, Resource>> loadBetaDetails(AscClient c, String appId) async {
+  final page = await c.page('/v1/builds', {
+    'filter[app]': appId,
+    'sort': '-uploadedDate',
+    'limit': '100',
+    'include': 'buildBetaDetail',
+    'fields[builds]': 'buildBetaDetail',
+  });
+  return {
+    for (final b in page.data)
+      b.id: ?page.inc('buildBetaDetails', b.relId('buildBetaDetail')),
+  };
+}

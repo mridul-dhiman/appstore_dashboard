@@ -72,4 +72,108 @@ void main() {
     await pump(tester, tab: 2);
     expect(find.text('No customer reviews yet.'), findsOneWidget);
   });
+
+  testWidgets('Expire asks first, sends nothing on Cancel, and PATCHes expired on confirm; expired builds have no button', (tester) async {
+    tester.view.physicalSize = const Size(1500, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    var expired = false;
+    final fake = FakeAsc((r) {
+      if (r.method == 'PATCH') {
+        expired = true;
+        return json({'data': {'type': 'builds', 'id': 'B1'}});
+      }
+      if (r.path.startsWith('/v1/builds') && r.method == 'GET') {
+        return json({
+          'data': [
+            {'type': 'builds', 'id': 'B1', 'attributes': {'version': '7', 'processingState': 'VALID', 'expired': expired, 'uploadedDate': '2026-01-01T00:00:00Z'}},
+            {'type': 'builds', 'id': 'B0', 'attributes': {'version': '6', 'processingState': 'VALID', 'expired': true, 'uploadedDate': '2025-12-01T00:00:00Z'}},
+          ]
+        });
+      }
+      return r.method == 'GET' ? json({'data': []}) : null;
+    });
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: AppDetailPage(client: fake.client, summary: summary(), initialTab: 3, onBack: () {}))));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(OutlinedButton, 'Expire'), findsOneWidget, reason: 'only the unexpired build');
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Expire'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('can not be undone'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(fake.log.where((r) => r.method == 'PATCH'), isEmpty);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Expire'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Expire Build'));
+    await tester.pumpAndSettle();
+    final patches = fake.log.where((r) => r.method == 'PATCH').toList();
+    expect(patches, hasLength(1));
+    expect(patches.single.path, startsWith('/v1/builds/B1'));
+    expect(find.widgetWithText(OutlinedButton, 'Expire'), findsNothing, reason: 'list reloaded, both now expired');
+  });
+
+  testWidgets('a build still processing at Apple is listed (it is only in buildUploads, not /v1/builds)', (tester) async {
+    tester.view.physicalSize = const Size(1500, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final fake = FakeAsc((r) {
+      if (r.path.startsWith('/v1/apps/A1/buildUploads')) {
+        return json({
+          'data': [
+            {
+              'type': 'buildUploads',
+              'id': 'U2',
+              'attributes': {
+                'cfBundleShortVersionString': '2.0.0',
+                'cfBundleVersion': '2',
+                'uploadedDate': DateTime.now().toUtc().toIso8601String(),
+                'state': {'state': 'PROCESSING', 'errors': []},
+              },
+            },
+          ]
+        });
+      }
+      if (r.path.startsWith('/v1/builds') && r.path.contains('buildBetaDetail')) {
+        return json({
+          'data': [
+            {'type': 'builds', 'id': 'B1', 'attributes': {}, 'relationships': {'buildBetaDetail': {'data': {'type': 'buildBetaDetails', 'id': 'D1'}}}},
+          ],
+          'included': [
+            {'type': 'buildBetaDetails', 'id': 'D1', 'attributes': {'internalBuildState': 'IN_BETA_TESTING', 'externalBuildState': 'READY_FOR_BETA_SUBMISSION'}}
+          ],
+        });
+      }
+      if (r.path.startsWith('/v1/builds')) {
+        return json({
+          'data': [
+            {
+              'type': 'builds',
+              'id': 'B1',
+              'attributes': {'version': '1', 'processingState': 'VALID', 'expired': false, 'uploadedDate': '2026-01-01T00:00:00Z'},
+              'relationships': {'preReleaseVersion': {'data': {'type': 'preReleaseVersions', 'id': 'P1'}}},
+            },
+          ],
+          'included': [
+            {'type': 'preReleaseVersions', 'id': 'P1', 'attributes': {'version': '2.0.0'}}
+          ],
+        });
+      }
+      return r.method == 'GET' ? json({'data': []}) : null;
+    });
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: AppDetailPage(client: fake.client, summary: summary(), initialTab: 3, onBack: () {}))));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('2.0.0 (2)'), findsOneWidget);
+    expect(find.text('Processing'), findsOneWidget);
+    expect(find.text('2.0.0 (1)'), findsOneWidget, reason: 'the finished build is still listed, and not shown twice');
+    expect(find.textContaining('refreshes by itself'), findsOneWidget);
+    expect(find.textContaining('TestFlight: internal In testing · external Ready for beta review'), findsOneWidget);
+
+    // Leave no pending poll timer behind.
+    await tester.pumpWidget(const SizedBox());
+  });
 }
