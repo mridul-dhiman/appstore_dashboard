@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter/widgets.dart';
 
 import '../api/asc_client.dart';
@@ -28,6 +29,15 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   final Vault _vault;
 
   Phase phase = Phase.locked;
+
+  /// Follows the system until the person flips the switch in the title bar. Not saved between launches.
+  ThemeMode themeMode = ThemeMode.system;
+
+  void toggleTheme(Brightness current) {
+    themeMode = current == Brightness.dark ? ThemeMode.light : ThemeMode.dark;
+    notifyListeners();
+  }
+
   bool unlocking = false;
   String? message;
 

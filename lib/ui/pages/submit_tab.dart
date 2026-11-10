@@ -265,7 +265,7 @@ class _BodyState extends State<_Body> {
       case 'release':
         _release();
       case 'listing':
-        DefaultTabController.maybeOf(context)?.animateTo(1);
+        DefaultTabController.maybeOf(context)?.animateTo(0);
     }
   }
 

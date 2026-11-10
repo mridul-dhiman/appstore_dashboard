@@ -1,7 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
+import '../services/window.dart';
+import 'theme.dart';
 
 String fmtDate(DateTime? d) => d == null ? '—' : DateFormat.yMMMd().format(d);
 String fmtDateTime(DateTime? d) => d == null ? '—' : DateFormat.yMMMd().add_jm().format(d);
@@ -153,12 +157,7 @@ class StateChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final (bg, fg) = switch (toneFor(state)) {
-      Tone.good => dark ? (const Color(0xFF16301F), const Color(0xFF7BD79B)) : (const Color(0xFFE6F4EC), const Color(0xFF14693E)),
-      Tone.warn => dark ? (const Color(0xFF3A2C0E), const Color(0xFFF2C46B)) : (const Color(0xFFFFF1D6), const Color(0xFF7A4E00)),
-      Tone.bad => dark ? (const Color(0xFF3A1714), const Color(0xFFF3A19B)) : (const Color(0xFFFDECEA), const Color(0xFF9C211A)),
-      Tone.neutral => dark ? (const Color(0xFF232832), const Color(0xFFC3CAD6)) : (const Color(0xFFEEF0F4), const Color(0xFF3A4250)),
-    };
+    final (bg, fg) = _badgeColors(toneFor(state), dark);
     // A Row (not `alignment:`) so the chip hugs its text instead of stretching to the width it is offered.
     return Container(
       height: 22,
@@ -299,4 +298,192 @@ class Debouncer {
   }
 
   void dispose() => _t?.cancel();
+}
+
+(Color, Color) _badgeColors(Tone tone, bool dark) => switch (tone) {
+      Tone.good => dark ? (const Color(0x2410B981), const Color(0xFF34D399)) : (const Color(0xFFE4F7EA), const Color(0xFF13773B)),
+      Tone.warn => dark ? (const Color(0x24F59E0B), const Color(0xFFFBBF24)) : (const Color(0xFFFFF4E5), const Color(0xFF9A5B00)),
+      Tone.bad => dark ? (const Color(0x24F43F5E), const Color(0xFFFB7185)) : (const Color(0xFFFFEBEE), const Color(0xFFB4232C)),
+      Tone.neutral => dark ? (const Color(0xFF232832), const Color(0xFFC3CAD6)) : (const Color(0xFFEEF0F4), const Color(0xFF3A3A3C)),
+    };
+
+/// A status pill with a live dot: green for ready for sale, amber while in review, red for rejected, grey otherwise.
+class StatusBadge extends StatelessWidget {
+  const StatusBadge(this.state, {super.key, this.label});
+  final String? state;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final tone = toneFor(state);
+    final (bg, fg) = _badgeColors(tone, dark);
+    return Container(
+      height: 24,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20), border: Border.all(color: fg.withValues(alpha: 0.22))),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: fg, boxShadow: dark && tone != Tone.neutral ? [BoxShadow(color: fg.withValues(alpha: 0.7), blurRadius: 6)] : null),
+        ),
+        const SizedBox(width: 6),
+        Text(label ?? prettyEnum(state), style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
+      ]),
+    );
+  }
+}
+
+IconData platformIcon(String? platform) => switch (platform) {
+      'MAC_OS' => Icons.laptop_mac,
+      'TV_OS' => Icons.tv,
+      'VISION_OS' => Icons.vrpano_outlined,
+      _ => Icons.phone_iphone,
+    };
+
+/// App icon stand-in: a squircle with a gradient picked from the app's name and the platform glyph in the corner. The
+/// real icon needs a request per app, which the Apps list deliberately avoids.
+class AppSquircleIcon extends StatelessWidget {
+  const AppSquircleIcon({super.key, required this.name, this.platform, this.size = 48});
+  final String name;
+  final String? platform;
+  final double size;
+
+  static const _gradients = [
+    (Color(0xFF5AC8FA), Color(0xFF0A84FF)),
+    (Color(0xFFFF9F0A), Color(0xFFFF375F)),
+    (Color(0xFF30D158), Color(0xFF0A9396)),
+    (Color(0xFFBF5AF2), Color(0xFF5E5CE6)),
+    (Color(0xFFFFD60A), Color(0xFFFF9F0A)),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final seed = name.isEmpty ? 0 : name.codeUnits.fold<int>(0, (a, b) => a + b);
+    final g = _gradients[seed % _gradients.length];
+    return Container(
+      width: size,
+      height: size,
+      decoration: ShapeDecoration(
+        shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(size * 0.28)),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [g.$1, g.$2]),
+        shadows: const [BoxShadow(color: Color(0x22000000), blurRadius: 4, offset: Offset(0, 1))],
+      ),
+      child: Stack(children: [
+        Center(child: Text(Avatar.initials(name).characters.first, style: TextStyle(color: Colors.white, fontSize: size * 0.42, fontWeight: FontWeight.w700))),
+        Positioned(right: size * 0.07, bottom: size * 0.07, child: Icon(platformIcon(platform), size: size * 0.24, color: Colors.white.withValues(alpha: 0.85))),
+      ]),
+    );
+  }
+}
+
+/// The window's top bar: drag area, a search box that opens the command palette (⌘K), and the light/dark switch. On macOS it
+/// leaves room for the traffic-light buttons that float over its left end.
+class MacTitleBar extends StatelessWidget {
+  const MacTitleBar({super.key, required this.onSearch, required this.themeMode, required this.onToggleTheme, this.title});
+  final VoidCallback onSearch;
+  final ThemeMode themeMode;
+  final VoidCallback onToggleTheme;
+  final String? title;
+
+  static bool get _isMac => defaultTargetPlatform == TargetPlatform.macOS;
+
+  @override
+  Widget build(BuildContext context) {
+    final k = Tokens.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final hint = _isMac && !kIsWeb ? '⌘K' : 'Ctrl K';
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onPanStart: (_) => MacWindow.startDrag(),
+      onDoubleTap: MacWindow.zoom,
+      child: Container(
+        height: 52,
+        decoration: BoxDecoration(color: k.titlebar, border: Border(bottom: BorderSide(color: k.line))),
+        padding: EdgeInsets.only(left: MacWindow.hasOverlayTrafficLights ? 84 : 20, right: 16),
+        child: Row(children: [
+          if (title != null) Text(title!, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: k.muted)),
+          const Spacer(),
+          Tooltip(
+            message: 'Search apps and actions',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: onSearch,
+              child: Container(
+                width: 340,
+                height: 30,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(color: k.inset, borderRadius: BorderRadius.circular(8), border: Border.all(color: k.line)),
+                child: Row(children: [
+                  Icon(Icons.search, size: 16, color: k.muted),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('Search apps and actions', style: TextStyle(color: k.muted, fontSize: 13))),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(color: k.surface, borderRadius: BorderRadius.circular(5), border: Border.all(color: k.line)),
+                    child: Text(hint, style: TextStyle(color: k.muted, fontSize: 11, fontWeight: FontWeight.w600)),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            tooltip: dark ? 'Switch to light mode' : 'Switch to dark mode',
+            visualDensity: VisualDensity.compact,
+            onPressed: onToggleTheme,
+            icon: Icon(dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 19, color: k.muted),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// A macOS-style segmented tab strip: an inset track with a raised selected segment. Drives [controller].
+class SegmentedTabs extends StatelessWidget {
+  const SegmentedTabs({super.key, required this.controller, required this.labels});
+  final TabController controller;
+  final List<String> labels;
+
+  @override
+  Widget build(BuildContext context) {
+    final k = Tokens.of(context);
+    return AnimatedBuilder(
+      animation: controller.animation!,
+      builder: (context, _) {
+        final current = controller.animation!.value.round();
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(color: k.inset, borderRadius: BorderRadius.circular(10), border: Border.all(color: k.line)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              for (var i = 0; i < labels.length; i++)
+                Padding(
+                  padding: EdgeInsets.only(left: i == 0 ? 0 : 2),
+                  child: Material(
+                    color: i == current ? k.surface : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    elevation: 0,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => controller.animateTo(i),
+                      child: Container(
+                        height: 30,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        alignment: Alignment.center,
+                        decoration: i == current ? BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: k.line), boxShadow: k.shadow) : null,
+                        child: Text(labels[i], style: TextStyle(fontSize: 13, fontWeight: i == current ? FontWeight.w600 : FontWeight.w500, color: i == current ? k.ink : k.muted)),
+                      ),
+                    ),
+                  ),
+                ),
+            ]),
+          ),
+        );
+      },
+    );
+  }
 }

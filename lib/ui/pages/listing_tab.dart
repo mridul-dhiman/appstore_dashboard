@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 
 import '../../api/asc_client.dart';
 import '../../api/listing.dart';
+import '../../api/listing_clone.dart';
 import '../../api/listing_draft.dart';
 import '../../api/models.dart';
 import '../../api/screenshots.dart';
+import '../theme.dart';
 import '../widgets.dart';
 import 'changelist_dialog.dart';
 
@@ -145,12 +147,21 @@ class _EditorState extends State<_Editor> {
   Future<ResourcePage> _loadLocs() =>
       widget.client.all('/v1/appStoreVersions/${_version.id}/appStoreVersionLocalizations', {'limit': '200'}, 2);
 
+  Future<void> _clone(Resource source, List<Resource> locs, bool editable) async {
+    final staged = await showDialog<int>(
+      context: context,
+      builder: (_) => CloneLocalesDialog(draft: widget.draft, source: source, locales: locs, versionEditable: editable),
+    );
+    if (staged == null || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(staged == 0 ? 'Nothing to change: the other locales already match.' : 'Staged $staged change${staged == 1 ? '' : 's'}. Review them in the changelist before anything is sent.')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     final editable = isVersionEditable(_versionState(_version));
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(40, 8, 40, 40),
       children: [
         Wrap(
           spacing: 12,
@@ -211,17 +222,25 @@ class _EditorState extends State<_Editor> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 260,
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    key: ValueKey('l${_version.id}'),
-                    initialValue: loc.str('locale'),
-                    decoration: const InputDecoration(labelText: 'Locale'),
-                    items: [for (final l in locs) DropdownMenuItem(value: l.str('locale'), child: Text(l.str('locale') ?? ''))],
-                    onChanged: (v) => setState(() => _locale = v),
+                Wrap(spacing: 12, runSpacing: 12, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  SizedBox(
+                    width: 260,
+                    child: DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      key: ValueKey('l${_version.id}'),
+                      initialValue: loc.str('locale'),
+                      decoration: const InputDecoration(labelText: 'Locale'),
+                      items: [for (final l in locs) DropdownMenuItem(value: l.str('locale'), child: Text(l.str('locale') ?? ''))],
+                      onChanged: (v) => setState(() => _locale = v),
+                    ),
                   ),
-                ),
+                  if (locs.length > 1)
+                    OutlinedButton.icon(
+                      onPressed: () => _clone(loc, locs, editable),
+                      icon: const Icon(Icons.copy_all_outlined, size: 17),
+                      label: const Text('Clone to Other Locales'),
+                    ),
+                ]),
                 const SizedBox(height: 16),
                 _LocaleForm(
                   key: ValueKey('${_version.id}/${loc.id}'),
@@ -633,6 +652,106 @@ class _ShotTile extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Copies release notes and promotional text from one locale to others. It only stages edits; the changelist sends them.
+class CloneLocalesDialog extends StatefulWidget {
+  const CloneLocalesDialog({super.key, required this.draft, required this.source, required this.locales, required this.versionEditable});
+  final ListingDraft draft;
+  final Resource source;
+  final List<Resource> locales;
+  final bool versionEditable;
+
+  @override
+  State<CloneLocalesDialog> createState() => _CloneLocalesDialogState();
+}
+
+class _CloneLocalesDialogState extends State<CloneLocalesDialog> {
+  late final Set<String> _fields = {
+    for (final f in cloneableFields)
+      if (isFieldEditable(f.key, versionEditable: widget.versionEditable) && _text(f.key).isNotEmpty) f.key,
+  };
+  final _targets = <String>{};
+
+  /// The source text as the person currently sees it, staged edits included.
+  String _text(String key) => (widget.draft.textOverride('version', widget.source.id, key) ?? widget.source.str(key) ?? '').trim();
+
+  List<Resource> get _others => [for (final l in widget.locales) if (l.id != widget.source.id) l];
+
+  List<CloneEdit> get _plan => planClone(
+        sourceText: _text,
+        targets: [for (final l in _others) if (_targets.contains(l.id)) l],
+        fields: [for (final f in cloneableFields) if (_fields.contains(f.key)) f],
+        versionEditable: widget.versionEditable,
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final k = Tokens.of(context);
+    final plan = _plan;
+    final others = _others;
+    return AlertDialog(
+      title: Text('Clone ${widget.source.str('locale')} to other locales'),
+      content: SizedBox(
+        width: 520,
+        child: SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            const SectionLabel('Copy', padding: EdgeInsets.only(bottom: 4)),
+            for (final f in cloneableFields)
+              Builder(builder: (context) {
+                final can = isFieldEditable(f.key, versionEditable: widget.versionEditable);
+                final empty = _text(f.key).isEmpty;
+                return CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  value: _fields.contains(f.key),
+                  title: Text(f.label),
+                  subtitle: Text(!can ? 'Only editable on a version being prepared.' : (empty ? 'Empty in ${widget.source.str('locale')}.' : _text(f.key).replaceAll('\n', ' ')), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  onChanged: !can || empty ? null : (v) => setState(() => v == true ? _fields.add(f.key) : _fields.remove(f.key)),
+                );
+              }),
+            const SizedBox(height: 12),
+            Row(children: [
+              const Expanded(child: SectionLabel('To', padding: EdgeInsets.only(bottom: 4))),
+              TextButton(
+                onPressed: () => setState(() => _targets.length == others.length ? _targets.clear() : _targets.addAll(others.map((l) => l.id))),
+                child: Text(_targets.length == others.length ? 'Clear all' : 'Select all'),
+              ),
+            ]),
+            for (final l in others)
+              CheckboxListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _targets.contains(l.id),
+                title: Text(l.str('locale') ?? l.id),
+                onChanged: (v) => setState(() => v == true ? _targets.add(l.id) : _targets.remove(l.id)),
+              ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: k.inset, borderRadius: BorderRadius.circular(8)),
+              child: Text(
+                plan.isEmpty
+                    ? (_fields.isEmpty || _targets.isEmpty ? 'Pick what to copy and where to.' : 'The chosen locales already have this text.')
+                    : '${plan.length} change${plan.length == 1 ? '' : 's'} will be staged${plan.any((e) => e.before.isNotEmpty) ? ', replacing existing text in ${plan.where((e) => e.before.isNotEmpty).length}' : ''}. Nothing is sent until you apply the changelist.',
+                style: TextStyle(color: k.muted, fontSize: 13),
+              ),
+            ),
+          ]),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: _fields.isEmpty || _targets.isEmpty ? null : () => Navigator.pop(context, stageClone(widget.draft, plan)),
+          child: const Text('Stage changes'),
+        ),
+      ],
     );
   }
 }

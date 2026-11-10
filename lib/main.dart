@@ -26,14 +26,15 @@ class _DashboardAppState extends State<DashboardApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'App Store Dashboard',
-      debugShowCheckedModeBanner: false,
-      theme: buildTheme(Brightness.light),
-      darkTheme: buildTheme(Brightness.dark),
-      home: ListenableBuilder(
-        listenable: _state,
-        builder: (context, _) => switch (_state.phase) {
+    return ListenableBuilder(
+      listenable: _state,
+      builder: (context, _) => MaterialApp(
+        title: 'App Store Dashboard',
+        debugShowCheckedModeBanner: false,
+        theme: buildTheme(Brightness.light),
+        darkTheme: buildTheme(Brightness.dark),
+        themeMode: _state.themeMode,
+        home: switch (_state.phase) {
           Phase.locked => LockScreen(state: _state),
           Phase.setup => SetupScreen(state: _state),
           Phase.ready => Shell(state: _state),

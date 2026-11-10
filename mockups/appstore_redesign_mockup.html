@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>App Store Console - Light & Dark Mode Redesign</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    /* macOS Design System - Semantic Tokens */
+    .theme-light {
+      --mac-bg-canvas: #E8EBF0;
+      --mac-window-bg: #FFFFFF;
+      --mac-content-bg: #F5F6F9;
+      --mac-titlebar-bg: rgba(246, 247, 250, 0.94);
+      --mac-sidebar-bg: rgba(240, 242, 246, 0.92);
+      --mac-card-bg: #FFFFFF;
+      --mac-card-hover: #FBFBFC;
+      --mac-inset-bg: #F0F2F5;
+      --mac-border: rgba(0, 0, 0, 0.08);
+      --mac-border-strong: rgba(0, 0, 0, 0.14);
+      --mac-text-title: #1D1D1F;
+      --mac-text-body: #3A3A3C;
+      --mac-text-muted: #6E6E73;
+      --mac-text-subtle: #8E8E93;
+      --mac-accent: #0071E3;
+      --mac-accent-hover: #0077ED;
+      --mac-accent-soft: #EBF3FF;
+      --mac-accent-text: #0062C4;
+      --mac-badge-green-bg: #E4F7EA;
+      --mac-badge-green-text: #13773B;
+      --mac-badge-green-border: rgba(19, 119, 59, 0.2);
+      --mac-badge-amber-bg: #FFF4E5;
+      --mac-badge-amber-text: #9A5B00;
+      --mac-badge-amber-border: rgba(154, 91, 0, 0.2);
+      --mac-shadow-window: 0 30px 70px -15px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.08);
+      --mac-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+    }
+
+    .theme-dark {
+      --mac-bg-canvas: #090B0E;
+      --mac-window-bg: #111318;
+      --mac-content-bg: #14171E;
+      --mac-titlebar-bg: rgba(22, 25, 34, 0.92);
+      --mac-sidebar-bg: rgba(18, 21, 28, 0.88);
+      --mac-card-bg: #1A1E27;
+      --mac-card-hover: #212632;
+      --mac-inset-bg: #101217;
+      --mac-border: rgba(255, 255, 255, 0.08);
+      --mac-border-strong: rgba(255, 255, 255, 0.14);
+      --mac-text-title: #F5F5F7;
+      --mac-text-body: #D1D5DB;
+      --mac-text-muted: #9CA3AF;
+      --mac-text-subtle: #6B7280;
+      --mac-accent: #2997FF;
+      --mac-accent-hover: #40A4FF;
+      --mac-accent-soft: rgba(41, 151, 255, 0.16);
+      --mac-accent-text: #58A6FF;
+      --mac-badge-green-bg: rgba(16, 185, 129, 0.14);
+      --mac-badge-green-text: #34D399;
+      --mac-badge-green-border: rgba(52, 211, 153, 0.25);
+      --mac-badge-amber-bg: rgba(245, 158, 11, 0.14);
+      --mac-badge-amber-text: #FBBF24;
+      --mac-badge-amber-border: rgba(251, 191, 36, 0.25);
+      --mac-shadow-window: 0 30px 80px -15px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      --mac-shadow-card: 0 4px 12px rgba(0, 0, 0, 0.35);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+      transition: background-color 0.25s ease;
+    }
+
+    .mac-window {
+      background-color: var(--mac-window-bg);
+      box-shadow: var(--mac-shadow-window);
+      border: 1px solid var(--mac-border);
+      transition: all 0.25s ease;
+    }
+
+    .mac-titlebar {
+      background-color: var(--mac-titlebar-bg);
+      border-bottom: 1px solid var(--mac-border);
+    }
+
+    .mac-sidebar {
+      background-color: var(--mac-sidebar-bg);
+      border-right: 1px solid var(--mac-border);
+    }
+
+    .mac-main {
+      background-color: var(--mac-content-bg);
+    }
+
+    .mac-card {
+      background-color: var(--mac-card-bg);
+      border: 1px solid var(--mac-border);
+      box-shadow: var(--mac-shadow-card);
+      transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .mac-card:hover {
+      background-color: var(--mac-card-hover);
+    }
+
+    .mac-inset {
+      background-color: var(--mac-inset-bg);
+      border: 1px solid var(--mac-border);
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(140, 140, 140, 0.3);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(140, 140, 140, 0.5);
+    }
+  </style>
+</head>
+<body id="theme-root" class="theme-light p-3 md:p-6 min-h-screen flex flex-col items-center justify-center" style="background-color: var(--mac-bg-canvas);">
+
+  <!-- TOP BAR WITH QUICK THEME SWITCHER BANNER -->
+  <div class="w-full max-w-6xl mb-3 flex items-center justify-between px-2 text-xs">
+    <div class="flex items-center space-x-2">
+      <span class="font-bold text-sm tracking-tight" style="color: var(--mac-text-title);">App Store Console</span>
+      <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold" style="background-color: var(--mac-accent-soft); color: var(--mac-accent-text);">Native macOS & Web Prototype</span>
+    </div>
+
+    <!-- Mode Selector Pills -->
+    <div class="flex items-center space-x-1.5 p-1 rounded-xl border" style="background-color: var(--mac-window-bg); border-color: var(--mac-border);">
+      <button onclick="setTheme('light')" id="btn-theme-light" class="flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold shadow-sm transition" style="background-color: var(--mac-accent); color: white;">
+        <span>☀️ Light Mode</span>
+      </button>
+      <button onclick="setTheme('dark')" id="btn-theme-dark" class="flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium transition" style="color: var(--mac-text-muted);">
+        <span>🌙 Dark Mode</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- THE MACOS WINDOW FRAME -->
+  <div class="w-full max-w-6xl mac-window rounded-2xl overflow-hidden flex flex-col" style="min-height: 720px; max-height: 860px; height: 86vh;">
+    
+    <!-- Unified macOS Window Titlebar -->
+    <header class="h-12 mac-titlebar backdrop-blur-md px-4 flex items-center justify-between z-20 flex-shrink-0">
+      <div class="flex items-center space-x-3">
+        <!-- Native Window Traffic Lights -->
+        <div class="flex items-center space-x-2 mr-3">
+          <div class="w-3 h-3 rounded-full bg-[#FF5F56] border border-[#E0443E] hover:opacity-80 transition cursor-pointer"></div>
+          <div class="w-3 h-3 rounded-full bg-[#FFBD2E] border border-[#DEA123] hover:opacity-80 transition cursor-pointer"></div>
+          <div class="w-3 h-3 rounded-full bg-[#27C93F] border border-[#1AAB29] hover:opacity-80 transition cursor-pointer"></div>
+        </div>
+
+        <div class="flex items-center text-xs font-semibold space-x-1.5">
+          <span style="color: var(--mac-accent);" class="font-bold tracking-tight text-sm">Store Console</span>
+          <span style="color: var(--mac-text-subtle);">/</span>
+          <span id="title-breadcrumb" style="color: var(--mac-text-title);">Apps</span>
+        </div>
+      </div>
+
+      <!-- Center Search & Command Palette Trigger (⌘K) -->
+      <button onclick="toggleCommandPalette(true)" class="flex items-center space-x-3 mac-inset rounded-lg px-3 py-1.5 text-xs w-64 md:w-80 justify-between transition-all group hover:border-blue-400">
+        <div class="flex items-center space-x-2">
+          <svg class="w-3.5 h-3.5 group-hover:text-blue-500 transition" style="color: var(--mac-text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <span style="color: var(--mac-text-muted);">Search apps, actions...</span>
+        </div>
+        <kbd class="px-1.5 py-0.5 rounded text-[11px] font-mono border" style="background-color: var(--mac-card-bg); border-color: var(--mac-border); color: var(--mac-text-subtle);">⌘K</kbd>
+      </button>
+
+      <!-- Right Window Controls & Active Client Profile -->
+      <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-2 mac-inset rounded-lg px-2.5 py-1 text-xs">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span style="color: var(--mac-text-title);" class="font-semibold truncate max-w-[110px]">Acme Studios</span>
+          <span style="color: var(--mac-text-subtle);" class="text-[11px]">Key: TX5ZF2</span>
+        </div>
+
+        <button title="System Keychain Lock (Touch ID)" class="p-1.5 rounded-lg mac-inset hover:opacity-80 transition" style="color: var(--mac-text-muted);">
+          <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Window Main Split Workspace -->
+    <div class="flex flex-1 overflow-hidden">
+      
+      <!-- macOS Frosted Left Sidebar (Streamlined, no outer TestFlight, no Pinned Apps) -->
+      <aside class="w-56 mac-sidebar backdrop-blur-xl p-3 flex flex-col justify-between flex-shrink-0">
+        <div class="space-y-4">
+          <div>
+            <div class="px-2 pb-1.5 text-[11px] font-bold tracking-wider uppercase" style="color: var(--mac-text-subtle);">Storefront</div>
+            <nav class="space-y-1">
+              
+              <!-- 1. My Apps -->
+              <button onclick="switchView('apps')" id="nav-apps" class="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-semibold transition" style="background-color: var(--mac-accent-soft); color: var(--mac-accent-text);">
+                <div class="flex items-center space-x-2.5">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                  <span>My Apps</span>
+                </div>
+                <span class="text-[11px] px-1.5 py-0.2 rounded-full font-bold" style="background-color: rgba(0, 113, 227, 0.12);">4</span>
+              </button>
+
+              <!-- 2. Sales & Trends -->
+              <button onclick="switchView('sales')" id="nav-sales" class="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium hover:opacity-80 transition" style="color: var(--mac-text-body);">
+                <div class="flex items-center space-x-2.5">
+                  <svg class="w-4 h-4" style="color: var(--mac-text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                  <span>Sales & Trends</span>
+                </div>
+              </button>
+
+              <!-- 3. Signing & Certs -->
+              <button onclick="switchView('signing')" id="nav-signing" class="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium hover:opacity-80 transition" style="color: var(--mac-text-body);">
+                <div class="flex items-center space-x-2.5">
+                  <svg class="w-4 h-4" style="color: var(--mac-text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                  <span>Signing & Certs</span>
+                </div>
+              </button>
+
+              <!-- 4. Users & Access -->
+              <button onclick="switchView('team')" id="nav-team" class="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium hover:opacity-80 transition" style="color: var(--mac-text-body);">
+                <div class="flex items-center space-x-2.5">
+                  <svg class="w-4 h-4" style="color: var(--mac-text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                  <span>Users & Access</span>
+                </div>
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        <!-- Sidebar Footer Status -->
+        <div class="pt-3 border-t space-y-2" style="border-color: var(--mac-border);">
+          <div class="mac-inset rounded-lg p-2 text-xs flex items-center justify-between">
+            <div class="flex items-center space-x-1.5" style="color: var(--mac-text-muted);">
+              <span class="w-2 h-2 rounded-full" style="background-color: var(--mac-accent);"></span>
+              <span>Sync status</span>
+            </div>
+            <span class="font-mono text-[11px]" style="color: var(--mac-text-subtle);">Direct ASC</span>
+          </div>
+          <div class="text-[11px] text-center" style="color: var(--mac-text-subtle);">
+            Press <kbd class="px-1 py-0.5 rounded font-mono" style="background-color: var(--mac-inset-bg);">⌘K</kbd> to search anywhere
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content Area Container -->
+      <main class="flex-1 mac-main overflow-y-auto p-6" id="main-content">
+        
+        <!-- ================= VIEW 1: APPS CATALOG ================= -->
+        <div id="view-apps" class="space-y-6">
+          
+          <!-- Top KPI / Title Header -->
+          <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+              <div class="flex items-center space-x-2">
+                <h1 class="text-xl font-bold tracking-tight" style="color: var(--mac-text-title);">Applications</h1>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center space-x-1" style="background-color: var(--mac-badge-green-bg); color: var(--mac-badge-green-text);">
+                  <span>⚡ 1 API Request</span>
+                </span>
+              </div>
+              <p class="text-xs mt-0.5" style="color: var(--mac-text-muted);">Loaded directly via <code class="font-mono text-[11px]" style="color: var(--mac-text-title);">/v1/apps?include=appStoreVersions</code> in a single hit.</p>
+            </div>
+
+            <!-- View Mode Switcher -->
+            <div class="flex items-center space-x-3">
+              <div class="mac-inset rounded-lg p-0.5 flex items-center space-x-1">
+                <button onclick="setLayout('grid')" id="layout-grid-btn" class="p-1 rounded text-white transition" style="background-color: var(--mac-accent);"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg></button>
+                <button onclick="setLayout('list')" id="layout-list-btn" class="p-1 rounded transition hover:opacity-80" style="color: var(--mac-text-muted);"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Status Filters Bar -->
+          <div class="flex items-center space-x-2 border-b pb-3 text-xs" style="border-color: var(--mac-border);">
+            <span class="text-xs font-medium mr-2" style="color: var(--mac-text-subtle);">Filter:</span>
+            <button class="px-2.5 py-1 rounded-md font-semibold text-white" style="background-color: var(--mac-accent);">All Apps (4)</button>
+            <button class="px-2.5 py-1 rounded-md transition hover:opacity-80" style="color: var(--mac-text-muted); background-color: var(--mac-inset-bg);">Ready for Sale (3)</button>
+            <button class="px-2.5 py-1 rounded-md transition flex items-center space-x-1.5" style="background-color: var(--mac-badge-amber-bg); color: var(--mac-badge-amber-text);">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              <span class="font-medium">In Review (1)</span>
+            </button>
+            <button class="px-2.5 py-1 rounded-md transition hover:opacity-80" style="color: var(--mac-text-muted); background-color: var(--mac-inset-bg);">Universal & macOS (2)</button>
+          </div>
+
+          <!-- App Grid Cards -->
+          <div id="apps-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <!-- App Card 1 -->
+            <div onclick="openAppDetail('Apollo Reader')" class="mac-card rounded-xl p-4 cursor-pointer flex flex-col justify-between space-y-4 group">
+              <div class="flex items-start justify-between">
+                <div class="flex items-center space-x-3.5">
+                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow-md shadow-blue-500/20">
+                    📖
+                  </div>
+                  <div>
+                    <div class="flex items-center space-x-2">
+                      <h3 class="font-bold text-sm tracking-tight group-hover:text-blue-500 transition" style="color: var(--mac-text-title);">Apollo Reader</h3>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-mono mac-inset" style="color: var(--mac-text-subtle);">Universal</span>
+                    </div>
+                    <p class="text-xs font-mono mt-0.5" style="color: var(--mac-text-muted);">com.acme.apolloreader</p>
+                    <div class="flex items-center space-x-2 mt-1.5">
+                      <span class="text-[11px] font-semibold" style="color: var(--mac-text-body);">v2.4.1</span>
+                      <span style="color: var(--mac-text-subtle);">·</span>
+                      <span class="text-[11px]" style="color: var(--mac-text-muted);">SKU: APL-001</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Status Badge (Ready for Sale) -->
+                <span class="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center space-x-1.5" style="background-color: var(--mac-badge-green-bg); color: var(--mac-badge-green-text); border: 1px solid var(--mac-badge-green-border);">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span>Ready for Sale</span>
+                </span>
+              </div>
+
+              <!-- Footer Stats / Shortcuts (No Ratings on outside listing) -->
+              <div class="pt-3 border-t flex items-center justify-between text-xs" style="border-color: var(--mac-border); color: var(--mac-text-muted);">
+                <div class="flex items-center space-x-3">
+                  <span class="font-mono text-[11px]" style="color: var(--mac-text-subtle);">SKU: APL-001</span>
+                  <span>·</span>
+                  <span>Updated 2 days ago</span>
+                </div>
+                <span class="font-semibold group-hover:translate-x-0.5 transition-transform flex items-center space-x-1" style="color: var(--mac-accent);">
+                  <span>Manage</span>
+                  <span>→</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- App Card 2 (In Review) -->
+            <div onclick="openAppDetail('Focus Timer Pro')" class="mac-card rounded-xl p-4 cursor-pointer flex flex-col justify-between space-y-4 group">
+              <div class="flex items-start justify-between">
+                <div class="flex items-center space-x-3.5">
+                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-rose-600 flex items-center justify-center text-white text-xl font-bold shadow-md shadow-amber-500/20">
+                    ⏱️
+                  </div>
+                  <div>
+                    <div class="flex items-center space-x-2">
+                      <h3 class="font-bold text-sm tracking-tight group-hover:text-amber-500 transition" style="color: var(--mac-text-title);">Focus Timer Pro</h3>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-mono mac-inset" style="color: var(--mac-text-subtle);">macOS</span>
+                    </div>
+                    <p class="text-xs font-mono mt-0.5" style="color: var(--mac-text-muted);">com.acme.focustimer</p>
+                    <div class="flex items-center space-x-2 mt-1.5">
+                      <span class="text-[11px] font-semibold" style="color: var(--mac-text-body);">v3.0.0</span>
+                      <span style="color: var(--mac-text-subtle);">·</span>
+                      <span class="text-[11px]" style="color: var(--mac-text-muted);">SKU: FOC-002</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Status Badge (In Review) -->
+                <span class="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center space-x-1.5" style="background-color: var(--mac-badge-amber-bg); color: var(--mac-badge-amber-text); border: 1px solid var(--mac-badge-amber-border);">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                  <span>In Review</span>
+                </span>
+              </div>
+
+              <div class="pt-3 border-t flex items-center justify-between text-xs" style="border-color: var(--mac-border); color: var(--mac-text-muted);">
+                <div class="flex items-center space-x-3">
+                  <span class="font-medium" style="color: var(--mac-badge-amber-text);">Submitted 3h ago</span>
+                  <span>App Review assigned</span>
+                </div>
+                <span class="font-semibold group-hover:translate-x-0.5 transition-transform flex items-center space-x-1" style="color: var(--mac-badge-amber-text);">
+                  <span>Preflight</span>
+                  <span>→</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- App Card 3 -->
+            <div onclick="openAppDetail('PixelForge AI')" class="mac-card rounded-xl p-4 cursor-pointer flex flex-col justify-between space-y-4 group">
+              <div class="flex items-start justify-between">
+                <div class="flex items-center space-x-3.5">
+                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-600 flex items-center justify-center text-white text-xl font-bold shadow-md shadow-purple-500/20">
+                    🎨
+                  </div>
+                  <div>
+                    <div class="flex items-center space-x-2">
+                      <h3 class="font-bold text-sm tracking-tight group-hover:text-blue-500 transition" style="color: var(--mac-text-title);">PixelForge AI</h3>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-mono mac-inset" style="color: var(--mac-text-subtle);">iOS</span>
+                    </div>
+                    <p class="text-xs font-mono mt-0.5" style="color: var(--mac-text-muted);">com.acme.pixelforge</p>
+                    <div class="flex items-center space-x-2 mt-1.5">
+                      <span class="text-[11px] font-semibold" style="color: var(--mac-text-body);">v1.1.0</span>
+                      <span style="color: var(--mac-text-subtle);">·</span>
+                      <span class="text-[11px]" style="color: var(--mac-text-muted);">SKU: PXF-019</span>
+                    </div>
+                  </div>
+                </div>
+
+                <span class="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center space-x-1.5" style="background-color: var(--mac-badge-green-bg); color: var(--mac-badge-green-text); border: 1px solid var(--mac-badge-green-border);">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span>Ready for Sale</span>
+                </span>
+              </div>
+
+              <div class="pt-3 border-t flex items-center justify-between text-xs" style="border-color: var(--mac-border); color: var(--mac-text-muted);">
+                <div class="flex items-center space-x-3">
+                  <span class="font-mono text-[11px]" style="color: var(--mac-text-subtle);">SKU: PXF-019</span>
+                  <span>·</span>
+                  <span>Updated 1 week ago</span>
+                </div>
+                <span class="font-semibold group-hover:translate-x-0.5 transition-transform flex items-center space-x-1" style="color: var(--mac-accent);">
+                  <span>Manage</span>
+                  <span>→</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- App Card 4 (Prepare for submission) -->
+            <div onclick="openAppDetail('SoundWave Studio')" class="mac-card rounded-xl p-4 cursor-pointer flex flex-col justify-between space-y-4 group">
+              <div class="flex items-start justify-between">
+                <div class="flex items-center space-x-3.5">
+                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-600 to-teal-600 flex items-center justify-center text-white text-xl font-bold shadow-md shadow-cyan-500/20">
+                    🎵
+                  </div>
+                  <div>
+                    <div class="flex items-center space-x-2">
+                      <h3 class="font-bold text-sm tracking-tight group-hover:text-blue-500 transition" style="color: var(--mac-text-title);">SoundWave Studio</h3>
+                      <span class="px-1.5 py-0.5 rounded text-[10px] font-mono mac-inset" style="color: var(--mac-text-subtle);">macOS</span>
+                    </div>
+                    <p class="text-xs font-mono mt-0.5" style="color: var(--mac-text-muted);">com.acme.soundwave</p>
+                    <div class="flex items-center space-x-2 mt-1.5">
+                      <span class="text-[11px] font-semibold" style="color: var(--mac-text-body);">v1.0.0</span>
+                      <span style="color: var(--mac-text-subtle);">·</span>
+                      <span class="text-[11px]" style="color: var(--mac-text-muted);">SKU: SND-004</span>
+                    </div>
+                  </div>
+                </div>
+
+                <span class="px-2.5 py-1 rounded-full text-xs font-semibold flex items-center space-x-1.5 mac-inset" style="color: var(--mac-text-muted);">
+                  <span class="w-1.5 h-1.5 rounded-full" style="background-color: var(--mac-text-subtle);"></span>
+                  <span>Prepare for Submission</span>
+                </span>
+              </div>
+
+              <div class="pt-3 border-t flex items-center justify-between text-xs" style="border-color: var(--mac-border); color: var(--mac-text-muted);">
+                <div class="flex items-center space-x-3">
+                  <span class="font-mono text-[11px]" style="color: var(--mac-text-subtle);">SKU: SND-004</span>
+                  <span>·</span>
+                  <span>Primary: en-US</span>
+                </div>
+                <span class="font-semibold group-hover:translate-x-0.5 transition-transform flex items-center space-x-1" style="color: var(--mac-accent);">
+                  <span>Manage</span>
+                  <span>→</span>
+                </span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ================= VIEW 2: APP DETAIL REDESIGNED ================= -->
+        <div id="view-detail" class="hidden space-y-6">
+          
+          <!-- Back navigation & Actions Bar -->
+          <div class="flex items-center justify-between">
+            <button onclick="switchView('apps')" class="flex items-center space-x-1.5 text-xs font-medium transition hover:opacity-80" style="color: var(--mac-text-muted);">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+              <span>Back to Apps</span>
+            </button>
+
+            <!-- Quick Action Shortcuts -->
+            <div class="flex items-center space-x-2">
+              <a href="#" class="px-2.5 py-1 rounded-lg mac-inset text-xs font-medium flex items-center space-x-1 transition hover:opacity-80" style="color: var(--mac-text-title);">
+                <svg class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                <span>View on App Store</span>
+              </a>
+              <button onclick="switchDetailTab('upload_tab')" class="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition hover:opacity-90 text-white" style="background-color: var(--mac-accent);">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                <span>Upload .IPA</span>
+              </button>
+              <button onclick="alert('Exporting metadata, pricing and build records as JSON/CSV...')" class="px-2.5 py-1 rounded-lg mac-inset text-xs font-medium transition hover:opacity-80" style="color: var(--mac-text-title);">
+                Export Data
+              </button>
+              <button onclick="switchDetailTab('submit')" class="px-3 py-1 rounded-lg text-white text-xs font-semibold shadow-sm transition hover:opacity-90" style="background-color: var(--mac-accent);">
+                Submit for Review
+              </button>
+            </div>
+          </div>
+
+          <!-- App Hero Summary Card -->
+          <div class="mac-card rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div class="flex items-center space-x-4">
+              <div id="detail-app-icon" class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-blue-500/20">
+                📖
+              </div>
+              <div>
+                <div class="flex items-center space-x-3">
+                  <h2 id="detail-app-name" class="text-xl font-bold tracking-tight" style="color: var(--mac-text-title);">Apollo Reader</h2>
+                  <span class="px-2 py-0.5 rounded-full text-xs font-semibold" style="background-color: var(--mac-badge-green-bg); color: var(--mac-badge-green-text); border: 1px solid var(--mac-badge-green-border);">
+                    Ready for Sale
+                  </span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 mt-1 text-xs font-mono" style="color: var(--mac-text-muted);">
+                  <span>com.acme.apolloreader</span>
+                  <span>·</span>
+                  <span>SKU: APL-001</span>
+                  <span>·</span>
+                  <span>Apple ID: 159283719</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Live Stats in Hero -->
+            <div class="flex items-center space-x-6 text-xs border-t md:border-t-0 md:border-l pt-3 md:pt-0 md:pl-6" style="border-color: var(--mac-border); color: var(--mac-text-body);">
+              <div>
+                <div class="uppercase text-[10px] font-bold" style="color: var(--mac-text-subtle);">Active Version</div>
+                <div class="text-base font-bold" style="color: var(--mac-text-title);">2.4.1</div>
+              </div>
+              <div>
+                <div class="uppercase text-[10px] font-bold" style="color: var(--mac-text-subtle);">Latest Build</div>
+                <div class="text-base font-bold" style="color: var(--mac-text-title);">142 <span class="text-emerald-500 text-xs font-normal">● Clean</span></div>
+              </div>
+              <div>
+                <div class="uppercase text-[10px] font-bold" style="color: var(--mac-text-subtle);">Rating</div>
+                <div class="text-base font-bold flex items-center space-x-1" style="color: var(--mac-text-title);">
+                  <span class="text-amber-500">★</span>
+                  <span>4.8</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staged Local Draft Floating Banner -->
+          <div class="rounded-xl px-4 py-2.5 flex items-center justify-between text-xs border" style="background-color: var(--mac-accent-soft); border-color: rgba(0, 113, 227, 0.2); color: var(--mac-accent-text);">
+            <div class="flex items-center space-x-2">
+              <svg class="w-4 h-4" style="color: var(--mac-accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+              <span><strong>Local Draft Mode:</strong> Metadata & screenshot changes are staged safely on your Mac before applying to App Store Connect.</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button class="px-2 py-1 hover:underline" style="color: var(--mac-text-muted);">Discard (0)</button>
+              <button class="text-white font-semibold px-3 py-1 rounded-lg shadow-sm" style="background-color: var(--mac-accent);">Review Changelist</button>
+            </div>
+          </div>
+
+          <!-- Apple HIG Navigation Tabs -->
+          <div class="border-b flex items-center space-x-1 text-xs" style="border-color: var(--mac-border);">
+            <button onclick="switchDetailTab('listing')" id="dtab-listing" class="px-3.5 py-2 font-semibold border-b-2 transition" style="color: var(--mac-accent); border-color: var(--mac-accent);">Store Listing</button>
+            <button onclick="switchDetailTab('testflight_tab')" id="dtab-testflight_tab" class="px-3.5 py-2 font-medium transition hover:opacity-80" style="color: var(--mac-text-muted);">TestFlight & Groups</button>
+            <button onclick="switchDetailTab('reviews')" id="dtab-reviews" class="px-3.5 py-2 font-medium transition hover:opacity-80 flex items-center space-x-1.5" style="color: var(--mac-text-muted);">
+              <span>Customer Reviews</span>
+              <span class="px-1.5 py-0.2 rounded-full text-[10px] mac-inset font-semibold" style="color: var(--mac-text-body);">1,240</span>
+            </button>
+            <button onclick="switchDetailTab('builds')" id="dtab-builds" class="px-3.5 py-2 font-medium transition hover:opacity-80" style="color: var(--mac-text-muted);">Builds</button>
+            <button onclick="switchDetailTab('upload_tab')" id="dtab-upload_tab" class="px-3.5 py-2 font-medium transition hover:opacity-80 flex items-center space-x-1" style="color: var(--mac-text-muted);">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+              <span>Upload .IPA</span>
+            </button>
+            <button onclick="switchDetailTab('purchases')" id="dtab-purchases" class="px-3.5 py-2 font-medium transition hover:opacity-80" style="color: var(--mac-text-muted);">In-App Purchases</button>
+            <button onclick="switchDetailTab('submit')" id="dtab-submit" class="px-3.5 py-2 font-medium transition hover:opacity-80" style="color: var(--mac-text-muted);">App Review Preflight</button>
+          </div>
+
+          <!-- DETAIL TAB CONTENT CONTAINER -->
+          <div id="detail-tab-content">
+            
+            <!-- SUB-TAB: REVIEWS & REPLIES (Missing Feature in ASC Web!) -->
+            <div id="subtab-reviews" class="space-y-5">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                
+                <!-- Review Metrics Overview -->
+                <div class="mac-card rounded-xl p-4 flex flex-col justify-center items-center text-center">
+                  <div class="text-4xl font-extrabold" style="color: var(--mac-text-title);">4.8</div>
+                  <div class="flex text-amber-500 text-sm mt-1">★★★★★</div>
+                  <div class="text-xs mt-1" style="color: var(--mac-text-muted);">Based on 1,240 global ratings</div>
+                  <div class="mt-3 flex items-center space-x-2 text-xs">
+                    <button class="px-2 py-0.5 rounded border" style="background-color: var(--mac-accent-soft); color: var(--mac-accent-text); border-color: rgba(0, 113, 227, 0.2);">Sync latest</button>
+                    <button class="px-2 py-0.5 rounded mac-inset" style="color: var(--mac-text-body);">Export CSV</button>
+                  </div>
+                </div>
+
+                <!-- Star breakdown bars -->
+                <div class="md:col-span-2 mac-card rounded-xl p-4 space-y-1.5 text-xs">
+                  <div class="flex items-center space-x-2">
+                    <span class="w-8 font-medium" style="color: var(--mac-text-muted);">5 ★</span>
+                    <div class="flex-1 mac-inset rounded-full h-2 overflow-hidden"><div class="bg-amber-400 h-full rounded-full" style="width: 82%"></div></div>
+                    <span class="w-12 text-right" style="color: var(--mac-text-subtle);">1,016</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <span class="w-8 font-medium" style="color: var(--mac-text-muted);">4 ★</span>
+                    <div class="flex-1 mac-inset rounded-full h-2 overflow-hidden"><div class="bg-amber-400 h-full rounded-full" style="width: 12%"></div></div>
+                    <span class="w-12 text-right" style="color: var(--mac-text-subtle);">148</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <span class="w-8 font-medium" style="color: var(--mac-text-muted);">3 ★</span>
+                    <div class="flex-1 mac-inset rounded-full h-2 overflow-hidden"><div class="bg-amber-400 h-full rounded-full" style="width: 4%"></div></div>
+                    <span class="w-12 text-right" style="color: var(--mac-text-subtle);">50</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <span class="w-8 font-medium" style="color: var(--mac-text-muted);">2 ★</span>
+                    <div class="flex-1 mac-inset rounded-full h-2 overflow-hidden"><div class="bg-amber-400 h-full rounded-full" style="width: 1%"></div></div>
+                    <span class="w-12 text-right" style="color: var(--mac-text-subtle);">14</span>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <span class="w-8 font-medium" style="color: var(--mac-text-muted);">1 ★</span>
+                    <div class="flex-1 mac-inset rounded-full h-2 overflow-hidden"><div class="bg-rose-500 h-full rounded-full" style="width: 1%"></div></div>
+                    <span class="w-12 text-right" style="color: var(--mac-text-subtle);">12</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Filter Bar & Search for Reviews -->
+              <div class="flex items-center justify-between text-xs">
+                <div class="flex items-center space-x-2">
+                  <span class="font-medium" style="color: var(--mac-text-subtle);">Filter:</span>
+                  <button class="px-2.5 py-0.5 rounded text-white font-medium" style="background-color: var(--mac-accent);">All Reviews</button>
+                  <button class="px-2.5 py-0.5 rounded mac-inset font-medium hover:opacity-80" style="color: var(--mac-text-body);">1-3 ★ Needs Reply</button>
+                  <button class="px-2.5 py-0.5 rounded mac-inset font-medium hover:opacity-80" style="color: var(--mac-text-body);">Unanswered</button>
+                </div>
+                <input type="text" placeholder="Search review text..." class="mac-inset rounded-lg px-2.5 py-1 text-xs w-48 focus:outline-none focus:border-blue-500" style="color: var(--mac-text-title);">
+              </div>
+
+              <!-- Review Cards with Direct Reply Composer (ASC API Integration) -->
+              <div class="space-y-3">
+                
+                <!-- Review Card 1 (Already Replied) -->
+                <div class="mac-card rounded-xl p-4 space-y-3">
+                  <div class="flex items-start justify-between">
+                    <div>
+                      <div class="flex items-center space-x-2">
+                        <span class="text-amber-500 text-sm">★★★★★</span>
+                        <h4 class="font-bold text-sm tracking-tight" style="color: var(--mac-text-title);">Best e-reader app on macOS by far</h4>
+                      </div>
+                      <div class="flex items-center space-x-2 text-xs mt-1" style="color: var(--mac-text-subtle);">
+                        <span class="font-medium" style="color: var(--mac-text-body);">Alex M.</span>
+                        <span>·</span>
+                        <span>United States (US)</span>
+                        <span>·</span>
+                        <span>Version 2.4.1</span>
+                        <span>·</span>
+                        <span>2 days ago</span>
+                      </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-[11px] font-semibold" style="background-color: var(--mac-badge-green-bg); color: var(--mac-badge-green-text); border: 1px solid var(--mac-badge-green-border);">Replied</span>
+                  </div>
+                  <p class="text-xs leading-relaxed" style="color: var(--mac-text-body);">
+                    The typography options and instant iCloud sync are unmatched. I replaced Books completely with this app. Looking forward to PDF annotation features in the next release!
+                  </p>
+
+                  <!-- Developer Response Bubble -->
+                  <div class="mac-inset border-l-2 pl-3 py-2 pr-3 rounded-r-lg text-xs space-y-1" style="border-left-color: var(--mac-accent);">
+                    <div class="flex items-center justify-between">
+                      <span class="font-bold" style="color: var(--mac-accent);">Developer Response (Acme Studios)</span>
+                      <span class="text-[11px]" style="color: var(--mac-text-subtle);">1 day ago</span>
+                    </div>
+                    <p style="color: var(--mac-text-body);">
+                      Thank you Alex! Full PDF markup and pencil support is coming in Apollo v2.5 next month.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Review Card 2 (Needs Reply with Interactive Box) -->
+                <div class="mac-card rounded-xl p-4 space-y-3">
+                  <div class="flex items-start justify-between">
+                    <div>
+                      <div class="flex items-center space-x-2">
+                        <span class="text-amber-500 text-sm">★★★☆☆</span>
+                        <h4 class="font-bold text-sm tracking-tight" style="color: var(--mac-text-title);">Great app, but Dark Mode contrast needs work</h4>
+                      </div>
+                      <div class="flex items-center space-x-2 text-xs mt-1" style="color: var(--mac-text-subtle);">
+                        <span class="font-medium" style="color: var(--mac-text-body);">Sarah_Tech</span>
+                        <span>·</span>
+                        <span>Germany (DE)</span>
+                        <span>·</span>
+                        <span>Version 2.4.0</span>
+                        <span>·</span>
+                        <span>Yesterday</span>
+                      </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-[11px] font-semibold" style="background-color: var(--mac-badge-amber-bg); color: var(--mac-badge-amber-text); border: 1px solid var(--mac-badge-amber-border);">Needs Reply</span>
+                  </div>
+                  <p class="text-xs leading-relaxed" style="color: var(--mac-text-body);">
+                    Love the rendering engine, but OLED pure black mode makes some low contrast grey text hard to read at night. Please add an AMOLED contrast slider.
+                  </p>
+
+                  <!-- Inline Reply Box -->
+                  <div class="pt-2">
+                    <div class="mac-inset rounded-lg p-2.5 space-y-2">
+                      <div class="flex items-center justify-between text-[11px]" style="color: var(--mac-text-subtle);">
+                        <span class="font-semibold" style="color: var(--mac-text-body);">Reply as Acme Studios (via ASC API):</span>
+                        <span>Supports markdown formatting</span>
+                      </div>
+                      <textarea rows="2" placeholder="Write a response to Sarah_Tech... This will be posted to the App Store." class="w-full rounded-md p-2 text-xs focus:outline-none border" style="background-color: var(--mac-card-bg); border-color: var(--mac-border); color: var(--mac-text-title);"></textarea>
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-1.5 text-[11px]" style="color: var(--mac-text-subtle);">
+                          <button class="hover:underline">Quick template: Fix coming soon</button>
+                          <span>·</span>
+                          <button class="hover:underline">Quick template: Contact support</button>
+                        </div>
+                        <button onclick="alert('Posting review reply to App Store Connect API (/v1/customerReviewResponses)...')" class="text-white px-3 py-1 rounded text-xs font-semibold shadow-sm transition hover:opacity-90" style="background-color: var(--mac-accent);">
+                          Post Reply to App Store
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- SUB-TAB: STORE LISTING & MULTI-LOCALE -->
+            <div id="subtab-listing" class="hidden space-y-5">
+              <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mac-card rounded-xl p-3 text-xs">
+                <div class="flex items-center space-x-2">
+                  <span class="font-medium" style="color: var(--mac-text-muted);">Active Locale:</span>
+                  <select class="mac-inset rounded-lg px-2.5 py-1 text-xs font-medium" style="color: var(--mac-text-title);">
+                    <option>English (U.S.) - Primary</option>
+                    <option>German (de-DE)</option>
+                    <option>Japanese (ja)</option>
+                    <option>French (fr-FR)</option>
+                  </select>
+                  <span class="text-emerald-500 font-semibold text-[11px]">● 4 locales active</span>
+                </div>
+
+                <button onclick="alert('Syncing metadata: Copies current English (U.S.) What\'s New to all 4 locales.')" class="mac-inset px-2.5 py-1 rounded-lg text-xs font-medium transition flex items-center space-x-1.5 hover:opacity-80" style="color: var(--mac-text-title);">
+                  <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                  <span>Clone to Other Locales</span>
+                </button>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div class="mac-card rounded-xl p-4 space-y-3">
+                  <div>
+                    <label class="block font-semibold mb-1" style="color: var(--mac-text-body);">App Name (max 30 chars)</label>
+                    <input type="text" value="Apollo Reader: Smart Books" class="w-full mac-inset rounded-lg px-3 py-1.5 font-medium" style="color: var(--mac-text-title);">
+                  </div>
+                  <div>
+                    <label class="block font-semibold mb-1" style="color: var(--mac-text-body);">Subtitle (max 30 chars)</label>
+                    <input type="text" value="Modern Typography & Cloud Sync" class="w-full mac-inset rounded-lg px-3 py-1.5" style="color: var(--mac-text-title);">
+                  </div>
+                  <div>
+                    <label class="block font-semibold mb-1" style="color: var(--mac-text-body);">Promotional Text (Live editable)</label>
+                    <input type="text" value="Special 50% launch discount on Apollo Pro this week!" class="w-full mac-inset rounded-lg px-3 py-1.5" style="color: var(--mac-text-title);">
+                  </div>
+                </div>
+
+                <div class="mac-card rounded-xl p-4 space-y-3">
+                  <div>
+                    <label class="block font-semibold mb-1" style="color: var(--mac-text-body);">Keywords (max 100)</label>
+                    <input type="text" value="books,reader,epub,pdf,library,reading,typography,dark mode,sync" class="w-full mac-inset rounded-lg px-3 py-1.5" style="color: var(--mac-text-title);">
+                  </div>
+                  <div>
+                    <label class="block font-semibold mb-1" style="color: var(--mac-text-body);">Privacy Policy URL</label>
+                    <input type="text" value="https://apolloreader.app/privacy" class="w-full mac-inset rounded-lg px-3 py-1.5" style="color: var(--mac-text-title);">
+                  </div>
+                  <div>
+                    <label class="block font-semibold mb-1" style="color: var(--mac-text-body);">Support URL</label>
+                    <input type="text" value="https://apolloreader.app/support" class="w-full mac-inset rounded-lg px-3 py-1.5" style="color: var(--mac-text-title);">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SUB-TAB: TESTFLIGHT WITH QR CODE -->
+            <div id="subtab-testflight_tab" class="hidden space-y-5">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                <div class="mac-card rounded-xl p-4 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <h4 class="font-bold text-sm" style="color: var(--mac-text-title);">Internal Team</h4>
+                      <p class="text-xs" style="color: var(--mac-text-muted);">Instant distribution · No Beta Review needed</p>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold" style="background-color: var(--mac-badge-green-bg); color: var(--mac-badge-green-text);">8 Testers</span>
+                  </div>
+                  <div class="text-xs space-y-1" style="color: var(--mac-text-body);">
+                    <div class="flex justify-between py-1 border-b" style="border-color: var(--mac-border);">
+                      <span>mridul@acme.com</span>
+                      <span style="color: var(--mac-text-subtle);">Accepted</span>
+                    </div>
+                    <div class="flex justify-between py-1 border-b" style="border-color: var(--mac-border);">
+                      <span>sarah@acme.com</span>
+                      <span style="color: var(--mac-text-subtle);">Accepted</span>
+                    </div>
+                  </div>
+                  <button class="w-full py-1.5 rounded-lg mac-inset text-xs font-semibold transition hover:opacity-80" style="color: var(--mac-text-title);">+ Add Internal Tester</button>
+                </div>
+
+                <!-- External Public Link with QR Code -->
+                <div class="mac-card rounded-xl p-4 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <h4 class="font-bold text-sm" style="color: var(--mac-text-title);">Public Beta (Community)</h4>
+                      <p class="text-xs" style="color: var(--mac-text-muted);">Public Link enabled · 8,450 / 10,000 slots filled</p>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold" style="background-color: var(--mac-accent-soft); color: var(--mac-accent-text);">Active</span>
+                  </div>
+
+                  <div class="mac-inset rounded-lg p-3 flex items-center space-x-3">
+                    <div class="w-16 h-16 bg-white rounded-lg p-1 flex items-center justify-center flex-shrink-0 border" style="border-color: var(--mac-border);">
+                      <svg class="w-14 h-14 text-black" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2 2h8v8H2V2zm2 2v4h4V4H4zm10-2h8v8h-8V2zm2 2v4h4V4h-4zM2 14h8v8H2v-8zm2 2v4h4v-4H4zm10 0h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v2h-2v-2zm4 4h2v2h-2v-2zm0-2h2v2h-2v-2zm-2-2h2v2h-2v-2z"/>
+                      </svg>
+                    </div>
+                    <div class="flex-1 text-xs space-y-1">
+                      <div class="text-[11px] font-medium" style="color: var(--mac-text-muted);">TestFlight Public Invite Link:</div>
+                      <div class="font-mono text-[11px] truncate select-all" style="color: var(--mac-text-title);">https://testflight.apple.com/join/AbC123Xy</div>
+                      <div class="flex items-center space-x-2 pt-1">
+                        <button onclick="navigator.clipboard.writeText('https://testflight.apple.com/join/AbC123Xy'); alert('TestFlight link copied to clipboard!')" class="px-2.5 py-0.5 text-white rounded text-[11px] font-semibold transition hover:opacity-90" style="background-color: var(--mac-accent);">Copy Link</button>
+                        <button onclick="alert('Scan this QR code with the iOS Camera to launch TestFlight directly!')" class="px-2.5 py-0.5 mac-card rounded text-[11px]" style="color: var(--mac-text-body);">Save QR</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- SUB-TAB: BUILDS -->
+            <div id="subtab-builds" class="hidden space-y-4">
+              <div class="mac-card rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <h4 class="font-bold text-sm" style="color: var(--mac-text-title);">Uploaded Builds</h4>
+                  <span class="text-xs font-mono" style="color: var(--mac-text-muted);">Total 12 builds</span>
+                </div>
+                <div class="space-y-2 text-xs">
+                  <div class="flex items-center justify-between p-2.5 mac-inset rounded-lg">
+                    <div class="flex items-center space-x-3">
+                      <span class="font-mono font-bold" style="color: var(--mac-text-title);">v2.4.1 (142)</span>
+                      <span style="color: var(--mac-text-subtle);">·</span>
+                      <span style="color: var(--mac-text-muted);">iOS 17.0+ · arm64</span>
+                      <span style="color: var(--mac-text-subtle);">·</span>
+                      <span style="color: var(--mac-text-muted);">Uploaded 2 days ago</span>
+                    </div>
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold" style="background-color: var(--mac-badge-green-bg); color: var(--mac-badge-green-text);">Live in App Store</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SUB-TAB: UPLOAD .IPA (STRICTLY INSIDE APP) -->
+            <div id="subtab-upload_tab" class="hidden space-y-5">
+              <div class="mac-card rounded-xl p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-base font-bold" style="color: var(--mac-text-title);">Upload New Build (.IPA)</h3>
+                    <p class="text-xs mt-0.5" style="color: var(--mac-text-muted);">Build will be parsed locally, verified against bundle ID <code class="font-mono font-semibold" style="color: var(--mac-text-title);">com.acme.apolloreader</code>, and streamed to App Store Connect.</p>
+                  </div>
+                  <span class="px-2.5 py-1 rounded-full text-xs font-semibold" style="background-color: var(--mac-accent-soft); color: var(--mac-accent-text);">Desktop Uploader</span>
+                </div>
+
+                <!-- Dropzone Area -->
+                <div onclick="alert('Choose .ipa file: Local IPA parser reads CFBundleVersion and Info.plist before uploading.');" class="border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition hover:border-blue-500 group" style="border-color: var(--mac-border); background-color: var(--mac-inset-bg);">
+                  <div class="w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition group-hover:scale-110" style="background-color: var(--mac-accent-soft);">
+                    <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                  </div>
+                  <div class="text-sm font-bold" style="color: var(--mac-text-title);">Drag and drop your signed .ipa file here</div>
+                  <div class="text-xs mt-1" style="color: var(--mac-text-muted);">or click to browse your Mac files</div>
+                  <div class="text-[11px] mt-2 font-mono" style="color: var(--mac-text-subtle);">Target Bundle ID: com.acme.apolloreader · Chunked upload API</div>
+                </div>
+
+                <!-- Live Upload Validation Specs -->
+                <div class="mac-inset rounded-xl p-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                  <div>
+                    <span class="font-semibold block" style="color: var(--mac-text-muted);">Local Verification</span>
+                    <span style="color: var(--mac-text-title);">Checks arm64, min iOS & Entitlements</span>
+                  </div>
+                  <div>
+                    <span class="font-semibold block" style="color: var(--mac-text-muted);">Chunked Streaming</span>
+                    <span style="color: var(--mac-text-title);">MD5 checksum per chunk directly to Apple</span>
+                  </div>
+                  <div>
+                    <span class="font-semibold block" style="color: var(--mac-text-muted);">Processing Status</span>
+                    <span style="color: var(--mac-text-title);">Real-time TestFlight processing polling</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SUB-TAB: PREFLIGHT -->
+            <div id="subtab-submit" class="hidden space-y-4">
+              <div class="mac-card rounded-xl p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-base font-bold" style="color: var(--mac-text-title);">App Review Preflight Verification</h3>
+                    <p class="text-xs" style="color: var(--mac-text-muted);">Prevents instant rejections by validating all Apple requirements locally first.</p>
+                  </div>
+                  <button class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-4 py-2 rounded-lg shadow-sm">
+                    Submit Apollo Reader v2.4.2
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- SUB-TAB: PURCHASES -->
+            <div id="subtab-purchases" class="hidden space-y-4">
+              <div class="mac-card rounded-xl p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <h4 class="font-bold text-sm" style="color: var(--mac-text-title);">In-App Purchases & Subscriptions</h4>
+                  <button class="text-white text-xs px-2.5 py-1 rounded-lg" style="background-color: var(--mac-accent);">+ New IAP</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- ================= VIEW 3: SALES & TRENDS ================= -->
+        <div id="view-sales" class="hidden space-y-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h1 class="text-xl font-bold tracking-tight" style="color: var(--mac-text-title);">Sales & Financial Trends</h1>
+              <p class="text-xs mt-0.5" style="color: var(--mac-text-muted);">Aggregated Pacific time vendor data straight from Apple financial reports.</p>
+            </div>
+            <div class="flex items-center space-x-2 text-xs">
+              <button class="px-2.5 py-1 rounded text-white font-medium" style="background-color: var(--mac-accent);">14 Days</button>
+              <button class="px-2.5 py-1 rounded mac-inset font-medium hover:opacity-80" style="color: var(--mac-text-body);">30 Days</button>
+              <button class="px-2.5 py-1 rounded mac-inset font-medium hover:opacity-80" style="color: var(--mac-text-body);">90 Days</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="mac-card rounded-xl p-4">
+              <div class="text-xs" style="color: var(--mac-text-muted);">Total Downloads</div>
+              <div class="text-2xl font-bold mt-1" style="color: var(--mac-text-title);">28,490</div>
+              <div class="text-[11px] text-emerald-500 mt-1">↑ 14.2% vs previous</div>
+            </div>
+            <div class="mac-card rounded-xl p-4">
+              <div class="text-xs" style="color: var(--mac-text-muted);">Updates Installed</div>
+              <div class="text-2xl font-bold mt-1" style="color: var(--mac-text-title);">94,120</div>
+              <div class="text-[11px]" style="color: var(--mac-text-subtle);">v2.4.1 adoption: 88%</div>
+            </div>
+            <div class="mac-card rounded-xl p-4">
+              <div class="text-xs" style="color: var(--mac-text-muted);">In-App Purchases</div>
+              <div class="text-2xl font-bold mt-1" style="color: var(--mac-text-title);">1,418</div>
+              <div class="text-[11px] text-emerald-500 mt-1">↑ 8.1% conversions</div>
+            </div>
+            <div class="mac-card rounded-xl p-4">
+              <div class="text-xs" style="color: var(--mac-text-muted);">Net Estimated Proceeds</div>
+              <div class="text-2xl font-bold mt-1 text-emerald-500">$22,840</div>
+              <div class="text-[11px]" style="color: var(--mac-text-subtle);">Combined currency</div>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Command Palette Modal (⌘K) -->
+  <div id="cmd-palette" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-start justify-center pt-24 hidden" onclick="toggleCommandPalette(false)">
+    <div class="w-full max-w-xl mac-card rounded-2xl shadow-2xl overflow-hidden p-2" onclick="event.stopPropagation()">
+      <div class="flex items-center px-3 py-2 border-b" style="border-color: var(--mac-border);">
+        <svg class="w-4 h-4 text-blue-500 mr-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+        <input id="cmd-input" type="text" placeholder="Type a command or jump to an app..." class="w-full bg-transparent text-sm focus:outline-none" style="color: var(--mac-text-title);">
+        <kbd class="text-[10px] mac-inset px-1.5 py-0.5 rounded font-mono" style="color: var(--mac-text-subtle);">ESC</kbd>
+      </div>
+
+      <div class="p-2 space-y-1 text-xs max-h-72 overflow-y-auto" style="color: var(--mac-text-body);">
+        <div class="px-2 py-1 text-[10px] uppercase font-bold" style="color: var(--mac-text-subtle);">Applications</div>
+        <div onclick="selectCmdApp('Apollo Reader')" class="flex items-center justify-between px-3 py-2 rounded-lg hover:opacity-80 mac-inset cursor-pointer transition">
+          <div class="flex items-center space-x-2.5">
+            <span>📖</span>
+            <span class="font-medium" style="color: var(--mac-text-title);">Apollo Reader (v2.4.1)</span>
+          </div>
+          <span class="text-[11px]" style="color: var(--mac-text-subtle);">Jump to app</span>
+        </div>
+        <div onclick="selectCmdApp('Focus Timer Pro')" class="flex items-center justify-between px-3 py-2 rounded-lg hover:opacity-80 mac-inset cursor-pointer transition">
+          <div class="flex items-center space-x-2.5">
+            <span>⏱️</span>
+            <span class="font-medium" style="color: var(--mac-text-title);">Focus Timer Pro (In Review)</span>
+          </div>
+          <span class="text-[11px]" style="color: var(--mac-text-subtle);">Jump to app</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Controls -->
+  <script>
+    function setTheme(theme) {
+      const root = document.getElementById('theme-root');
+      const lightBtn = document.getElementById('btn-theme-light');
+      const darkBtn = document.getElementById('btn-theme-dark');
+
+      if (theme === 'dark') {
+        root.className = 'theme-dark p-3 md:p-6 min-h-screen flex flex-col items-center justify-center';
+        darkBtn.style.backgroundColor = 'var(--mac-accent)';
+        darkBtn.style.color = '#FFFFFF';
+        darkBtn.className = 'flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold shadow-sm transition';
+        lightBtn.style.backgroundColor = 'transparent';
+        lightBtn.style.color = 'var(--mac-text-muted)';
+        lightBtn.className = 'flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium transition';
+      } else {
+        root.className = 'theme-light p-3 md:p-6 min-h-screen flex flex-col items-center justify-center';
+        lightBtn.style.backgroundColor = 'var(--mac-accent)';
+        lightBtn.style.color = '#FFFFFF';
+        lightBtn.className = 'flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold shadow-sm transition';
+        darkBtn.style.backgroundColor = 'transparent';
+        darkBtn.style.color = 'var(--mac-text-muted)';
+        darkBtn.className = 'flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium transition';
+      }
+    }
+
+    function switchView(viewName) {
+      document.getElementById('view-apps').classList.add('hidden');
+      document.getElementById('view-detail').classList.add('hidden');
+      document.getElementById('view-sales').classList.add('hidden');
+
+      ['apps', 'sales', 'signing', 'team'].forEach(id => {
+        const btn = document.getElementById('nav-' + id);
+        if (btn) {
+          btn.style.backgroundColor = 'transparent';
+          btn.style.color = 'var(--mac-text-body)';
+          btn.className = "w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium hover:opacity-80 transition";
+        }
+      });
+
+      const activeBtn = document.getElementById('nav-' + viewName);
+      if (activeBtn) {
+        activeBtn.style.backgroundColor = 'var(--mac-accent-soft)';
+        activeBtn.style.color = 'var(--mac-accent-text)';
+        activeBtn.className = "w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-semibold transition";
+      }
+
+      if (viewName === 'apps') {
+        document.getElementById('view-apps').classList.remove('hidden');
+        document.getElementById('title-breadcrumb').innerText = 'Apps';
+      } else if (viewName === 'sales') {
+        document.getElementById('view-sales').classList.remove('hidden');
+        document.getElementById('title-breadcrumb').innerText = 'Sales & Trends';
+      } else {
+        alert(viewName + ' view activated.');
+        document.getElementById('view-apps').classList.remove('hidden');
+      }
+    }
+
+    function openAppDetail(appName) {
+      document.getElementById('view-apps').classList.add('hidden');
+      document.getElementById('view-sales').classList.add('hidden');
+      document.getElementById('view-detail').classList.remove('hidden');
+      document.getElementById('title-breadcrumb').innerText = 'Apps / ' + appName;
+      document.getElementById('detail-app-name').innerText = appName;
+      switchDetailTab('reviews');
+    }
+
+    function switchDetailTab(tabName) {
+      ['listing', 'testflight_tab', 'reviews', 'builds', 'upload_tab', 'purchases', 'submit'].forEach(t => {
+        const el = document.getElementById('subtab-' + t);
+        if (el) el.classList.add('hidden');
+        const dbtn = document.getElementById('dtab-' + t);
+        if (dbtn) {
+          dbtn.style.color = 'var(--mac-text-muted)';
+          dbtn.style.borderColor = 'transparent';
+          dbtn.className = "px-3.5 py-2 font-medium transition hover:opacity-80";
+        }
+      });
+
+      const active = document.getElementById('subtab-' + tabName);
+      if (active) active.classList.remove('hidden');
+
+      const activeBtn = document.getElementById('dtab-' + tabName);
+      if (activeBtn) {
+        activeBtn.style.color = 'var(--mac-accent)';
+        activeBtn.style.borderColor = 'var(--mac-accent)';
+        activeBtn.className = "px-3.5 py-2 font-semibold border-b-2 transition";
+      }
+    }
+
+    function toggleCommandPalette(show) {
+      const modal = document.getElementById('cmd-palette');
+      if (show) {
+        modal.classList.remove('hidden');
+        setTimeout(() => document.getElementById('cmd-input').focus(), 50);
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function selectCmdApp(name) {
+      toggleCommandPalette(false);
+      openAppDetail(name);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        toggleCommandPalette(true);
+      }
+      if (e.key === 'Escape') {
+        toggleCommandPalette(false);
+      }
+    });
+
+    function setLayout(mode) {
+      const container = document.getElementById('apps-container');
+      const gridBtn = document.getElementById('layout-grid-btn');
+      const listBtn = document.getElementById('layout-list-btn');
+
+      if (mode === 'list') {
+        container.className = "grid grid-cols-1 gap-2";
+        gridBtn.style.backgroundColor = 'transparent';
+        gridBtn.style.color = 'var(--mac-text-muted)';
+        listBtn.style.backgroundColor = 'var(--mac-accent)';
+        listBtn.style.color = 'white';
+      } else {
+        container.className = "grid grid-cols-1 md:grid-cols-2 gap-4";
+        gridBtn.style.backgroundColor = 'var(--mac-accent)';
+        gridBtn.style.color = 'white';
+        listBtn.style.backgroundColor = 'transparent';
+        listBtn.style.color = 'var(--mac-text-muted)';
+      }
+    }
+  </script>
+</body>
+</html>

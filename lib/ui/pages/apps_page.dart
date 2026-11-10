@@ -2,62 +2,103 @@ import 'package:flutter/material.dart';
 
 import '../../api/asc_client.dart';
 import '../../api/models.dart';
+import '../theme.dart';
 import '../widgets.dart';
-import 'app_detail_page.dart';
 
+/// One app and its newest version, as read from the single Apps request. Nothing else is fetched for the list: builds,
+/// icons and reviews load only once an app is opened.
 class AppSummary {
-  AppSummary(this.app, this.version, this.build);
+  AppSummary(this.app, this.version);
   final Resource app;
   final Resource? version;
-  final Resource? build;
 
+  String get id => app.id;
+  String get name => app.str('name') ?? '—';
+  String get bundleId => app.str('bundleId') ?? '';
+  String get sku => app.str('sku') ?? '';
   String? get state => version?.str('appStoreState') ?? version?.str('appVersionState');
+  String? get platform => version?.str('platform');
+  String? get versionString => version?.str('versionString');
   bool get isLive => state == 'READY_FOR_SALE';
+  bool get inReview => state == 'WAITING_FOR_REVIEW' || state == 'IN_REVIEW';
 
-  /// Icon URL from the newest build's icon token (`{w}x{h}bb.{f}` is a template).
-  String? iconUrl(int px) {
-    final t = (build?.attributes['iconAssetToken'] as Map?)?['templateUrl'] as String?;
-    return t?.replaceAll('{w}', '$px').replaceAll('{h}', '$px').replaceAll('{f}', 'png');
-  }
+  /// Anything that is not an iPhone/iPad app: macOS, tvOS, visionOS.
+  bool get notIos => platform != null && platform != 'IOS';
 }
 
+/// EXACTLY ONE request: the apps with their versions included. Each app's latest version is the first one Apple lists.
 Future<List<AppSummary>> loadApps(AscClient c) async {
-  final apps = await c.all('/v1/apps', {'limit': '200', 'sort': 'name'});
-  return Future.wait(apps.data.map((a) async {
-    // One failing lookup should not blank the whole list.
-    final results = await Future.wait([
-      c.page('/v1/apps/${a.id}/appStoreVersions', {'limit': '1'}).then<Resource?>((p) => p.data.isEmpty ? null : p.data.first).catchError((_) => null),
-      c.page('/v1/builds', {'filter[app]': a.id, 'sort': '-uploadedDate', 'limit': '1'}).then<Resource?>((p) => p.data.isEmpty ? null : p.data.first).catchError((_) => null),
-    ]);
-    return AppSummary(a, results[0], results[1]);
-  }));
+  final page = await c.page('/v1/apps', {
+    'limit': '200',
+    'sort': 'name',
+    'include': 'appStoreVersions',
+    'fields[apps]': 'name,bundleId,sku,primaryLocale,appStoreVersions',
+    'fields[appStoreVersions]': 'versionString,appStoreState,appVersionState,platform,createdDate',
+  });
+  return summarizeApps(page);
 }
 
-class AppIcon extends StatelessWidget {
-  const AppIcon({super.key, required this.url, this.size = 52});
-  final String? url;
-  final double size;
+List<AppSummary> summarizeApps(ResourcePage page) => [
+      for (final app in page.data)
+        AppSummary(app, () {
+          final ids = app.relIds('appStoreVersions');
+          return ids.isEmpty ? null : page.inc('appStoreVersions', ids.first);
+        }()),
+    ];
 
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final placeholder = Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(color: cs.surfaceContainerHighest, borderRadius: BorderRadius.circular(size * 0.225)),
-      child: Icon(Icons.apps, color: cs.onSurfaceVariant, size: size * 0.5),
-    );
-    if (url == null) return placeholder;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(size * 0.225),
-      child: Image.network(url!, width: size, height: size, fit: BoxFit.cover, errorBuilder: (_, _, _) => placeholder),
-    );
+/// Loads the list once per client and shares it with the command palette, so opening the palette costs no request.
+class AppsStore {
+  AppsStore(this.client);
+  final AscClient client;
+  Future<List<AppSummary>>? _future;
+
+  Future<List<AppSummary>> get apps {
+    return _future ??= () {
+      final f = loadApps(client);
+      f.catchError((_) {
+        _future = null; // let the next ask retry instead of replaying the failure
+        return <AppSummary>[];
+      });
+      return f;
+    }();
   }
+
+  Future<List<AppSummary>> refresh() {
+    _future = null;
+    return apps;
+  }
+}
+
+enum AppFilter { all, ready, review, other }
+
+extension on AppFilter {
+  String get label => switch (this) {
+        AppFilter.all => 'All Apps',
+        AppFilter.ready => 'Ready for Sale',
+        AppFilter.review => 'In Review',
+        AppFilter.other => 'Universal & macOS',
+      };
+
+  bool matches(AppSummary a) => switch (this) {
+        AppFilter.all => true,
+        AppFilter.ready => a.isLive,
+        AppFilter.review => a.inReview,
+        AppFilter.other => a.notIos,
+      };
+}
+
+List<AppSummary> filterApps(List<AppSummary> apps, AppFilter filter, String query) {
+  final q = query.trim().toLowerCase();
+  return [
+    for (final a in apps)
+      if (filter.matches(a) && (q.isEmpty || a.name.toLowerCase().contains(q) || a.bundleId.toLowerCase().contains(q) || a.sku.toLowerCase().contains(q))) a,
+  ];
 }
 
 class AppsPage extends StatefulWidget {
-  const AppsPage({super.key, required this.client});
-  final AscClient client;
+  const AppsPage({super.key, required this.store, required this.onOpen});
+  final AppsStore store;
+  final void Function(AppSummary app) onOpen;
 
   @override
   State<AppsPage> createState() => _AppsPageState();
@@ -65,66 +106,229 @@ class AppsPage extends StatefulWidget {
 
 class _AppsPageState extends State<AppsPage> {
   final _reload = ReloadController();
+  final _search = TextEditingController();
+  AppFilter _filter = AppFilter.all;
+  bool _grid = true;
+  bool _first = true;
 
   @override
   void dispose() {
     _reload.dispose();
+    _search.dispose();
     super.dispose();
+  }
+
+  Future<List<AppSummary>> _load() {
+    if (_first) {
+      _first = false;
+      return widget.store.apps;
+    }
+    return widget.store.refresh();
   }
 
   @override
   Widget build(BuildContext context) {
+    final k = Tokens.of(context);
     return Column(children: [
-      PageHeader(title: 'Apps', subtitle: 'Everything this key can see', reload: _reload),
+      PageHeader(
+        title: 'Applications',
+        subtitle: 'Everything this key can see',
+        reload: _reload,
+        actions: [
+          Container(
+            height: 26,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(color: k.accentSoft, borderRadius: BorderRadius.circular(20)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.bolt, size: 14, color: k.accentInk),
+              const SizedBox(width: 4),
+              Text('1 API request', style: TextStyle(color: k.accentInk, fontSize: 12, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+          SegmentedButton<bool>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(value: true, icon: Icon(Icons.grid_view_rounded, size: 17), tooltip: 'Grid'),
+              ButtonSegment(value: false, icon: Icon(Icons.view_list_rounded, size: 18), tooltip: 'List'),
+            ],
+            selected: {_grid},
+            onSelectionChanged: (v) => setState(() => _grid = v.first),
+          ),
+          const SizedBox(width: 6),
+        ],
+      ),
       Expanded(
         child: LoadView<List<AppSummary>>(
           controller: _reload,
-          load: () => loadApps(widget.client),
+          load: _load,
           builder: (context, apps) {
             if (apps.isEmpty) return const EmptyView('This key can not see any apps.');
-            final live = apps.where((a) => a.isLive).length;
+            final shown = filterApps(apps, _filter, _search.text);
             return ListView(padding: const EdgeInsets.fromLTRB(40, 0, 40, 40), children: [
-              LayoutBuilder(builder: (context, c) {
-                final cols = c.maxWidth > 700 ? 3 : 1;
-                final w = (c.maxWidth - 12 * (cols - 1)) / cols;
-                return Wrap(spacing: 12, runSpacing: 12, children: [
-                  SizedBox(width: w, child: Stat(label: 'Apps', value: '${apps.length}', icon: Icons.apps)),
-                  SizedBox(width: w, child: Stat(label: 'Live on the App Store', value: '$live', icon: Icons.check_circle_outline, tone: const Color(0xFF1F8F45))),
-                  SizedBox(width: w, child: Stat(label: 'Not live', value: '${apps.length - live}', icon: Icons.pending_outlined, tone: const Color(0xFFB77300))),
-                ]);
-              }),
-              const SizedBox(height: 16),
-              RowsCard(children: [
-                for (final a in apps)
-                  InkWell(
-                    onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AppDetailPage(client: widget.client, summary: a))),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      child: Row(children: [
-                        AppIcon(url: a.iconUrl(120)),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(a.app.str('name') ?? '—', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                            const SizedBox(height: 2),
-                            Text(a.app.str('bundleId') ?? '', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                          ]),
-                        ),
-                        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                          if (a.version != null) Text('v${a.version!.str('versionString')}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                          const SizedBox(height: 4),
-                          StateChip(a.state),
-                        ]),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.chevron_right),
-                      ]),
+              Row(children: [
+                SizedBox(
+                  width: 300,
+                  child: TextField(
+                    controller: _search,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'Search apps',
+                      prefixIcon: const Icon(Icons.search, size: 18),
+                      suffixIcon: _search.text.isEmpty ? null : IconButton(icon: const Icon(Icons.close, size: 16), onPressed: () => setState(_search.clear)),
                     ),
                   ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Wrap(spacing: 8, runSpacing: 8, children: [
+                    for (final f in AppFilter.values) _FilterPill(label: f.label, count: apps.where(f.matches).length, on: f == _filter, onTap: () => setState(() => _filter = f)),
+                  ]),
+                ),
               ]),
+              const SizedBox(height: 18),
+              if (shown.isEmpty)
+                Padding(padding: const EdgeInsets.only(top: 60), child: EmptyView(_search.text.isEmpty ? 'No apps in this filter.' : 'No apps match “${_search.text}”.', icon: Icons.search_off))
+              else if (_grid)
+                LayoutBuilder(builder: (context, c) {
+                  final cols = (c.maxWidth / 340).floor().clamp(1, 4);
+                  final w = (c.maxWidth - 16 * (cols - 1)) / cols;
+                  return Wrap(spacing: 16, runSpacing: 16, children: [for (final a in shown) SizedBox(width: w, child: _AppCard(app: a, onTap: () => widget.onOpen(a)))]);
+                })
+              else
+                RowsCard(children: [for (final a in shown) _AppRow(app: a, onTap: () => widget.onOpen(a))]),
             ]);
           },
         ),
       ),
     ]);
+  }
+}
+
+class _FilterPill extends StatelessWidget {
+  const _FilterPill({required this.label, required this.count, required this.on, required this.onTap});
+  final String label;
+  final int count;
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final k = Tokens.of(context);
+    return Material(
+      color: on ? k.accentSoft : k.surface,
+      shape: StadiumBorder(side: BorderSide(color: on ? k.accent.withValues(alpha: 0.5) : k.line)),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: on ? k.accentInk : k.body)),
+            const SizedBox(width: 7),
+            Text('$count', style: TextStyle(fontSize: 12, color: on ? k.accentInk : k.muted)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlatformPill extends StatelessWidget {
+  const _PlatformPill(this.platform);
+  final String? platform;
+
+  @override
+  Widget build(BuildContext context) {
+    final k = Tokens.of(context);
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(platformIcon(platform), size: 14, color: k.muted),
+      const SizedBox(width: 4),
+      Text(prettyPlatform(platform), style: TextStyle(color: k.muted, fontSize: 12.5)),
+    ]);
+  }
+}
+
+/// A card for one app. It carries no rating and no build number: those live inside the app.
+class _AppCard extends StatelessWidget {
+  const _AppCard({required this.app, required this.onTap});
+  final AppSummary app;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final k = Tokens.of(context);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              AppSquircleIcon(name: app.name, platform: app.platform, size: 56),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(app.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text(app.bundleId, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: k.muted, fontSize: 12.5)),
+                  const SizedBox(height: 6),
+                  _PlatformPill(app.platform),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 16),
+            Divider(color: k.line),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: Text(
+                  [if (app.versionString != null) 'v${app.versionString}', if (app.sku.isNotEmpty) 'SKU ${app.sku}'].join('  ·  '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: k.muted, fontSize: 12.5),
+                ),
+              ),
+              const SizedBox(width: 8),
+              StatusBadge(app.state),
+            ]),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _AppRow extends StatelessWidget {
+  const _AppRow({required this.app, required this.onTap});
+  final AppSummary app;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final k = Tokens.of(context);
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        child: Row(children: [
+          AppSquircleIcon(name: app.name, platform: app.platform, size: 44),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(app.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              Text(app.bundleId, style: TextStyle(color: k.muted, fontSize: 12.5)),
+            ]),
+          ),
+          SizedBox(width: 120, child: _PlatformPill(app.platform)),
+          SizedBox(width: 90, child: Text(app.versionString == null ? '' : 'v${app.versionString}', style: const TextStyle(fontWeight: FontWeight.w600))),
+          SizedBox(width: 160, child: Text(app.sku, overflow: TextOverflow.ellipsis, style: TextStyle(color: k.muted, fontSize: 12.5))),
+          StatusBadge(app.state),
+          const SizedBox(width: 8),
+          Icon(Icons.chevron_right, color: k.muted),
+        ]),
+      ),
+    );
   }
 }

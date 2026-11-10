@@ -4,6 +4,9 @@ import '../../api/asc_client.dart';
 import '../../api/models.dart';
 import '../../api/team.dart' show looksLikeEmail;
 import '../../api/testflight.dart';
+import 'package:flutter/services.dart';
+
+import '../qr_view.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -424,7 +427,7 @@ class _GroupDetailState extends State<_GroupDetail> {
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   SizedBox(width: 260, child: TextField(controller: _limit, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Tester limit', helperText: 'Empty = no limit (max 10000)'))),
-                  if (link != null && link.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 12), child: SelectableText(link, style: TextStyle(color: k.accentInk, fontWeight: FontWeight.w600))),
+                  if (link != null && link.isNotEmpty) _PublicLink(link: link),
                 ]),
               ),
           ],
@@ -672,6 +675,45 @@ class _PickUsersDialogState extends State<_PickUsersDialog> {
           child: Text(_picked.isEmpty ? 'Add' : 'Add ${_picked.length}'),
         ),
       ],
+    );
+  }
+}
+
+/// The group's public join link: the link itself, a copy button, and a QR code to scan from a phone.
+class _PublicLink extends StatelessWidget {
+  const _PublicLink({required this.link});
+  final String link;
+
+  @override
+  Widget build(BuildContext context) {
+    final k = Tokens.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 14),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: k.inset, borderRadius: BorderRadius.circular(12), border: Border.all(color: k.line)),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          if (isTestFlightLink(link)) ...[QrView(data: link), const SizedBox(width: 20)],
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Public link', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: k.muted)),
+              const SizedBox(height: 4),
+              SelectableText(link, style: TextStyle(color: k.accentInk, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: link));
+                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Link copied.')));
+                },
+                icon: const Icon(Icons.copy, size: 16),
+                label: const Text('Copy Link'),
+              ),
+              if (isTestFlightLink(link)) Padding(padding: const EdgeInsets.only(top: 8), child: Text('Scan with a phone camera to open TestFlight.', style: TextStyle(color: k.muted, fontSize: 12.5))),
+            ]),
+          ),
+        ]),
+      ),
     );
   }
 }

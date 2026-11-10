@@ -5,8 +5,14 @@ A macOS desktop app and a website. It is not built for iOS, Android, Windows or 
 A Flutter dashboard for App Store Connect that signs in with an **API key only** (Issuer ID + Key ID + `.p8`), no Apple ID.
 Runs as a macOS desktop app and as a website.
 
-Sections: Apps (versions, **store listing**, builds, reviews, in-app purchases / subscriptions, **build upload**),
-TestFlight, Sales & Trends, Signing (certificates, identifiers, profiles, devices) and Users and Access.
+The sidebar has four places: **Apps**, **Sales & Trends**, **Signing** (certificates, identifiers, profiles, devices) and
+**Users and Access**. Everything about one app lives inside that app: Store Listing, TestFlight & Groups, Customer Reviews,
+Builds, Upload .IPA, In-App Purchases and App Review Preflight. There is no top-level TestFlight, and the .ipa upload is not
+on the Apps list, because an .ipa belongs to one app.
+
+Click the search box in the title bar, or press **⌘K** (**Ctrl K** on the web), for the command palette: jump to any app,
+or run Upload New Build, Check Sales & Proceeds, Manage Team or Lock Console. The sun/moon button switches light and dark
+mode (it follows the system until you press it; the choice is not saved).
 
 ## Clients (multiple keys)
 
@@ -87,3 +93,28 @@ Each app has a **TestFlight** tab: internal and external groups, with testers (a
 when the group does not get all builds automatically), the public link and its limit, tester feedback, and a **Submit for
 beta review** button for builds an external group needs reviewed. Groups can be created and deleted. Internal testers must
 already be users on the team.
+
+## Apps list: one request
+
+The Apps page makes **one** request (`GET /v1/apps?include=appStoreVersions…`) and works out each app's newest version,
+platform and status from it. It loads no builds, icons or reviews per app, so it stays at one request however many apps
+there are, and the command palette reuses the same result. The grid/list switch, search and filters (All, Ready for Sale,
+In Review, Universal & macOS) all work on that data. "Universal & macOS" means any platform other than iOS, because one
+request cannot tell a universal app from an iPhone one. Icons need a request per app, so apps show a coloured initial.
+
+## Customer reviews
+
+Rating breakdown (tap a star row to filter), filters (All, 1-3★ Needs Reply, Unanswered), search, and replies: pick a
+template or write your own (up to 5,970 characters), confirm, and the reply is posted as the developer response. A reply can
+be edited (it replaces the earlier one) or deleted. Replies are public.
+
+## Other additions
+
+* **TestFlight public link**: external groups with a link show a QR code and a **Copy Link** button.
+* **Clone to Other Locales** (Store Listing): copy What's New and promotional text from one locale to others. It only stages
+  edits in the changelist; nothing is sent until you apply it. On a live version only promotional text can be copied.
+* **Export** (app header, and Sales & Trends): reviews, in-app purchases and sales reports as CSV or JSON through the save
+  dialog. Text that starts with `=`, `+`, `-` or `@` gets a leading apostrophe in CSV so a spreadsheet cannot run it as a
+  formula. Pricing is not included in the in-app purchase export.
+
+The window has no native title bar: the app draws its own, and on macOS the traffic-light buttons sit over its left end.

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../api/asc_client.dart';
+import '../../api/export.dart';
 import '../../api/sales.dart';
 import '../../state/app_state.dart';
+import '../export_button.dart';
 import '../widgets.dart';
 
 class _Day {
@@ -25,6 +27,7 @@ class SalesPage extends StatefulWidget {
 class _SalesPageState extends State<SalesPage> {
   final _reload = ReloadController();
   int _days = 14;
+  List<_Day> _loaded = const [];
 
   @override
   void dispose() {
@@ -57,7 +60,9 @@ class _SalesPageState extends State<SalesPage> {
         return _Day(d, tsv == null ? null : parseSalesReport(tsv, d));
       })));
     }
-    return out..sort((a, b) => a.day.compareTo(b.day));
+    out.sort((a, b) => a.day.compareTo(b.day));
+    _loaded = out;
+    return out;
   }
 
   Future<void> _askVendor() async {
@@ -100,6 +105,8 @@ class _SalesPageState extends State<SalesPage> {
                 _reload.reload();
               },
             ),
+            const SizedBox(width: 8),
+            ExportButton(items: {'Sales report': () async => salesTable(_loaded.expand((d) => d.rows ?? const <SalesRow>[]).toList())}),
             IconButton(tooltip: 'Vendor number', onPressed: _askVendor, icon: const Icon(Icons.tag)),
           ],
         ],
