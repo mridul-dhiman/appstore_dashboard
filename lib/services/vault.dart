@@ -7,9 +7,13 @@ import '../api/asc_client.dart';
 
 /// Everything saved: the clients and which one is open.
 class VaultData {
-  const VaultData({this.accounts = const [], this.activeId});
+  const VaultData({this.accounts = const [], this.activeId, this.unreadable = false});
   final List<Credentials> accounts;
   final String? activeId;
+
+  /// Something was saved but could not be read. The raw text was copied to [Vault.backupKey] before anything else
+  /// can overwrite it.
+  final bool unreadable;
 
   Credentials? get active {
     if (accounts.isEmpty) return null;
@@ -29,6 +33,9 @@ class Vault {
   );
   static const _key = 'asc_clients_v1';
 
+  /// Where an unreadable save is copied, so adding a key again cannot destroy it.
+  static const backupKey = 'asc_clients_v1_unreadable_backup';
+
   static VaultData _memory = const VaultData();
 
   bool get persistent => !kIsWeb;
@@ -37,15 +44,12 @@ class Vault {
     if (kIsWeb) return _memory;
     final raw = await _storage.read(key: _key);
     if (raw == null) return const VaultData();
-    try {
-      final j = (jsonDecode(raw) as Map).cast<String, dynamic>();
-      return VaultData(
-        accounts: [for (final a in (j['accounts'] as List)) Credentials.fromJson((a as Map).cast<String, dynamic>())],
-        activeId: j['activeId'] as String?,
-      );
-    } catch (_) {
-      return const VaultData();
+    final parsed = parseVault(raw);
+    if (parsed.unreadable) {
+      // Keep the first copy: a second bad read must not replace an older, maybe more useful, backup.
+      if (await _storage.read(key: backupKey) == null) await _storage.write(key: backupKey, value: raw);
     }
+    return parsed;
   }
 
   Future<void> write(VaultData d) async {
@@ -61,5 +65,18 @@ class Vault {
       key: _key,
       value: jsonEncode({'accounts': [for (final a in d.accounts) a.toJson()], 'activeId': d.activeId}),
     );
+  }
+}
+
+/// The saved JSON, or [VaultData.unreadable] when it is not what this app wrote.
+VaultData parseVault(String raw) {
+  try {
+    final j = (jsonDecode(raw) as Map).cast<String, dynamic>();
+    return VaultData(
+      accounts: [for (final a in (j['accounts'] as List)) Credentials.fromJson((a as Map).cast<String, dynamic>())],
+      activeId: j['activeId'] as String?,
+    );
+  } catch (_) {
+    return const VaultData(unreadable: true);
   }
 }

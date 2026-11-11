@@ -64,6 +64,10 @@ class AppState extends ChangeNotifier {
     if (active != null) {
       _activate(active);
     } else {
+      if (data.unreadable) {
+        message = 'Your saved clients could not be read, so you need to add a key again. The unreadable data was kept in '
+            'your keychain as "${Vault.backupKey}" and is not overwritten.';
+      }
       phase = Phase.setup;
       notifyListeners();
     }
@@ -110,6 +114,7 @@ class AppState extends ChangeNotifier {
       probe.close();
     }
     final named = c.name.isNotEmpty ? c : c.copyWith(name: firstApp ?? '');
+    message = null;
     accounts = [...accounts.where((a) => a.id != named.id), named];
     _activate(named);
     await _persist();

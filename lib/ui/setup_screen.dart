@@ -100,6 +100,10 @@ class _SetupScreenState extends State<SetupScreen> {
                     'No Apple ID sign-in is needed, only the key.',
                     style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant),
                   ),
+                  if (s.message != null && !widget.embedded) ...[
+                    const SizedBox(height: 14),
+                    Text(s.message!, style: TextStyle(color: t.colorScheme.error)),
+                  ],
                   const SizedBox(height: 20),
                   TextField(controller: _issuer, decoration: const InputDecoration(labelText: 'Issuer ID', hintText: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')),
                   const SizedBox(height: 14),
