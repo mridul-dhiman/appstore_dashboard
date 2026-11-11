@@ -60,10 +60,7 @@ class _PurchasesTabState extends State<_PurchasesTab> {
           child: LoadView<_PurchaseData>(
             controller: _reload,
             load: () async {
-              final r = await Future.wait([
-                client.all('/v1/apps/$appId/inAppPurchasesV2', {'limit': '200'}, 2),
-                client.all('/v1/apps/$appId/subscriptionGroups', {'limit': '50', 'include': 'subscriptions'}, 1),
-              ]);
+              final r = await Future.wait([loadInAppPurchases(client, appId), loadSubscriptionGroups(client, appId)]);
               return _PurchaseData(r[0], r[1]);
             },
             builder: (context, d) {

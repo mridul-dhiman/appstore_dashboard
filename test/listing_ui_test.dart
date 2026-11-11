@@ -150,7 +150,7 @@ void main() {
     final (_, draft) = await pumpTab(tester);
     await tester.tap(find.byTooltip('Move right').first);
     await tester.pump();
-    expect(draft.changes().single.kind, 'shot-order');
+    expect(draft.changes().single.kind, ChangeKind.shotOrder);
     await tester.tap(find.byTooltip('Move left').last);
     await tester.pump();
     expect(draft.isEmpty, isTrue);

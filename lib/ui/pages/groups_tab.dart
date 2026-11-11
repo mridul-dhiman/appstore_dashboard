@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import '../qr_view.dart';
 import '../theme.dart';
 import '../widgets.dart';
+import '../../api/queries.dart';
 
 part 'groups_dialogs.dart';
 part 'group_detail.dart';

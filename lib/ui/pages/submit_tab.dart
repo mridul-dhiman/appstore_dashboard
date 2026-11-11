@@ -6,6 +6,7 @@ import '../../api/listing_draft.dart';
 import '../../api/models.dart';
 import '../../api/submission.dart';
 import '../widgets.dart';
+import '../../api/queries.dart';
 
 part 'submit_dialogs.dart';
 
@@ -44,7 +45,7 @@ class _SubmitTabState extends State<SubmitTab> {
   Widget build(BuildContext context) {
     return LoadView<ResourcePage>(
       controller: _reload,
-      load: () => widget.client.page('/v1/apps/${widget.appId}/appStoreVersions', {'limit': '20'}),
+      load: () => loadVersions(widget.client, widget.appId),
       builder: (context, p) => _Body(
         key: ValueKey(p.data.map((v) => v.id).join(',')),
         client: widget.client,
@@ -126,19 +127,7 @@ class _BodyState extends State<_Body> {
   /// The platform of the version being worked on (iOS, macOS, tvOS, visionOS). New versions and builds follow it.
   String get _platform => _version.str('platform') ?? (widget.versions.isEmpty ? null : widget.versions.first.str('platform')) ?? 'IOS';
 
-  Future<List<Resource>> _validBuilds() async {
-    final p = await widget.client.page('/v1/builds', {
-      'filter[app]': widget.appId,
-      'filter[preReleaseVersion.platform]': _platform,
-      'sort': '-uploadedDate',
-      'limit': '30',
-      'include': 'preReleaseVersion',
-    });
-    return [
-      for (final b in p.data)
-        if (b.str('processingState') == 'VALID' && b.flag('expired') != true) b,
-    ];
-  }
+  Future<List<Resource>> _validBuilds() => loadAttachableBuilds(widget.client, widget.appId, _platform);
 
   Future<void> _newVersion() async {
     final latest = widget.versions.isEmpty ? null : widget.versions.first.str('versionString');
@@ -203,19 +192,19 @@ class _BodyState extends State<_Body> {
     }
   }
 
-  void _fix(String key, PreflightData d) {
+  void _fix(CheckFix key, PreflightData d) {
     switch (key) {
-      case 'version':
+      case CheckFix.version:
         _newVersion();
-      case 'build':
+      case CheckFix.build:
         _pickBuild();
-      case 'compliance':
+      case CheckFix.compliance:
         if (d.build != null) _compliance(d.build!);
-      case 'review':
+      case CheckFix.review:
         _reviewDetail(d);
-      case 'release':
+      case CheckFix.release:
         _release();
-      case 'listing':
+      case CheckFix.listing:
         DefaultTabController.maybeOf(context)?.animateTo(0);
     }
   }
@@ -283,7 +272,7 @@ class _BodyState extends State<_Body> {
             CheckLevel.fail,
             'Unsent listing changes',
             '${widget.draft.count} staged change(s) have not been applied. Apply the changelist on the Listing tab first, so what you submit is what you reviewed.',
-            'listing',
+            CheckFix.listing,
           ),
         ];
 
@@ -313,13 +302,13 @@ class _BodyState extends State<_Body> {
       CheckLevel.fail => (Icons.cancel, t.colorScheme.error),
     };
     final fixLabel = switch (c.fix) {
-      'version' => 'New version…',
-      'build' => 'Choose build…',
-      'compliance' => 'Answer…',
-      'review' => 'Edit…',
-      'release' => 'Choose…',
-      'listing' => 'Open Listing',
-      _ => null,
+      CheckFix.version => 'New version…',
+      CheckFix.build => 'Choose build…',
+      CheckFix.compliance => 'Answer…',
+      CheckFix.review => 'Edit…',
+      CheckFix.release => 'Choose…',
+      CheckFix.listing => 'Open Listing',
+      null => null,
     };
     return ListTile(
       leading: Icon(icon, color: color),

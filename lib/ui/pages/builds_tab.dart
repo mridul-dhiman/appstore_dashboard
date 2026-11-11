@@ -47,12 +47,7 @@ class _BuildsTabState extends State<_BuildsTab> {
     if (!quiet) setState(() => _loading = true);
     try {
       final r = await Future.wait<Object>([
-        widget.client.all('/v1/builds', {
-          'filter[app]': widget.appId,
-          'sort': '-uploadedDate',
-          'limit': '100',
-          'include': 'preReleaseVersion',
-        }, 1),
+        loadBuilds(widget.client, widget.appId),
         // The uploads list only adds rows; if Apple refuses it the builds are still shown.
         loadBuildUploads(widget.client, widget.appId).catchError((Object _) => <BuildUpload>[]),
         // TestFlight states are a bonus too.

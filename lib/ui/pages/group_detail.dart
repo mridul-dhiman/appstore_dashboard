@@ -112,7 +112,7 @@ class _GroupDetailState extends State<_GroupDetail> {
   Future<void> _addTeamMembers() async {
     final List<Resource> users;
     try {
-      users = (await widget.client.all('/v1/users', {'limit': '200'})).data;
+      users = await loadTeamUsers(widget.client);
     } on AscException catch (e) {
       return _toast(e.message);
     }

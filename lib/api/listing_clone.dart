@@ -44,7 +44,7 @@ List<CloneEdit> planClone({
 /// Stages every edit in [draft]; returns how many.
 int stageClone(ListingDraft draft, List<CloneEdit> edits) {
   for (final e in edits) {
-    draft.setText(target: 'version', locId: e.locId, locale: e.locale, field: e.field, before: e.before, after: e.after);
+    draft.setText(target: TextTarget.version, locId: e.locId, locale: e.locale, field: e.field, before: e.before, after: e.after);
   }
   return edits.length;
 }

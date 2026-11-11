@@ -12,6 +12,7 @@ import '../../api/screenshots.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'changelist_dialog.dart';
+import '../../api/queries.dart';
 
 part 'listing_screenshots.dart';
 
@@ -48,17 +49,14 @@ class _ListingTabState extends State<ListingTab> {
 
   Future<_Base> _load() async {
     final c = widget.client;
-    final r = await Future.wait([
-      c.page('/v1/apps/${widget.appId}/appStoreVersions', {'limit': '20'}),
-      c.page('/v1/apps/${widget.appId}/appInfos', {'limit': '10'}),
-    ]);
+    final r = await Future.wait([loadVersions(c, widget.appId), loadAppInfos(c, widget.appId)]);
     final versions = r[0].data;
     final infos = r[1].data;
     // The app info that is still editable if there is one, otherwise the live one.
     final info = infos.isEmpty
         ? null
         : infos.firstWhere((i) => isVersionEditable(i.str('appStoreState') ?? i.str('state')), orElse: () => infos.first);
-    final infoLocs = info == null ? <Resource>[] : (await c.all('/v1/appInfos/${info.id}/appInfoLocalizations', {'limit': '200'}, 2)).data;
+    final infoLocs = info == null ? <Resource>[] : (await loadAppInfoLocalizations(c, info.id)).data;
     return _Base(versions, info, infoLocs);
   }
 
@@ -146,8 +144,7 @@ class _EditorState extends State<_Editor> {
     _locs = _loadLocs();
   }
 
-  Future<ResourcePage> _loadLocs() =>
-      widget.client.all('/v1/appStoreVersions/${_version.id}/appStoreVersionLocalizations', {'limit': '200'}, 2);
+  Future<ResourcePage> _loadLocs() => loadVersionLocalizations(widget.client, _version.id);
 
   Future<void> _clone(Resource source, List<Resource> locs, bool editable) async {
     final staged = await showDialog<int>(
@@ -307,14 +304,14 @@ class _LocaleFormState extends State<_LocaleForm> {
     // Start from the staged text if this locale was edited before (the form is rebuilt when you switch locales).
     for (final f in versionFields) {
       _ctl['v.${f.key}'] = TextEditingController(
-        text: widget.draft.textOverride('version', widget.versionLoc.id, f.key) ?? widget.versionLoc.str(f.key) ?? '',
+        text: widget.draft.textOverride(TextTarget.version, widget.versionLoc.id, f.key) ?? widget.versionLoc.str(f.key) ?? '',
       );
     }
     for (final f in infoFields) {
       _ctl['i.${f.key}'] = TextEditingController(
         text: widget.infoLoc == null
             ? ''
-            : widget.draft.textOverride('info', widget.infoLoc!.id, f.key) ?? widget.infoLoc!.str(f.key) ?? '',
+            : widget.draft.textOverride(TextTarget.info, widget.infoLoc!.id, f.key) ?? widget.infoLoc!.str(f.key) ?? '',
       );
     }
     widget.draft.addListener(_syncFromDraft);
@@ -323,7 +320,7 @@ class _LocaleFormState extends State<_LocaleForm> {
   /// When staged text is discarded (or applied), put the field back to what is on the server, so the form never shows an
   /// edit that is not in the draft.
   void _syncFromDraft() {
-    void sync(String prefix, String target, Resource? src, List<ListingField> fields) {
+    void sync(String prefix, TextTarget target, Resource? src, List<ListingField> fields) {
       if (src == null) return;
       for (final f in fields) {
         final c = _ctl['$prefix.${f.key}'];
@@ -334,8 +331,8 @@ class _LocaleFormState extends State<_LocaleForm> {
       }
     }
 
-    sync('v', 'version', widget.versionLoc, versionFields);
-    sync('i', 'info', widget.infoLoc, infoFields);
+    sync('v', TextTarget.version, widget.versionLoc, versionFields);
+    sync('i', TextTarget.info, widget.infoLoc, infoFields);
   }
 
   @override
@@ -359,7 +356,7 @@ class _LocaleFormState extends State<_LocaleForm> {
         maxLines: f.lines == 1 ? 1 : f.lines + 4,
         maxLength: f.max,
         onChanged: (v) => widget.draft.setText(
-          target: isVersion ? 'version' : 'info',
+          target: isVersion ? TextTarget.version : TextTarget.info,
           locId: source!.id,
           locale: _locale,
           field: f,

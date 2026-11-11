@@ -4,6 +4,18 @@ import 'asc_client.dart';
 import 'listing.dart';
 import 'screenshots.dart';
 
+/// Which localization a text field lives in.
+enum TextTarget {
+  version('appStoreVersionLocalizations'), // description, keywords, what's new …
+  info('appInfoLocalizations'); // name, subtitle, privacy URL
+
+  const TextTarget(this.resourceType);
+  final String resourceType;
+}
+
+/// What a changelist line changes.
+enum ChangeKind { text, shotAdd, shotDelete, shotOrder, shotSet }
+
 /// An edited text field, held until the changelist is applied.
 class DraftText {
   DraftText({
@@ -15,7 +27,7 @@ class DraftText {
     required this.before,
     required this.after,
   });
-  final String target; // 'version' (appStoreVersionLocalizations) or 'info' (appInfoLocalizations)
+  final TextTarget target;
   final String locId;
   final String locale;
   final String field;
@@ -85,7 +97,7 @@ class ShotSetDraft {
 /// One line in the changelist.
 class Change {
   Change({required this.kind, required this.locale, required this.title, this.before, this.after, this.preview, this.detail});
-  final String kind; // text | shot-add | shot-delete | shot-order | shot-set
+  final ChangeKind kind;
   final String locale;
   final String title;
   final String? before;
@@ -113,17 +125,17 @@ class ListingDraft extends ChangeNotifier {
 
   static String setKey(String versionLocId, String group) => '$versionLocId:$group';
 
-  String? textOverride(String target, String locId, String field) => _texts['$target:$locId:$field']?.after;
+  String? textOverride(TextTarget target, String locId, String field) => _texts['${target.name}:$locId:$field']?.after;
 
   void setText({
-    required String target,
+    required TextTarget target,
     required String locId,
     required String locale,
     required ListingField field,
     required String before,
     required String after,
   }) {
-    final k = '$target:$locId:${field.key}';
+    final k = '${target.name}:$locId:${field.key}';
     if (after == before) {
       if (_texts.remove(k) != null) notifyListeners();
       return;
@@ -191,20 +203,22 @@ class ListingDraft extends ChangeNotifier {
   List<Change> changes() {
     final out = <Change>[];
     for (final t in _texts.values) {
-      out.add(Change(kind: 'text', locale: t.locale, title: t.label, before: t.before, after: t.after));
+      out.add(Change(kind: ChangeKind.text, locale: t.locale, title: t.label, before: t.before, after: t.after));
     }
     for (final s in _sets.values.where((s) => s.changed)) {
       final label = placementGroupLabel(s.group);
       if (!s.exists) {
-        out.add(Change(kind: 'shot-set', locale: s.locale, title: '$label: new device group', detail: '${s.items.length} screenshot(s)'));
+        out.add(
+          Change(kind: ChangeKind.shotSet, locale: s.locale, title: '$label: new device group', detail: '${s.items.length} screenshot(s)'),
+        );
       }
       for (final i in s.items.where((i) => i.deleted)) {
-        out.add(Change(kind: 'shot-delete', locale: s.locale, title: '$label: remove ${i.name}', detail: i.name));
+        out.add(Change(kind: ChangeKind.shotDelete, locale: s.locale, title: '$label: remove ${i.name}', detail: i.name));
       }
       for (final i in s.items.where((i) => i.isNew && !i.deleted)) {
         out.add(
           Change(
-            kind: 'shot-add',
+            kind: ChangeKind.shotAdd,
             locale: s.locale,
             title: '$label: add ${i.name}',
             preview: i.bytes,
@@ -212,7 +226,7 @@ class ListingDraft extends ChangeNotifier {
           ),
         );
       }
-      if (s.exists && s.needsReorder) out.add(Change(kind: 'shot-order', locale: s.locale, title: '$label: new order'));
+      if (s.exists && s.needsReorder) out.add(Change(kind: ChangeKind.shotOrder, locale: s.locale, title: '$label: new order'));
     }
     out.sort((a, b) => a.locale.compareTo(b.locale));
     return out;
@@ -229,17 +243,17 @@ class ListingDraft extends ChangeNotifier {
 
     final byLoc = <String, List<DraftText>>{};
     for (final t in _texts.values) {
-      (byLoc['${t.target}:${t.locId}'] ??= []).add(t);
+      (byLoc['${t.target.name}:${t.locId}'] ??= []).add(t);
     }
     for (final group in byLoc.values) {
       final first = group.first;
       final title = '${first.locale} · ${group.map((t) => t.label).join(', ')}';
       onStep?.call(title);
       try {
-        final type = first.target == 'version' ? 'appStoreVersionLocalizations' : 'appInfoLocalizations';
+        final type = first.target.resourceType;
         await client.patch('/v1/$type/${first.locId}', localizationPatchBody(type, first.locId, {for (final t in group) t.field: t.after}));
         for (final t in group) {
-          _texts.remove('${t.target}:${t.locId}:${t.field}');
+          _texts.remove('${t.target.name}:${t.locId}:${t.field}');
         }
         results.add(ApplyResult(title));
       } on AscException catch (e) {

@@ -57,7 +57,7 @@ void main() {
       );
       final f = fails(d);
       expect(f.single.title, 'Version is not submittable');
-      expect(f.single.fix, 'version');
+      expect(f.single.fix, CheckFix.version);
       expect(canSubmit(evaluatePreflight(d)), isFalse);
     });
 
@@ -72,7 +72,7 @@ void main() {
         );
         final f = fails(d);
         expect(f, isNotEmpty);
-        expect(f.first.fix, 'build');
+        expect(f.first.fix, CheckFix.build);
       }
     });
 
@@ -84,7 +84,7 @@ void main() {
         screenshotsByLoc: {'L-en-US': 1},
         reviewDetail: review(),
       );
-      expect(fails(bad).single.fix, 'compliance');
+      expect(fails(bad).single.fix, CheckFix.compliance);
     });
 
     test('each locale needs description, keywords, support URL and (for updates) what\'s new, plus a screenshot', () {
@@ -119,7 +119,7 @@ void main() {
     test('review details: missing, partial, and demo account rules', () {
       PreflightData withReview(Resource? r) =>
           PreflightData(version: version(), build: build(), localizations: [loc()], screenshotsByLoc: {'L-en-US': 1}, reviewDetail: r);
-      expect(fails(withReview(null)).single.fix, 'review');
+      expect(fails(withReview(null)).single.fix, CheckFix.review);
       expect(fails(withReview(review(phone: ''))).single.title, contains('phone'));
       expect(fails(withReview(review(demo: true))).single.title, allOf(contains('demo account name'), contains('demo account password')));
       expect(fails(withReview(review(demo: true, demoName: 'u', demoPass: 'p'))), isEmpty);
@@ -150,7 +150,7 @@ void main() {
         reviewDetail: review(),
       );
       expect(canSubmit(evaluatePreflight(d)), isTrue);
-      expect(evaluatePreflight(d).any((c) => c.level == CheckLevel.warn && c.fix == 'release'), isTrue);
+      expect(evaluatePreflight(d).any((c) => c.level == CheckLevel.warn && c.fix == CheckFix.release), isTrue);
     });
   });
 

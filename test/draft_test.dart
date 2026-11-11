@@ -30,9 +30,9 @@ void main() {
   group('text edits', () {
     test('editing back to the original removes the change', () {
       final d = ListingDraft();
-      d.setText(target: 'version', locId: 'L1', locale: 'en-US', field: descField, before: 'old', after: 'new');
+      d.setText(target: TextTarget.version, locId: 'L1', locale: 'en-US', field: descField, before: 'old', after: 'new');
       expect(d.count, 1);
-      d.setText(target: 'version', locId: 'L1', locale: 'en-US', field: descField, before: 'old', after: 'old');
+      d.setText(target: TextTarget.version, locId: 'L1', locale: 'en-US', field: descField, before: 'old', after: 'old');
       expect(d.isEmpty, isTrue);
     });
 
@@ -45,8 +45,8 @@ void main() {
             : null,
       );
       final d = ListingDraft();
-      d.setText(target: 'version', locId: 'L1', locale: 'en-US', field: descField, before: 'old', after: 'new text');
-      d.setText(target: 'version', locId: 'L1', locale: 'en-US', field: newsField, before: '', after: 'Bug fixes');
+      d.setText(target: TextTarget.version, locId: 'L1', locale: 'en-US', field: descField, before: 'old', after: 'new text');
+      d.setText(target: TextTarget.version, locId: 'L1', locale: 'en-US', field: newsField, before: '', after: 'Bug fixes');
       final results = await d.apply(fake.client);
       expect(fake.log.single.toString(), 'PATCH /v1/appStoreVersionLocalizations/L1');
       expect(fake.log.single.body, {
@@ -68,7 +68,7 @@ void main() {
       );
       final d = ListingDraft()
         ..setText(
-          target: 'info',
+          target: TextTarget.info,
           locId: 'I1',
           locale: 'en-US',
           field: const ListingField('subtitle', 'Subtitle'),
@@ -89,8 +89,8 @@ void main() {
               }),
       );
       final d = ListingDraft()
-        ..setText(target: 'version', locId: 'L1', locale: 'en-US', field: descField, before: 'a', after: 'b')
-        ..setText(target: 'version', locId: 'L2', locale: 'hi', field: descField, before: 'a', after: 'c');
+        ..setText(target: TextTarget.version, locId: 'L1', locale: 'en-US', field: descField, before: 'a', after: 'b')
+        ..setText(target: TextTarget.version, locId: 'L2', locale: 'hi', field: descField, before: 'a', after: 'c');
       final results = await d.apply(fake.client);
       expect(results.where((r) => r.ok).length, 1);
       final bad = results.firstWhere((r) => !r.ok);
@@ -426,12 +426,12 @@ void main() {
 
   test('changelist labels every kind of change', () {
     final d = ListingDraft();
-    d.setText(target: 'version', locId: 'L1', locale: 'en-US', field: descField, before: 'a', after: 'b');
+    d.setText(target: TextTarget.version, locId: 'L1', locale: 'en-US', field: descField, before: 'a', after: 'b');
     final s = d.ensureShotSet('k', existingSet);
     d.toggleDelete('k', 2);
     d.addShots('k', [(name: 'n.png', bytes: Uint8List(2048))]);
     d.move('k', 0, 1);
-    expect(d.changes().map((c) => c.kind).toSet(), {'text', 'shot-delete', 'shot-add', 'shot-order'});
+    expect(d.changes().map((c) => c.kind).toSet(), {ChangeKind.text, ChangeKind.shotDelete, ChangeKind.shotAdd, ChangeKind.shotOrder});
     expect(s.liveCount, 3);
     expect(jsonEncode(d.changes().map((c) => c.title).toList()), contains('Remove C.png'.replaceAll('Remove', 'remove')));
   });

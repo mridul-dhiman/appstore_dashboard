@@ -21,6 +21,7 @@ import 'listing_tab.dart';
 import 'reviews_tab.dart';
 import 'submit_tab.dart';
 import 'upload_tab.dart';
+import '../../api/queries.dart';
 part 'builds_tab.dart';
 part 'purchases_tab.dart';
 
@@ -192,10 +193,7 @@ class _AppDetailPageState extends State<AppDetailPage> {
                               ExportButton(
                                 items: {
                                   'Reviews': () async => reviewsTable(summary.name, (_reviews ?? await loadReviews(client, id)).reviews),
-                                  'In-app purchases': () async => purchasesTable(
-                                    summary.name,
-                                    (await client.all('/v1/apps/$id/inAppPurchasesV2', {'limit': '200'}, 2)).data,
-                                  ),
+                                  'In-app purchases': () async => purchasesTable(summary.name, (await loadInAppPurchases(client, id)).data),
                                 },
                               ),
                               OutlinedButton.icon(

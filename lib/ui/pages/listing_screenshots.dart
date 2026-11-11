@@ -39,12 +39,7 @@ class _ShotsEditor extends StatelessWidget {
     return LoadView<ScreenshotSpecs?>(
       load: () async {
         final results = await Future.wait<Object?>([
-          client.all('/v1/appStoreVersionLocalizations/$versionLocId/placements', {
-            'filter[placementType]': screenshotPlacementType,
-            'include': 'image',
-            'sort': 'placementGroupPosition',
-            'limit': '200',
-          }),
+          loadScreenshotPlacements(client, versionLocId),
           // Only needed to validate sizes and offer more device groups; the editor still works without it.
           loadScreenshotSpecs(client).then<ScreenshotSpecs?>((x) => x).catchError((_) => null),
         ]);
@@ -254,7 +249,7 @@ class _CloneLocalesDialogState extends State<CloneLocalesDialog> {
   final _targets = <String>{};
 
   /// The source text as the person currently sees it, staged edits included.
-  String _text(String key) => (widget.draft.textOverride('version', widget.source.id, key) ?? widget.source.str(key) ?? '').trim();
+  String _text(String key) => (widget.draft.textOverride(TextTarget.version, widget.source.id, key) ?? widget.source.str(key) ?? '').trim();
 
   List<Resource> get _others => [
     for (final l in widget.locales)

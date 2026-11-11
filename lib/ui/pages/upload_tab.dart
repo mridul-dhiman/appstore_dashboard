@@ -9,6 +9,7 @@ import '../../api/models.dart';
 import '../../services/file_source.dart';
 import '../../state/upload_jobs.dart';
 import '../widgets.dart';
+import '../../api/queries.dart';
 
 /// Upload an .ipa to App Store Connect (it lands in TestFlight once processed), and see earlier uploads.
 class UploadTab extends StatefulWidget {
@@ -281,7 +282,7 @@ class _UploadTabState extends State<UploadTab> {
           height: 360,
           child: LoadView<ResourcePage>(
             controller: _history,
-            load: () => widget.client.page('/v1/apps/${widget.appId}/buildUploads', {'limit': '25'}),
+            load: () => loadBuildUploadHistory(widget.client, widget.appId),
             builder: (context, p) {
               if (p.data.isEmpty) {
                 return const EmptyView(

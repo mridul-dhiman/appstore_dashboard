@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../api/asc_client.dart';
 import '../../api/models.dart';
 import '../widgets.dart';
+import '../../api/queries.dart';
 
 /// Certificates, identifiers, profiles and devices: the Developer-portal side of the same API key.
 class SigningPage extends StatefulWidget {
@@ -52,10 +53,7 @@ class _SigningPageState extends State<SigningPage> {
                 _List(
                   controller: _reload,
                   // certificateContent is the whole certificate; leave it out.
-                  load: () => c.all('/v1/certificates', {
-                    'limit': '200',
-                    'fields[certificates]': 'name,displayName,certificateType,expirationDate,serialNumber,platform',
-                  }),
+                  load: () => loadCertificates(c),
                   empty: 'No certificates.',
                   tile: (r, _) => ListTile(
                     leading: const Icon(Icons.badge_outlined),
@@ -69,7 +67,7 @@ class _SigningPageState extends State<SigningPage> {
                 ),
                 _List(
                   controller: _reload,
-                  load: () => c.all('/v1/bundleIds', {'limit': '200', 'sort': 'name'}),
+                  load: () => loadBundleIds(c),
                   empty: 'No identifiers.',
                   tile: (r, _) => ListTile(
                     leading: const Icon(Icons.fingerprint),
@@ -79,10 +77,7 @@ class _SigningPageState extends State<SigningPage> {
                 ),
                 _List(
                   controller: _reload,
-                  load: () => c.all('/v1/profiles', {
-                    'limit': '200',
-                    'fields[profiles]': 'name,profileType,profileState,expirationDate,createdDate',
-                  }),
+                  load: () => loadProfiles(c),
                   empty: 'No profiles.',
                   tile: (r, _) => ListTile(
                     leading: const Icon(Icons.description_outlined),
@@ -97,7 +92,7 @@ class _SigningPageState extends State<SigningPage> {
                 ),
                 _List(
                   controller: _reload,
-                  load: () => c.all('/v1/devices', {'limit': '200', 'sort': 'name'}),
+                  load: () => loadDevices(c),
                   empty: 'No registered devices.',
                   tile: (r, _) => ListTile(
                     leading: Icon(r.str('deviceClass') == 'IPAD' ? Icons.tablet_mac : Icons.phone_iphone),

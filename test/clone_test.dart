@@ -50,13 +50,13 @@ void main() {
     final n = stageClone(draft, planClone(sourceText: source, targets: [fr, de], fields: [cloneableFields.first], versionEditable: true));
     expect(n, 2);
     expect(draft.count, 2);
-    expect(draft.textOverride('version', 'L2', 'whatsNew'), 'Bug fixes');
+    expect(draft.textOverride(TextTarget.version, 'L2', 'whatsNew'), 'Bug fixes');
     expect(draft.changes().map((c) => c.locale).toSet(), {'fr-FR', 'de-DE'});
     // Staging the same text again, or reverting to Apple's value, does not duplicate or leave a ghost change.
     stageClone(draft, planClone(sourceText: source, targets: [fr], fields: [cloneableFields.first], versionEditable: true));
     expect(draft.count, 2);
     draft.setText(
-      target: 'version',
+      target: TextTarget.version,
       locId: 'L2',
       locale: 'fr-FR',
       field: const ListingField('whatsNew', 'x'),

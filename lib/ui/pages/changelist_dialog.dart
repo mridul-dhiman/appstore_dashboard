@@ -100,26 +100,26 @@ class _ChangelistDialogState extends State<ChangelistDialog> {
   Widget _row(Change c) {
     final t = Theme.of(context);
     final icon = switch (c.kind) {
-      'text' => Icons.edit_outlined,
-      'shot-add' => Icons.add_photo_alternate_outlined,
-      'shot-delete' => Icons.delete_outline,
-      'shot-order' => Icons.swap_horiz,
-      _ => Icons.collections_outlined,
+      ChangeKind.text => Icons.edit_outlined,
+      ChangeKind.shotAdd => Icons.add_photo_alternate_outlined,
+      ChangeKind.shotDelete => Icons.delete_outline,
+      ChangeKind.shotOrder => Icons.swap_horiz,
+      ChangeKind.shotSet => Icons.collections_outlined,
     };
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: c.kind == 'shot-delete' ? t.colorScheme.error : t.colorScheme.primary),
+          Icon(icon, size: 20, color: c.kind == ChangeKind.shotDelete ? t.colorScheme.error : t.colorScheme.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(c.title, style: const TextStyle(fontWeight: FontWeight.w600)),
-                if (c.kind == 'text') Padding(padding: const EdgeInsets.only(top: 4), child: _diff(c)),
-                if (c.kind == 'shot-add' && c.preview != null)
+                if (c.kind == ChangeKind.text) Padding(padding: const EdgeInsets.only(top: 4), child: _diff(c)),
+                if (c.kind == ChangeKind.shotAdd && c.preview != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Row(
@@ -133,7 +133,8 @@ class _ChangelistDialogState extends State<ChangelistDialog> {
                       ],
                     ),
                   ),
-                if (c.kind != 'text' && c.kind != 'shot-add' && c.detail != null) Text(c.detail!, style: t.textTheme.bodySmall),
+                if (c.kind != ChangeKind.text && c.kind != ChangeKind.shotAdd && c.detail != null)
+                  Text(c.detail!, style: t.textTheme.bodySmall),
               ],
             ),
           ),

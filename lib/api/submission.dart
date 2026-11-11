@@ -132,14 +132,16 @@ Map<String, dynamic> cancelSubmissionBody(String submissionId) => {
 
 enum CheckLevel { pass, warn, fail }
 
+/// Which action on the Submit tab can repair a failed check.
+enum CheckFix { build, compliance, review, release, listing, version }
+
 class Check {
   const Check(this.level, this.title, [this.detail, this.fix]);
   final CheckLevel level;
   final String title;
   final String? detail;
 
-  /// Which action on the Submit tab can repair it: build | compliance | review | release | listing | version.
-  final String? fix;
+  final CheckFix? fix;
 }
 
 /// An in-flight (or draft) submission and the version ids it contains.
@@ -197,25 +199,25 @@ List<Check> evaluatePreflight(PreflightData d) {
         CheckLevel.fail,
         'Version is not submittable',
         'Version $label is ${prettyState(state)}. Only a version being prepared (or one that was rejected) can be sent for review. Create a new version.',
-        'version',
+        CheckFix.version,
       ),
     );
   }
 
   final b = d.build;
   if (b == null) {
-    out.add(const Check(CheckLevel.fail, 'No build selected', 'Attach a processed build to this version.', 'build'));
+    out.add(const Check(CheckLevel.fail, 'No build selected', 'Attach a processed build to this version.', CheckFix.build));
   } else {
     final bs = b.str('processingState');
     if (b.flag('expired') == true) {
-      out.add(Check(CheckLevel.fail, 'Build ${b.str('version')} has expired', 'Upload and attach a newer build.', 'build'));
+      out.add(Check(CheckLevel.fail, 'Build ${b.str('version')} has expired', 'Upload and attach a newer build.', CheckFix.build));
     } else if (bs != 'VALID') {
       out.add(
         Check(
           CheckLevel.fail,
           'Build ${b.str('version')} is ${prettyState(bs)}',
           'Wait for processing to finish, or attach another build.',
-          'build',
+          CheckFix.build,
         ),
       );
     } else {
@@ -223,7 +225,12 @@ List<Check> evaluatePreflight(PreflightData d) {
     }
     if (b.attributes['usesNonExemptEncryption'] == null) {
       out.add(
-        const Check(CheckLevel.fail, 'Export compliance not answered', 'Say whether the app uses non-exempt encryption.', 'compliance'),
+        const Check(
+          CheckLevel.fail,
+          'Export compliance not answered',
+          'Say whether the app uses non-exempt encryption.',
+          CheckFix.compliance,
+        ),
       );
     } else {
       out.add(
@@ -237,7 +244,7 @@ List<Check> evaluatePreflight(PreflightData d) {
   }
 
   if (d.localizations.isEmpty) {
-    out.add(const Check(CheckLevel.fail, 'No localizations', 'The version has no store listing text at all.', 'listing'));
+    out.add(const Check(CheckLevel.fail, 'No localizations', 'The version has no store listing text at all.', CheckFix.listing));
   }
   for (final l in d.localizations) {
     final loc = l.str('locale') ?? '?';
@@ -250,10 +257,10 @@ List<Check> evaluatePreflight(PreflightData d) {
     if (missing.isEmpty) {
       out.add(Check(CheckLevel.pass, '$loc listing text complete'));
     } else {
-      out.add(Check(CheckLevel.fail, '$loc is missing ${missing.join(', ')}', 'Fill these in on the Listing tab.', 'listing'));
+      out.add(Check(CheckLevel.fail, '$loc is missing ${missing.join(', ')}', 'Fill these in on the Listing tab.', CheckFix.listing));
     }
     if ((d.screenshotsByLoc[l.id] ?? 0) == 0) {
-      out.add(Check(CheckLevel.fail, '$loc has no screenshots', 'Add at least one screenshot set on the Listing tab.', 'listing'));
+      out.add(Check(CheckLevel.fail, '$loc has no screenshots', 'Add at least one screenshot set on the Listing tab.', CheckFix.listing));
     } else {
       out.add(Check(CheckLevel.pass, '$loc has screenshots'));
     }
@@ -261,7 +268,9 @@ List<Check> evaluatePreflight(PreflightData d) {
 
   final r = d.reviewDetail;
   if (r == null) {
-    out.add(const Check(CheckLevel.fail, 'App Review contact details missing', 'Apple needs a contact person and phone number.', 'review'));
+    out.add(
+      const Check(CheckLevel.fail, 'App Review contact details missing', 'Apple needs a contact person and phone number.', CheckFix.review),
+    );
   } else {
     final missing = <String>[
       if (_blank(r.str('contactFirstName'))) 'first name',
@@ -274,12 +283,12 @@ List<Check> evaluatePreflight(PreflightData d) {
     if (missing.isEmpty) {
       out.add(const Check(CheckLevel.pass, 'App Review details complete'));
     } else {
-      out.add(Check(CheckLevel.fail, 'App Review details missing ${missing.join(', ')}', null, 'review'));
+      out.add(Check(CheckLevel.fail, 'App Review details missing ${missing.join(', ')}', null, CheckFix.review));
     }
   }
 
   if (d.version.str('releaseType') == null) {
-    out.add(const Check(CheckLevel.warn, 'Release option not set', 'Choose how the version is released after approval.', 'release'));
+    out.add(const Check(CheckLevel.warn, 'Release option not set', 'Choose how the version is released after approval.', CheckFix.release));
   } else {
     out.add(Check(CheckLevel.pass, 'Release: ${releaseTypes[d.version.str('releaseType')] ?? d.version.str('releaseType')}'));
   }
