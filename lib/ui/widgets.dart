@@ -728,3 +728,46 @@ class SegmentedTabs extends StatelessWidget {
     );
   }
 }
+
+/// Asks for one line of text. Returns it, or null on Cancel. The text field's controller is disposed with the dialog.
+Future<String?> askText(BuildContext context, {required String title, required String label, String initial = '', String? helper}) =>
+    showDialog<String>(
+      context: context,
+      builder: (_) => _TextPrompt(title: title, label: label, initial: initial, helper: helper),
+    );
+
+class _TextPrompt extends StatefulWidget {
+  const _TextPrompt({required this.title, required this.label, required this.initial, this.helper});
+  final String title;
+  final String label;
+  final String initial;
+  final String? helper;
+
+  @override
+  State<_TextPrompt> createState() => _TextPromptState();
+}
+
+class _TextPromptState extends State<_TextPrompt> {
+  late final _c = TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.title),
+    content: TextField(
+      controller: _c,
+      autofocus: true,
+      decoration: InputDecoration(labelText: widget.label, helperText: widget.helper),
+      onSubmitted: (v) => Navigator.pop(context, v),
+    ),
+    actions: [
+      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+      FilledButton(onPressed: () => Navigator.pop(context, _c.text), child: const Text('Save')),
+    ],
+  );
+}

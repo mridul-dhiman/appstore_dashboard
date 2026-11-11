@@ -1,5 +1,6 @@
 import 'asc_client.dart';
 import 'models.dart';
+import 'queries.dart';
 import 'team.dart' show looksLikeEmail;
 
 /// A TestFlight group: internal (App Store Connect users, no review) or external (anyone you invite, builds need beta review).
@@ -123,18 +124,14 @@ class AppBuild {
   bool get usable => build.str('processingState') == 'VALID' && build.flag('expired') != true;
 }
 
-Future<List<AppBuild>> loadAppBuilds(AscClient c, String appId) async {
-  const base = {'filter[app]': '', 'sort': '-uploadedDate', 'limit': '40'};
-  final q = {...base, 'filter[app]': appId};
+Future<List<AppBuild>> loadAppBuilds(AscClient c, String appId, {int limit = 40}) async {
   // Two include sets in one request is several times slower than two parallel ones, so merge by build id.
-  final r = await Future.wait([
-    c.page('/v1/builds', {...q, 'include': 'preReleaseVersion'}),
-    c.page('/v1/builds', {...q, 'include': 'buildBetaDetail', 'fields[builds]': 'buildBetaDetail'}),
-  ]);
-  final details = {for (final b in r[1].data) b.id: r[1].inc('buildBetaDetails', b.relId('buildBetaDetail'))};
+  final r = await Future.wait<Object>([loadBuilds(c, appId, limit: limit), loadBetaDetails(c, appId, limit: limit)]);
+  final page = r[0] as ResourcePage;
+  final details = r[1] as Map<String, Resource>;
   return [
-    for (final b in r[0].data)
-      AppBuild(b, r[0].inc('preReleaseVersions', b.relId('preReleaseVersion'))?.str('version') ?? '', details[b.id]),
+    for (final b in page.data)
+      AppBuild(b, page.inc('preReleaseVersions', b.relId('preReleaseVersion'))?.str('version') ?? '', details[b.id]),
   ];
 }
 
@@ -305,11 +302,11 @@ String betaStateLabel(String? s) => switch (s) {
 };
 
 /// Build id -> its buildBetaDetails, in one light request.
-Future<Map<String, Resource>> loadBetaDetails(AscClient c, String appId) async {
+Future<Map<String, Resource>> loadBetaDetails(AscClient c, String appId, {int limit = 100}) async {
   final page = await c.page('/v1/builds', {
     'filter[app]': appId,
     'sort': '-uploadedDate',
-    'limit': '100',
+    'limit': '$limit',
     'include': 'buildBetaDetail',
     'fields[builds]': 'buildBetaDetail',
   });

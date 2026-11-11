@@ -417,26 +417,6 @@ class ClientSwitcher extends StatelessWidget {
   const ClientSwitcher({super.key, required this.state});
   final AppState state;
 
-  Future<String?> _ask(BuildContext context, String title, String label, String initial, {String? helper}) {
-    final c = TextEditingController(text: initial);
-    return showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: TextField(
-          controller: c,
-          autofocus: true,
-          decoration: InputDecoration(labelText: label, helperText: helper),
-          onSubmitted: (v) => Navigator.pop(ctx, v),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('Save')),
-        ],
-      ),
-    );
-  }
-
   Future<void> _onSelected(BuildContext context, String value) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
@@ -452,17 +432,10 @@ class ClientSwitcher extends StatelessWidget {
       case '__add':
         await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SetupScreen(state: state, embedded: true)));
       case '__rename':
-        final n = await _ask(context, 'Rename client', 'Name', active.label);
+        final n = await askText(context, title: 'Rename client', label: 'Name', initial: active.label);
         if (n != null && n.trim().isNotEmpty) await state.rename(active.id, n);
       case '__vendor':
-        final v = await _ask(
-          context,
-          'Vendor number',
-          'Vendor number',
-          active.vendorNumber,
-          helper: 'App Store Connect → Payments and Financial Reports. Used for Sales & Trends.',
-        );
-        if (v != null) await state.setVendorNumber(v);
+        await askVendorNumber(context, state);
       case '__remove':
         final ok = await showDialog<bool>(
           context: context,

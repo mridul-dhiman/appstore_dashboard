@@ -97,4 +97,18 @@ void main() {
     );
     handle.dispose();
   });
+
+  testWidgets('the client menu and the Sales page share one vendor-number dialog, and it saves', (tester) async {
+    final h = await pumpShell(tester);
+    await tester.tap(find.byTooltip('Switch client'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Vendor number…'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Payments and Financial Reports'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).last, ' 8812345 ');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(h.state.credentials!.vendorNumber, '8812345');
+    expect(h.vault.data.accounts.single.vendorNumber, '8812345');
+  });
 }

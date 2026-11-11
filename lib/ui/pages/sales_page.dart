@@ -74,29 +74,7 @@ class _SalesPageState extends State<SalesPage> {
     return out;
   }
 
-  Future<void> _askVendor() async {
-    final c = TextEditingController(text: widget.credentials.vendorNumber);
-    final v = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Vendor number'),
-        content: TextField(
-          controller: c,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Vendor number',
-            helperText: 'App Store Connect → Payments and Financial Reports, top left.',
-          ),
-          onSubmitted: (v) => Navigator.pop(ctx, v),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('Save')),
-        ],
-      ),
-    );
-    if (v != null) await widget.state.setVendorNumber(v);
-  }
+  Future<void> _askVendor() => askVendorNumber(context, widget.state);
 
   @override
   Widget build(BuildContext context) {
@@ -306,4 +284,16 @@ class _Report extends StatelessWidget {
     }
     return m.isEmpty ? '—' : m.entries.map((e) => '${e.value.toStringAsFixed(2)} ${e.key}').join(' · ');
   }
+}
+
+/// Asks for the active client's vendor number (needed only for Sales & Trends) and saves it.
+Future<void> askVendorNumber(BuildContext context, AppState state) async {
+  final v = await askText(
+    context,
+    title: 'Vendor number',
+    label: 'Vendor number',
+    initial: state.credentials?.vendorNumber ?? '',
+    helper: 'App Store Connect → Payments and Financial Reports, top left. Used for Sales & Trends.',
+  );
+  if (v != null) await state.setVendorNumber(v);
 }
