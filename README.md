@@ -31,6 +31,21 @@ flutter run -d macos
 * If the Mac has no password/Touch ID configured, the app refuses to open rather than store keys unprotected.
 * Requests go straight to `api.appstoreconnect.apple.com`.
 
+### Distributable build
+
+`flutter run` and `flutter build` sign ad hoc, which only runs on the Mac that built it. To give the app to someone else,
+sign it with your Developer ID and notarize it:
+
+```
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+ASC_KEY_PATH=~/keys/AuthKey_ABC123.p8 ASC_KEY_ID=ABC123 ASC_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
+scripts/release_macos.sh
+```
+
+It signs with the hardened runtime, notarizes with an App Store Connect API key (no Apple ID password) and staples the
+ticket. `SIGN_IDENTITY=-` does the same signing ad hoc, without notarizing, to check locally that the app still starts
+under the hardened runtime.
+
 ## Website
 
 Apple's API sends no CORS headers, so a browser cannot call it directly. `server/server.js` (no dependencies) serves the
