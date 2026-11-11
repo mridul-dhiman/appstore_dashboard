@@ -1,3 +1,4 @@
+import 'package:archive/archive.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -60,5 +61,17 @@ void main() {
     expect(validateOps([o(0, 5), o(6, 4)], 10), contains('gap'));
     expect(validateOps([o(0, 6), o(6, 3)], 10), contains('cover 9 bytes'));
     expect(validateOps(const [], 10), contains('no upload operations'));
+  });
+
+  test('the upload platform comes from DTPlatformName, not a hard-coded iOS', () {
+    expect(ascPlatformFor('iphoneos'), 'IOS');
+    expect(ascPlatformFor('appletvos'), 'TV_OS');
+    expect(ascPlatformFor('xros'), 'VISION_OS');
+    expect(ascPlatformFor(null), 'IOS');
+    final tv = Archive()
+      ..addFile(ArchiveFile.string('Payload/X.app/Info.plist',
+          '<plist><dict><key>CFBundleIdentifier</key><string>a</string><key>CFBundleShortVersionString</key><string>1</string>'
+          '<key>CFBundleVersion</key><string>2</string><key>DTPlatformName</key><string>appletvos</string></dict></plist>'));
+    expect(readIpaInfo(Uint8List.fromList(ZipEncoder().encode(tv))).platform, 'TV_OS');
   });
 }

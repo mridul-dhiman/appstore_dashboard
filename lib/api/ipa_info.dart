@@ -4,13 +4,23 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 
 class IpaInfo {
-  IpaInfo({required this.bundleId, required this.version, required this.build, this.minOs, this.displayName});
+  IpaInfo({required this.bundleId, required this.version, required this.build, this.minOs, this.displayName, this.platform = 'IOS'});
   final String bundleId;
   final String version; // CFBundleShortVersionString
   final String build; // CFBundleVersion
   final String? minOs;
   final String? displayName;
+
+  /// App Store Connect platform the .ipa is for (`IOS`, `TV_OS`, `VISION_OS`), from Info.plist `DTPlatformName`.
+  final String platform;
 }
+
+/// `DTPlatformName` → App Store Connect platform. Anything unknown is treated as iOS, the .ipa default.
+String ascPlatformFor(String? dtPlatformName) => switch (dtPlatformName?.toLowerCase()) {
+      'appletvos' => 'TV_OS',
+      'xros' => 'VISION_OS',
+      _ => 'IOS',
+    };
 
 class IpaException implements Exception {
   IpaException(this.message);
@@ -38,7 +48,14 @@ IpaInfo readIpaInfoFromArchive(Archive archive) {
   String? s(String k) => dict[k]?.toString();
   final id = s('CFBundleIdentifier'), v = s('CFBundleShortVersionString'), b = s('CFBundleVersion');
   if (id == null || v == null || b == null) throw IpaException('Info.plist is missing CFBundleIdentifier, CFBundleShortVersionString or CFBundleVersion.');
-  return IpaInfo(bundleId: id, version: v, build: b, minOs: s('MinimumOSVersion'), displayName: s('CFBundleDisplayName') ?? s('CFBundleName'));
+  return IpaInfo(
+    bundleId: id,
+    version: v,
+    build: b,
+    minOs: s('MinimumOSVersion'),
+    displayName: s('CFBundleDisplayName') ?? s('CFBundleName'),
+    platform: ascPlatformFor(s('DTPlatformName')),
+  );
 }
 
 /// Top-level dictionary of an Info.plist, binary (`bplist00`, what Xcode ships) or XML.

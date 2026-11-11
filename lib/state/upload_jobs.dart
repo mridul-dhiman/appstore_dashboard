@@ -40,6 +40,7 @@ class UploadJob extends ChangeNotifier {
         appId: appId,
         version: info.version,
         build: info.build,
+        platform: info.platform,
         source: source,
         cancel: _cancel,
         pollEvery: pollEvery,

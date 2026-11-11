@@ -219,6 +219,20 @@ void main() {
       expect(fake.log.any((r) => r.method != 'GET'), isFalse);
     });
 
+    test('a macOS version is submitted as macOS: the draft lookup and a new submission use its platform', () async {
+      final fake = FakeAsc((r) {
+        if (r.method == 'GET' && r.path.startsWith('/v1/reviewSubmissions?')) return json(list([]));
+        if (r.method == 'POST' && r.path == '/v1/reviewSubmissions') return json({'data': {'type': 'reviewSubmissions', 'id': 'S9'}}, 201);
+        if (r.method == 'POST') return json({'data': {'type': 'reviewSubmissionItems', 'id': 'I1'}}, 201);
+        if (r.method == 'PATCH') return json({'data': {'type': 'reviewSubmissions', 'id': 'S9'}});
+        if (r.method == 'GET') return json({'data': {'type': 'reviewSubmissions', 'id': 'S9', 'attributes': {'state': 'WAITING_FOR_REVIEW'}}});
+        return null;
+      });
+      await SubmissionFlow(fake.client, 'A1').submit('V1', platform: 'MAC_OS');
+      expect(fake.log.first.path, contains('filter%5Bplatform%5D=MAC_OS'));
+      expect(fake.log[1].body!['data']['attributes'], {'platform': 'MAC_OS'});
+    });
+
     test('an Apple refusal at submit time surfaces as an error and nothing else is sent', () async {
       final fake = FakeAsc((r) {
         if (r.method == 'GET' && r.path.startsWith('/v1/reviewSubmissions?')) return json(list([]));

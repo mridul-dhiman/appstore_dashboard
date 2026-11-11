@@ -148,9 +148,13 @@ class _BodyState extends State<_Body> {
     ),
   );
 
+  /// The platform of the version being worked on (iOS, macOS, tvOS, visionOS). New versions and builds follow it.
+  String get _platform => _version.str('platform') ?? (widget.versions.isEmpty ? null : widget.versions.first.str('platform')) ?? 'IOS';
+
   Future<List<Resource>> _validBuilds() async {
     final p = await widget.client.page('/v1/builds', {
       'filter[app]': widget.appId,
+      'filter[preReleaseVersion.platform]': _platform,
       'sort': '-uploadedDate',
       'limit': '30',
       'include': 'preReleaseVersion',
@@ -177,6 +181,7 @@ class _BodyState extends State<_Body> {
     final ok = await _run(() async {
       await _flow.createVersion(
         versionString: result.version,
+        platform: _platform,
         releaseType: result.release,
         buildId: result.buildId,
       );
@@ -305,7 +310,7 @@ class _BodyState extends State<_Body> {
     if (confirmed != true) return;
     setState(() => _busy = true);
     try {
-      final out = await _flow.submit(_version.id);
+      final out = await _flow.submit(_version.id, platform: _platform);
       if (!mounted) return;
       await showDialog<void>(
         context: context,
