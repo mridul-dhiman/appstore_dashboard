@@ -172,7 +172,7 @@ Future<bool> addTester(AscClient c, String groupId, {required String email, Stri
 }
 
 /// Apple has no endpoint that deletes a build. Expiring it is the closest thing: it leaves TestFlight and can no longer be
-/// chosen for a submission. It cannot be undone, and Apple refuses it for a build on a released version.
+/// chosen for a submission. It cannot be undone.
 Map<String, dynamic> expireBuildBody(String id) => {
       'data': {
         'type': 'builds',
@@ -242,6 +242,21 @@ List<BuildUpload> pendingUploads(List<BuildUpload> uploads, Set<String> knownBui
     for (final u in uploads)
       if (!knownBuilds.contains(buildKey(u.shortVersion, u.buildNumber)) && within(u, u.processing || u.failed ? const Duration(days: 7) : const Duration(hours: 1))) u,
   ];
+}
+
+/// Ids of the builds live on the App Store now: the build of the newest released version on each platform. (Apple
+/// keeps every past release as READY_FOR_SALE, newest first, so only the first per platform is the live one.)
+Future<Set<String>> loadLiveBuildIds(AscClient c, String appId) async {
+  final p = await c.page('/v1/apps/$appId/appStoreVersions', {
+    'filter[appStoreState]': 'READY_FOR_SALE',
+    'fields[appStoreVersions]': 'build,platform',
+    'limit': '20',
+  });
+  final seen = <String>{};
+  return {
+    for (final v in p.data)
+      if (seen.add(v.str('platform') ?? '')) ?v.relId('build'),
+  };
 }
 
 /// The app's icon, from its newest build, sized [px] pixels square. One small request; null when there is no build.

@@ -225,7 +225,8 @@ class _AppDetailPageState extends State<AppDetailPage> {
 }
 
 class _BuildsData {
-  _BuildsData(this.builds, this.uploads, this.details);
+  _BuildsData(this.builds, this.uploads, this.details, [this.live = const {}]);
+  final Set<String> live; // builds on a version that is on sale: Apple will not expire them
   final ResourcePage builds;
   final List<BuildUpload> uploads;
   final Map<String, Resource> details;
@@ -275,10 +276,13 @@ class _BuildsTabState extends State<_BuildsTab> {
         loadBuildUploads(widget.client, widget.appId).catchError((Object _) => <BuildUpload>[]),
         // TestFlight states are a bonus too.
         loadBetaDetails(widget.client, widget.appId).catchError((Object _) => <String, Resource>{}),
+        loadLiveBuildIds(widget.client, widget.appId).catchError((Object _) => <String>{}),
       ]);
       if (!mounted) return;
+      final next = _BuildsData(r[0] as ResourcePage, r[1] as List<BuildUpload>, r[2] as Map<String, Resource>, r[3] as Set<String>);
+      _announceFinished(_data, next);
       setState(() {
-        _data = _BuildsData(r[0] as ResourcePage, r[1] as List<BuildUpload>, r[2] as Map<String, Resource>);
+        _data = next;
         _error = null;
         _loading = false;
       });
@@ -290,20 +294,33 @@ class _BuildsTabState extends State<_BuildsTab> {
     _schedulePoll();
   }
 
+  /// Says so when an upload that was processing on the last look is now a build (or failed).
+  void _announceFinished(_BuildsData? before, _BuildsData after) {
+    if (before == null) return;
+    final still = {for (final u in after.pending) u.id};
+    for (final u in before.pending.where((u) => u.processing && !still.contains(u.id))) {
+      final failed = after.uploads.where((x) => x.id == u.id && x.failed).isNotEmpty;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(
+        content: Text(failed ? 'Build ${u.label} failed processing.' : 'Build ${u.label} finished processing and is ready for TestFlight.'),
+      ));
+    }
+  }
+
   /// While anything is processing, look again every 20 seconds.
   void _schedulePoll() {
     _poll?.cancel();
     if (_data?.pending.any((u) => u.processing) ?? false) _poll = Timer(const Duration(seconds: 20), () => _load(quiet: true));
   }
 
-  Future<void> _expire(Resource b, String label) async {
+  Future<void> _expire(Resource b, String label, {bool live = false}) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Expire build $label?'),
-        content: const Text(
+        content: Text(
+          '${live ? 'This is the build that is live on the App Store now.\n\n' : ''}'
           'Apple has no way to delete a build, so this expires it. It disappears from TestFlight, testers can no longer install it, '
-          'and it can not be chosen for a submission.\n\nThis can not be undone. Apple refuses it for a build on a released version.',
+          'and it can not be chosen for a submission.\n\nThis can not be undone.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
@@ -390,6 +407,7 @@ class _BuildsTabState extends State<_BuildsTab> {
   Widget _buildRow(BuildContext context, ResourcePage p, Resource b) {
     final expired = b.flag('expired') == true;
     final detail = _data?.details[b.id];
+    final live = _data?.live.contains(b.id) ?? false;
     final internal = betaStateLabel(detail?.str('internalBuildState'));
     final external = betaStateLabel(detail?.str('externalBuildState'));
     final label = '${p.inc('preReleaseVersions', b.relId('preReleaseVersion'))?.str('version') ?? '—'} (${b.str('version')})';
@@ -401,6 +419,7 @@ class _BuildsTabState extends State<_BuildsTab> {
         '${!expired && (internal.isNotEmpty || external.isNotEmpty) ? '\nTestFlight: ${[if (internal.isNotEmpty) 'internal $internal', if (external.isNotEmpty) 'external $external'].join(' · ')}' : ''}',
       ),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (live && !expired) ...[const StateChip('READY_FOR_SALE', label: 'Live on App Store'), const SizedBox(width: 8)],
         StateChip(expired ? 'EXPIRED' : b.str('processingState')),
         if (!expired) ...[
           const SizedBox(width: 10),
@@ -408,7 +427,7 @@ class _BuildsTabState extends State<_BuildsTab> {
               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
               : OutlinedButton(
                   style: OutlinedButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
-                  onPressed: () => _expire(b, label),
+                  onPressed: () => _expire(b, label, live: live),
                   child: const Text('Expire'),
                 ),
         ],

@@ -196,4 +196,68 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('Showing the first 1 builds'), findsOneWidget);
   });
+
+  testWidgets('a processing build that finishes is announced, and the live build is marked', (tester) async {
+    tester.view.physicalSize = const Size(1500, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    var done = false;
+    final fake = FakeAsc((r) {
+      if (r.path.startsWith('/v1/apps/A1/buildUploads')) {
+        return json({
+          'data': [
+            {
+              'type': 'buildUploads',
+              'id': 'U2',
+              'attributes': {
+                'cfBundleShortVersionString': '2.0.0',
+                'cfBundleVersion': '2',
+                'uploadedDate': DateTime.now().toUtc().toIso8601String(),
+                'state': {'state': done ? 'COMPLETE' : 'PROCESSING', 'errors': []},
+              },
+            },
+          ],
+        });
+      }
+      if (r.path.startsWith('/v1/apps/A1/appStoreVersions')) {
+        return json({
+          'data': [
+            {'type': 'appStoreVersions', 'id': 'V2', 'attributes': {'platform': 'IOS'}, 'relationships': {'build': {'data': {'type': 'builds', 'id': 'B1'}}}},
+            {'type': 'appStoreVersions', 'id': 'V1', 'attributes': {'platform': 'IOS'}, 'relationships': {'build': {'data': {'type': 'builds', 'id': 'B0'}}}},
+          ],
+        });
+      }
+      if (r.path.startsWith('/v1/builds') && !r.path.contains('buildBetaDetail')) {
+        return json({
+          'data': [
+            if (done)
+              {'type': 'builds', 'id': 'B2', 'attributes': {'version': '2', 'processingState': 'VALID', 'expired': false}, 'relationships': {'preReleaseVersion': {'data': {'type': 'preReleaseVersions', 'id': 'P2'}}}},
+            {'type': 'builds', 'id': 'B1', 'attributes': {'version': '1', 'processingState': 'VALID', 'expired': false}, 'relationships': {'preReleaseVersion': {'data': {'type': 'preReleaseVersions', 'id': 'P1'}}}},
+            {'type': 'builds', 'id': 'B0', 'attributes': {'version': '9', 'processingState': 'VALID', 'expired': false}, 'relationships': {'preReleaseVersion': {'data': {'type': 'preReleaseVersions', 'id': 'P0'}}}},
+          ],
+          'included': [
+            {'type': 'preReleaseVersions', 'id': 'P2', 'attributes': {'version': '2.0.0'}},
+            {'type': 'preReleaseVersions', 'id': 'P1', 'attributes': {'version': '1.9.0'}},
+            {'type': 'preReleaseVersions', 'id': 'P0', 'attributes': {'version': '1.8.0'}},
+          ],
+        });
+      }
+      return r.method == 'GET' ? json({'data': []}) : null;
+    });
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: AppDetailPage(client: fake.client, summary: summary(), initialTab: 3, onBack: () {}))));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('Live on App Store'), findsOneWidget, reason: 'only the newest release is live, not every READY_FOR_SALE one');
+
+    done = true;
+    await tester.pump(const Duration(seconds: 21)); // the processing poll
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.textContaining('2.0.0 (2) finished processing'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Expire').at(1)); // the live 1.9.0 (1)
+    await tester.pumpAndSettle();
+    expect(find.textContaining('live on the App Store now'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpWidget(const SizedBox());
+  });
 }
