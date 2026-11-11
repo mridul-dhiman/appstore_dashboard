@@ -134,4 +134,27 @@ void main() {
     expect(job.progress!.phase, UploadPhase.stillProcessing);
     expect(job.running, isFalse);
   });
+
+  group('part retries', () {
+    setUp(() => partRetryBackoff = Duration.zero);
+    tearDown(() => partRetryBackoff = const Duration(seconds: 2));
+    final ops = [UploadOp(method: 'PUT', url: 'https://up.test/1', offset: 0, length: 4, headers: const {})];
+
+    test('a 403 (expired link) fails at once, without retrying', () async {
+      var n = 0;
+      assetHttpClientFactory = () => MockClient((req) async {
+            n++;
+            return http.Response('', 403);
+          });
+      await expectLater(putParts(ops, Uint8List(4), (_) {}), throwsA(predicate((e) => e.toString().contains('expired'))));
+      expect(n, 1);
+    });
+
+    test('a 503 is retried and can then succeed', () async {
+      var n = 0;
+      assetHttpClientFactory = () => MockClient((req) async => http.Response('', ++n < 3 ? 503 : 200));
+      await putParts(ops, Uint8List(4), (_) {});
+      expect(n, 3);
+    });
+  });
 }

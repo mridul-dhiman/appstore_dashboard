@@ -93,6 +93,8 @@ Future<void> putSourceParts(List<UploadOp> ops, UploadSource source, void Functi
   }
 }
 
+/// Apple's upload URLs expire and are single-purpose: a 4xx (other than a timeout or rate limit) will not change on a
+/// retry, so it fails at once with the status. Server errors and dropped connections are retried.
 Future<void> _putPart(http.Client c, UploadOp op, Uint8List body) async {
   Object? last;
   for (var attempt = 1; attempt <= 3; attempt++) {
@@ -102,11 +104,21 @@ Future<void> _putPart(http.Client c, UploadOp op, Uint8List body) async {
         ..bodyBytes = body;
       final res = await http.Response.fromStream(await c.send(req).timeout(const Duration(minutes: 5)));
       if (res.statusCode >= 200 && res.statusCode < 300) return;
+      if (res.statusCode >= 400 && res.statusCode < 500 && res.statusCode != 408 && res.statusCode != 429) {
+        throw AscException('Apple refused bytes ${op.offset}–${op.offset + op.length} (HTTP ${res.statusCode}). '
+            '${res.statusCode == 403 ? 'The upload link has probably expired; start the upload again.' : 'Start the upload again.'}');
+      }
       last = 'HTTP ${res.statusCode}';
+    } on AscException {
+      rethrow;
     } catch (e) {
       last = e;
     }
-    await Future<void>.delayed(Duration(seconds: attempt * 2));
+    if (attempt < 3) await Future<void>.delayed(partRetryBackoff * attempt);
   }
   throw AscException('Uploading bytes ${op.offset}–${op.offset + op.length} failed after 3 tries ($last).');
 }
+
+/// Wait before retrying a part (multiplied by the attempt number). Tests set it to zero.
+@visibleForTesting
+Duration partRetryBackoff = const Duration(seconds: 2);
