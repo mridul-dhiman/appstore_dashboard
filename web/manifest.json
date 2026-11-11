@@ -1,12 +1,12 @@
 {
-    "name": "appstore_dashboard",
-    "short_name": "appstore_dashboard",
+    "name": "App Store Dashboard",
+    "short_name": "ASC Dashboard",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "background_color": "#F5F6F9",
+    "theme_color": "#0071E3",
+    "description": "An App Store Connect console that works from API keys alone: apps, TestFlight, builds, reviews, sales and team.",
+    "orientation": "any",
     "prefer_related_applications": false,
     "icons": [
         {

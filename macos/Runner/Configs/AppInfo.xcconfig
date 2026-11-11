@@ -11,4 +11,4 @@ PRODUCT_NAME = appstore_dashboard
 PRODUCT_BUNDLE_IDENTIFIER = com.mridul.appstoreDashboard
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.mridul. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 Mridul Dhiman. All rights reserved.
