@@ -3,6 +3,8 @@ import 'package:appstore_dashboard/api/models.dart';
 import 'package:appstore_dashboard/api/reviews.dart';
 import 'package:appstore_dashboard/ui/pages/reviews_tab.dart';
 import 'package:flutter/material.dart';
+import 'package:appstore_dashboard/services/prefs.dart';
+import 'package:appstore_dashboard/state/reply_templates.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_asc.dart';
@@ -91,7 +93,7 @@ void main() {
     });
 
     test('templates fill in the reviewer name', () {
-      expect(fillTemplate(replyTemplates['Fix coming soon']!, 'Asha'), startsWith('Hi Asha,'));
+      expect(fillTemplate(defaultReplyTemplates['Fix coming soon']!, 'Asha'), startsWith('Hi Asha,'));
       expect(fillTemplate('Hi {name}', '  '), 'Hi there');
     });
   });
@@ -163,5 +165,40 @@ void main() {
 
   test('Resource helper sanity', () {
     expect(Resource.fromJson(review('R9', 4, 'x')).integer('rating'), 4);
+  });
+
+  test('templates are per client, saved, and blank ones are dropped', () async {
+    final prefs = Prefs.memory();
+    final a = ReplyTemplates(prefs: prefs, clientId: 'c1');
+    expect(a.items.keys, defaultReplyTemplates.keys);
+    await a.save({'Hello': 'Hi {name}!', ' ': 'x', 'Empty': '  '});
+    expect(ReplyTemplates(prefs: prefs, clientId: 'c1').items, {'Hello': 'Hi {name}!'});
+    expect(ReplyTemplates(prefs: prefs, clientId: 'c2').items.keys, defaultReplyTemplates.keys, reason: 'another client keeps its own');
+  });
+
+  test('the default templates mention no particular app', () {
+    for (final t in defaultReplyTemplates.values) {
+      expect(t, isNot(contains('Profile')));
+      expect(t, isNot(contains('registered number')));
+    }
+  });
+
+  testWidgets('the templates dialog adds, removes and saves', (tester) async {
+    final t = ReplyTemplates(prefs: Prefs.memory(), clientId: 'c1');
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: Builder(builder: (c) => TextButton(onPressed: () => showDialog<void>(context: c, builder: (_) => TemplatesDialog(templates: t)), child: const Text('open'))))));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Remove').first); // drop "Thanks"
+    await tester.pump();
+    await tester.ensureVisible(find.text('Add template'));
+    await tester.tap(find.text('Add template'));
+    await tester.pump();
+    expect(find.widgetWithText(TextField, 'Name'), findsNWidgets(3));
+    final names = find.widgetWithText(TextField, 'Name');
+    await tester.enterText(names.last, 'Refund');
+    await tester.enterText(find.widgetWithText(TextField, 'Reply').last, 'Hi {name}, refunds go through Apple.');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(t.items.keys, ['Fix coming soon', 'Contact support', 'Refund']);
   });
 }

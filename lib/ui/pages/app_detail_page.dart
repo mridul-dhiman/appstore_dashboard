@@ -9,6 +9,7 @@ import '../../api/listing_draft.dart';
 import '../../api/models.dart';
 import '../../api/reviews.dart';
 import '../../api/testflight.dart';
+import '../../state/reply_templates.dart';
 import '../../state/upload_jobs.dart';
 import '../theme.dart';
 import '../export_button.dart';
@@ -34,11 +35,14 @@ const _uploadTab = 4;
 
 /// One app's workspace: a header with the app's details and quick actions, and a tab for each job.
 class AppDetailPage extends StatefulWidget {
-  const AppDetailPage({super.key, required this.client, required this.summary, required this.onBack, this.initialTab = 0, this.uploads, this.onTabChanged});
+  const AppDetailPage({super.key, required this.client, required this.summary, required this.onBack, this.initialTab = 0, this.uploads, this.onTabChanged, this.templates});
   final AscClient client;
 
   /// The shell's build uploads. Null when the page is shown on its own (tests).
   final UploadJobs? uploads;
+
+  /// This client's review reply templates.
+  final ReplyTemplates? templates;
 
   /// Told the tab index whenever it changes, so the shell can reopen the same tab next launch.
   final ValueChanged<int>? onTabChanged;
@@ -182,7 +186,7 @@ class _AppDetailPageState extends State<AppDetailPage> {
                   children: [
                     ListingTab(client: client, appId: id, draft: _draft),
                     GroupsTab(client: client, appId: id),
-                    ReviewsTab(client: client, appId: id, onLoaded: (d) => _reviews = d),
+                    ReviewsTab(client: client, appId: id, onLoaded: (d) => _reviews = d, templates: widget.templates),
                     _BuildsTab(client: client, appId: id),
                     UploadTab(client: client, appId: id, bundleId: summary.bundleId, uploads: _uploads),
                     _PurchasesTab(client: client, appId: id, appName: summary.name),

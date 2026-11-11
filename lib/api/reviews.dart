@@ -4,11 +4,12 @@ import 'models.dart';
 /// Apple's limit for a developer response (App Store Connect rejects anything longer).
 const maxReplyLength = 5970;
 
-/// Ready-made replies. `{name}` becomes the reviewer's nickname.
-const replyTemplates = {
-  'Thanks': 'Hi {name}, thank you for the kind words. It means a lot to the whole team, and we are glad the app is helping you.',
+/// Starting replies for a client that has not written its own. `{name}` becomes the reviewer's nickname. They are
+/// edited per client in the reply box ("Edit templates") and saved on this Mac.
+const defaultReplyTemplates = {
+  'Thanks': 'Hi {name}, thank you for the kind words. It means a lot to the team, and we are glad the app is useful to you.',
   'Fix coming soon': 'Hi {name}, thank you for letting us know and sorry for the trouble. We are working on a fix and it will be in an upcoming update.',
-  'Contact support': 'Hi {name}, we are sorry this has not worked well for you. Please write to our support team from the app (Profile → Help) with your registered number so we can look into it and put it right.',
+  'Contact support': 'Hi {name}, we are sorry this has not worked well for you. Please contact our support team so we can look into it and put it right.',
 };
 
 enum ReviewFilter { all, needsReply, unanswered }

@@ -3,13 +3,17 @@ import 'package:flutter/material.dart';
 import '../../api/asc_client.dart';
 import '../../api/reviews.dart';
 import '../theme.dart';
+import '../../state/reply_templates.dart';
 import '../widgets.dart';
 
 /// Customer reviews of one app: rating breakdown, filters, and replying as the developer.
 class ReviewsTab extends StatefulWidget {
-  const ReviewsTab({super.key, required this.client, required this.appId, this.onLoaded});
+  const ReviewsTab({super.key, required this.client, required this.appId, this.onLoaded, this.templates});
   final AscClient client;
   final String appId;
+
+  /// This client's reply templates. Null: the defaults, not saved.
+  final ReplyTemplates? templates;
 
   /// Gives the page what was loaded, so Export can reuse it instead of asking Apple again.
   final void Function(ReviewsData data)? onLoaded;
@@ -20,6 +24,8 @@ class ReviewsTab extends StatefulWidget {
 
 class _ReviewsTabState extends State<ReviewsTab> {
   final _reload = ReloadController();
+  late final _fallbackTemplates = ReplyTemplates();
+  ReplyTemplates get _templates => widget.templates ?? _fallbackTemplates;
 
   @override
   void dispose() {
@@ -38,15 +44,16 @@ class _ReviewsTabState extends State<ReviewsTab> {
       },
       builder: (context, d) {
         if (d.reviews.isEmpty) return const EmptyView('No customer reviews yet.', icon: Icons.rate_review_outlined);
-        return _ReviewsBody(client: widget.client, data: d, onRefresh: _reload.reload);
+        return _ReviewsBody(client: widget.client, data: d, onRefresh: _reload.reload, templates: _templates);
       },
     );
   }
 }
 
 class _ReviewsBody extends StatefulWidget {
-  const _ReviewsBody({required this.client, required this.data, required this.onRefresh});
+  const _ReviewsBody({required this.client, required this.data, required this.onRefresh, required this.templates});
   final AscClient client;
+  final ReplyTemplates templates;
   final ReviewsData data;
   final VoidCallback onRefresh;
 
@@ -117,6 +124,7 @@ class _ReviewsBodyState extends State<_ReviewsBody> {
             for (var i = 0; i < shown.length; i++) ...[
               if (i > 0) Divider(color: k.line),
               _ReviewTile(
+                templates: widget.templates,
                 key: ValueKey(shown[i].id),
                 client: widget.client,
                 review: shown[i],
@@ -226,8 +234,9 @@ class _Pill extends StatelessWidget {
 }
 
 class _ReviewTile extends StatefulWidget {
-  const _ReviewTile({super.key, required this.client, required this.review, required this.composing, required this.onCompose, required this.onReplied});
+  const _ReviewTile({super.key, required this.client, required this.review, required this.composing, required this.onCompose, required this.onReplied, required this.templates});
   final AscClient client;
+  final ReplyTemplates templates;
   final Review review;
   final bool composing;
   final ValueChanged<bool> onCompose;
@@ -370,13 +379,21 @@ class _ReviewTileState extends State<_ReviewTile> {
           Padding(padding: const EdgeInsets.only(top: 10), child: OutlinedButton.icon(onPressed: () => widget.onCompose(true), icon: const Icon(Icons.reply, size: 16), label: const Text('Reply'))),
         if (widget.composing) ...[
           const SizedBox(height: 14),
-          Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final e in replyTemplates.entries)
+          ListenableBuilder(
+            listenable: widget.templates,
+            builder: (context, _) => Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final e in widget.templates.items.entries)
+                ActionChip(
+                  label: Text(e.key),
+                  onPressed: _busy ? null : () => setState(() => _text.text = fillTemplate(e.value, r.nickname)),
+                ),
               ActionChip(
-                label: Text(e.key),
-                onPressed: _busy ? null : () => setState(() => _text.text = fillTemplate(e.value, r.nickname)),
+                avatar: const Icon(Icons.edit_outlined, size: 16),
+                label: const Text('Edit templates'),
+                onPressed: _busy ? null : () => showDialog<void>(context: context, builder: (_) => TemplatesDialog(templates: widget.templates)),
               ),
-          ]),
+            ]),
+          ),
           const SizedBox(height: 10),
           TextField(
             controller: _text,
@@ -398,6 +415,79 @@ class _ReviewTileState extends State<_ReviewTile> {
           ]),
         ],
       ]),
+    );
+  }
+}
+
+/// Add, rename, rewrite or remove this client's reply templates. `{name}` becomes the reviewer's nickname.
+class TemplatesDialog extends StatefulWidget {
+  const TemplatesDialog({super.key, required this.templates});
+  final ReplyTemplates templates;
+
+  @override
+  State<TemplatesDialog> createState() => _TemplatesDialogState();
+}
+
+class _TemplatesDialogState extends State<TemplatesDialog> {
+  late final _rows = [
+    for (final e in widget.templates.items.entries) (TextEditingController(text: e.key), TextEditingController(text: e.value)),
+  ];
+
+  @override
+  void dispose() {
+    for (final (a, b) in _rows) {
+      a.dispose();
+      b.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Reply templates'),
+      content: SizedBox(
+        width: 560,
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Write {name} where the reviewer\'s nickname should go. Saved on this Mac for this client.'),
+            const SizedBox(height: 14),
+            for (var i = 0; i < _rows.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  SizedBox(width: 150, child: TextField(controller: _rows[i].$1, decoration: const InputDecoration(labelText: 'Name'))),
+                  const SizedBox(width: 10),
+                  Expanded(child: TextField(controller: _rows[i].$2, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'Reply'))),
+                  IconButton(
+                    tooltip: 'Remove',
+                    onPressed: () => setState(() {
+                      final (a, b) = _rows.removeAt(i);
+                      a.dispose();
+                      b.dispose();
+                    }),
+                    icon: const Icon(Icons.delete_outline),
+                  ),
+                ]),
+              ),
+            TextButton.icon(
+              onPressed: () => setState(() => _rows.add((TextEditingController(), TextEditingController(text: 'Hi {name}, ')))),
+              icon: const Icon(Icons.add),
+              label: const Text('Add template'),
+            ),
+          ]),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        FilledButton(
+          onPressed: () async {
+            await widget.templates.save({for (final (a, b) in _rows) a.text: b.text});
+            if (context.mounted) Navigator.pop(context);
+          },
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 }

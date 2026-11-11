@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -51,6 +53,19 @@ class Prefs {
     if (parts == null || parts.length != 2) return null;
     return (appId: parts[0], tab: int.tryParse(parts[1]) ?? 0);
   }
+
+  /// A client's own reply templates (name → text), or null if it has none saved yet.
+  Map<String, String>? replyTemplates(String clientId) {
+    final raw = _str('templates.$clientId');
+    if (raw == null) return null;
+    try {
+      return (jsonDecode(raw) as Map).map((k, v) => MapEntry('$k', '$v'));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> setReplyTemplates(String clientId, Map<String, String> t) => _set('templates.$clientId', jsonEncode(t));
 
   Future<void> setLastApp(String clientId, String? appId, [int tab = 0]) => _set('last.$clientId', appId == null ? null : '$appId|$tab');
 }
