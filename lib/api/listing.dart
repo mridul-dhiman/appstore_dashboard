@@ -49,13 +49,13 @@ Map<String, String> changedFields(Map<String, String?> original, Map<String, Str
 
 /// Fields over their length limit, as readable problems.
 List<String> lengthProblems(Iterable<ListingField> fields, Map<String, String> values) => [
-      for (final f in fields)
-        if (f.max != null && (values[f.key]?.length ?? 0) > f.max!) '${f.label} is over ${f.max} characters (${values[f.key]!.length}).',
-    ];
+  for (final f in fields)
+    if (f.max != null && (values[f.key]?.length ?? 0) > f.max!) '${f.label} is over ${f.max} characters (${values[f.key]!.length}).',
+];
 
 Map<String, dynamic> localizationPatchBody(String type, String id, Map<String, String> attributes) => {
-      'data': {'type': type, 'id': id, 'attributes': attributes},
-    };
+  'data': {'type': type, 'id': id, 'attributes': attributes},
+};
 
 /// Fill Apple's `{w}x{h}bb.{f}` image template for a thumbnail [width] pixels wide.
 String? thumbnailUrl(String? template, int? w, int? h, {int width = 320}) {

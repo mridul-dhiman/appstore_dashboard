@@ -6,20 +6,55 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_asc.dart';
 
-Map<String, dynamic> res(String type, String id, Map<String, dynamic> a, [Map<String, dynamic> rel = const {}]) => {'type': type, 'id': id, 'attributes': a, 'relationships': rel};
+Map<String, dynamic> res(String type, String id, Map<String, dynamic> a, [Map<String, dynamic> rel = const {}]) => {
+  'type': type,
+  'id': id,
+  'attributes': a,
+  'relationships': rel,
+};
 
 Map<String, dynamic> appsResponse() => {
-      'data': [
-        res('apps', 'A1', {'name': 'Vidyagram', 'bundleId': 'com.example.vidya', 'sku': 'VG1'}, {'appStoreVersions': {'data': [{'type': 'appStoreVersions', 'id': 'V3'}, {'type': 'appStoreVersions', 'id': 'V2'}]}}),
-        res('apps', 'A2', {'name': 'Mac Notes', 'bundleId': 'com.example.notes', 'sku': 'MN1'}, {'appStoreVersions': {'data': [{'type': 'appStoreVersions', 'id': 'V9'}]}}),
-        res('apps', 'A3', {'name': 'Empty App', 'bundleId': 'com.example.empty', 'sku': 'EA1'}, {'appStoreVersions': {'data': []}}),
-      ],
-      'included': [
-        res('appStoreVersions', 'V3', {'versionString': '2.0.0', 'appStoreState': 'WAITING_FOR_REVIEW', 'platform': 'IOS'}),
-        res('appStoreVersions', 'V2', {'versionString': '1.9.0', 'appStoreState': 'READY_FOR_SALE', 'platform': 'IOS'}),
-        res('appStoreVersions', 'V9', {'versionString': '3.1.0', 'appStoreState': 'READY_FOR_SALE', 'platform': 'MAC_OS'}),
-      ],
-    };
+  'data': [
+    res(
+      'apps',
+      'A1',
+      {'name': 'Vidyagram', 'bundleId': 'com.example.vidya', 'sku': 'VG1'},
+      {
+        'appStoreVersions': {
+          'data': [
+            {'type': 'appStoreVersions', 'id': 'V3'},
+            {'type': 'appStoreVersions', 'id': 'V2'},
+          ],
+        },
+      },
+    ),
+    res(
+      'apps',
+      'A2',
+      {'name': 'Mac Notes', 'bundleId': 'com.example.notes', 'sku': 'MN1'},
+      {
+        'appStoreVersions': {
+          'data': [
+            {'type': 'appStoreVersions', 'id': 'V9'},
+          ],
+        },
+      },
+    ),
+    res(
+      'apps',
+      'A3',
+      {'name': 'Empty App', 'bundleId': 'com.example.empty', 'sku': 'EA1'},
+      {
+        'appStoreVersions': {'data': []},
+      },
+    ),
+  ],
+  'included': [
+    res('appStoreVersions', 'V3', {'versionString': '2.0.0', 'appStoreState': 'WAITING_FOR_REVIEW', 'platform': 'IOS'}),
+    res('appStoreVersions', 'V2', {'versionString': '1.9.0', 'appStoreState': 'READY_FOR_SALE', 'platform': 'IOS'}),
+    res('appStoreVersions', 'V9', {'versionString': '3.1.0', 'appStoreState': 'READY_FOR_SALE', 'platform': 'MAC_OS'}),
+  ],
+};
 
 FakeAsc account() => FakeAsc((r) => r.method == 'GET' && r.path.split('?').first == '/v1/apps' ? json(appsResponse()) : null);
 
@@ -29,7 +64,13 @@ Future<(FakeAsc, List<AppSummary>)> pump(WidgetTester tester) async {
   addTearDown(tester.view.reset);
   final fake = account();
   final opened = <AppSummary>[];
-  await tester.pumpWidget(MaterialApp(home: Scaffold(body: AppsPage(store: AppsStore(fake.client), onOpen: opened.add))));
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: AppsPage(store: AppsStore(fake.client), onOpen: opened.add),
+      ),
+    ),
+  );
   await tester.pumpAndSettle();
   return (fake, opened);
 }

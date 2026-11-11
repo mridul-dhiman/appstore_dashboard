@@ -5,7 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/fake_asc.dart';
 import 'support/fake_state.dart';
 
-const _tsv = 'Title\tSKU\tProduct Type Identifier\tUnits\tDeveloper Proceeds\tCurrency of Proceeds\tCountry Code\n'
+const _tsv =
+    'Title\tSKU\tProduct Type Identifier\tUnits\tDeveloper Proceeds\tCurrency of Proceeds\tCountry Code\n'
     'App\tS1\t1\t5\t0\tUSD\tUS\n';
 
 Future<FakeAsc> pumpSales(WidgetTester tester, FakeAsc Function() server) async {
@@ -14,9 +15,17 @@ Future<FakeAsc> pumpSales(WidgetTester tester, FakeAsc Function() server) async 
   addTearDown(tester.view.reset);
   final fake = server();
   final h = StateHarness((_) => null);
-  await tester.pumpWidget(MaterialApp(
-    home: Scaffold(body: SalesPage(client: fake.client, credentials: testCreds.copyWith(vendorNumber: '123'), state: h.state)),
-  ));
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: SalesPage(
+          client: fake.client,
+          credentials: testCreds.copyWith(vendorNumber: '123'),
+          state: h.state,
+        ),
+      ),
+    ),
+  );
   await tester.pumpAndSettle();
   return fake;
 }
@@ -24,14 +33,17 @@ Future<FakeAsc> pumpSales(WidgetTester tester, FakeAsc Function() server) async 
 void main() {
   testWidgets('one day failing leaves the rest of the report up, with a note', (tester) async {
     var first = true;
-    await pumpSales(tester, () => FakeAsc((r) {
-          if (!r.path.startsWith('/v1/salesReports')) return null;
-          if (first) {
-            first = false;
-            return apiError(500, 'Server error', 'try later');
-          }
-          return http200(_tsv);
-        }));
+    await pumpSales(
+      tester,
+      () => FakeAsc((r) {
+        if (!r.path.startsWith('/v1/salesReports')) return null;
+        if (first) {
+          first = false;
+          return apiError(500, 'Server error', 'try later');
+        }
+        return http200(_tsv);
+      }),
+    );
     expect(find.textContaining('1 day could not be loaded'), findsOneWidget);
     expect(find.text('Downloads'), findsOneWidget);
   });

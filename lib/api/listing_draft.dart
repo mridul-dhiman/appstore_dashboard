@@ -6,7 +6,15 @@ import 'screenshots.dart';
 
 /// An edited text field, held until the changelist is applied.
 class DraftText {
-  DraftText({required this.target, required this.locId, required this.locale, required this.field, required this.label, required this.before, required this.after});
+  DraftText({
+    required this.target,
+    required this.locId,
+    required this.locale,
+    required this.field,
+    required this.label,
+    required this.before,
+    required this.after,
+  });
   final String target; // 'version' (appStoreVersionLocalizations) or 'info' (appInfoLocalizations)
   final String locId;
   final String locale;
@@ -18,14 +26,13 @@ class DraftText {
 
 class ShotItem {
   ShotItem.existing({required String this.id, required this.name, this.url, this.bytes});
-  ShotItem.added({required this.name, required Uint8List this.bytes})
-      : id = null,
-        url = null;
+  ShotItem.added({required this.name, required Uint8List this.bytes}) : id = null, url = null;
 
   /// The placement id (the link between a library image and this localization). Null for a picture not uploaded yet.
   final String? id;
   final String? url;
   final String name;
+
   /// The picture itself, for a new one (and kept for the preview once it has been placed but not yet reloaded).
   final Uint8List? bytes;
   bool deleted = false;
@@ -35,7 +42,10 @@ class ShotItem {
 /// The editable state of the screenshots of one device group (e.g. 6.9" iPhone) in one locale.
 class ShotSetDraft {
   ShotSetDraft({required this.exists, required this.group, required this.versionLocId, required this.locale, required this.items})
-      : originalOrder = [for (final i in items) if (!i.isNew) i.id!];
+    : originalOrder = [
+        for (final i in items)
+          if (!i.isNew) i.id!,
+      ];
 
   bool exists; // false = a device group added in this session that has no screenshots on Apple yet
   final String group; // Apple's placementGroup, e.g. IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE
@@ -44,13 +54,22 @@ class ShotSetDraft {
   final List<ShotItem> items;
   final List<String> originalOrder;
 
-  List<ShotItem> get kept => [for (final i in items) if (!i.deleted) i];
+  List<ShotItem> get kept => [
+    for (final i in items)
+      if (!i.deleted) i,
+  ];
   int get liveCount => kept.length;
 
   /// Existing screenshots left in a different order, or a new one placed ahead of an existing one.
   bool get needsReorder {
-    final keptExisting = [for (final i in kept) if (!i.isNew) i.id!];
-    final expected = [for (final id in originalOrder) if (keptExisting.contains(id)) id];
+    final keptExisting = [
+      for (final i in kept)
+        if (!i.isNew) i.id!,
+    ];
+    final expected = [
+      for (final id in originalOrder)
+        if (keptExisting.contains(id)) id,
+    ];
     if (!listEquals(keptExisting, expected)) return true;
     var sawNew = false;
     for (final i in kept) {
@@ -96,7 +115,14 @@ class ListingDraft extends ChangeNotifier {
 
   String? textOverride(String target, String locId, String field) => _texts['$target:$locId:$field']?.after;
 
-  void setText({required String target, required String locId, required String locale, required ListingField field, required String before, required String after}) {
+  void setText({
+    required String target,
+    required String locId,
+    required String locale,
+    required ListingField field,
+    required String before,
+    required String after,
+  }) {
     final k = '$target:$locId:${field.key}';
     if (after == before) {
       if (_texts.remove(k) != null) notifyListeners();
@@ -169,12 +195,22 @@ class ListingDraft extends ChangeNotifier {
     }
     for (final s in _sets.values.where((s) => s.changed)) {
       final label = placementGroupLabel(s.group);
-      if (!s.exists) out.add(Change(kind: 'shot-set', locale: s.locale, title: '$label: new device group', detail: '${s.items.length} screenshot(s)'));
+      if (!s.exists) {
+        out.add(Change(kind: 'shot-set', locale: s.locale, title: '$label: new device group', detail: '${s.items.length} screenshot(s)'));
+      }
       for (final i in s.items.where((i) => i.deleted)) {
         out.add(Change(kind: 'shot-delete', locale: s.locale, title: '$label: remove ${i.name}', detail: i.name));
       }
       for (final i in s.items.where((i) => i.isNew && !i.deleted)) {
-        out.add(Change(kind: 'shot-add', locale: s.locale, title: '$label: add ${i.name}', preview: i.bytes, detail: '${(i.bytes!.length / 1024).round()} KB'));
+        out.add(
+          Change(
+            kind: 'shot-add',
+            locale: s.locale,
+            title: '$label: add ${i.name}',
+            preview: i.bytes,
+            detail: '${(i.bytes!.length / 1024).round()} KB',
+          ),
+        );
       }
       if (s.exists && s.needsReorder) out.add(Change(kind: 'shot-order', locale: s.locale, title: '$label: new order'));
     }

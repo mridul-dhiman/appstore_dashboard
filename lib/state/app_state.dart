@@ -13,9 +13,9 @@ enum Phase { locked, setup, ready }
 /// drops them.
 class AppState extends ChangeNotifier {
   AppState({DeviceLock? lock, Vault? vault, this.httpClient, Prefs? prefs})
-      : _lock = lock ?? DeviceLock(),
-        _vault = vault ?? Vault(),
-        prefs = prefs ?? Prefs.memory() {
+    : _lock = lock ?? DeviceLock(),
+      _vault = vault ?? Vault(),
+      prefs = prefs ?? Prefs.memory() {
     themeMode = this.prefs.theme;
     if (kIsWeb) {
       // Nothing is stored in a browser, so there is nothing to unlock.
@@ -72,7 +72,8 @@ class AppState extends ChangeNotifier {
       _activate(active);
     } else {
       if (data.unreadable) {
-        message = 'Your saved clients could not be read, so you need to add a key again. The unreadable data was kept in '
+        message =
+            'Your saved clients could not be read, so you need to add a key again. The unreadable data was kept in '
             'your keychain as "${Vault.backupKey}" and is not overwritten.';
       }
       phase = Phase.setup;

@@ -14,32 +14,32 @@ class GroupSettings {
 const maxPublicLinkLimit = 10000;
 
 List<String> groupProblems(GroupSettings g) => [
-      if (g.name.trim().isEmpty) 'Give the group a name.',
-      if (g.name.trim().length > 50) 'The name is over 50 characters.',
-      if (g.publicLink && g.limit != null && (g.limit! < 1 || g.limit! > maxPublicLinkLimit)) 'The tester limit must be between 1 and $maxPublicLinkLimit.',
-    ];
+  if (g.name.trim().isEmpty) 'Give the group a name.',
+  if (g.name.trim().length > 50) 'The name is over 50 characters.',
+  if (g.publicLink && g.limit != null && (g.limit! < 1 || g.limit! > maxPublicLinkLimit))
+    'The tester limit must be between 1 and $maxPublicLinkLimit.',
+];
 
 Map<String, dynamic> groupCreateBody(String appId, GroupSettings g, {required bool internal, bool allBuilds = true}) => {
-      'data': {
-        'type': 'betaGroups',
-        'attributes': {
-          'name': g.name.trim(),
-          'isInternalGroup': internal,
-          if (internal) 'hasAccessToAllBuilds': allBuilds,
-          'feedbackEnabled': g.feedback,
-          if (!internal) ...{
-            'publicLinkEnabled': g.publicLink,
-            if (g.publicLink) ...{
-              'publicLinkLimitEnabled': g.limit != null,
-              if (g.limit != null) 'publicLinkLimit': g.limit,
-            },
-          },
-        },
-        'relationships': {
-          'app': {'data': {'type': 'apps', 'id': appId}},
-        },
+  'data': {
+    'type': 'betaGroups',
+    'attributes': {
+      'name': g.name.trim(),
+      'isInternalGroup': internal,
+      if (internal) 'hasAccessToAllBuilds': allBuilds,
+      'feedbackEnabled': g.feedback,
+      if (!internal) ...{
+        'publicLinkEnabled': g.publicLink,
+        if (g.publicLink) ...{'publicLinkLimitEnabled': g.limit != null, if (g.limit != null) 'publicLinkLimit': g.limit},
       },
-    };
+    },
+    'relationships': {
+      'app': {
+        'data': {'type': 'apps', 'id': appId},
+      },
+    },
+  },
+};
 
 /// Only what changed, so an untouched field is never overwritten.
 Map<String, dynamic> groupUpdateBody(String id, GroupSettings before, GroupSettings after, {required bool internal}) {
@@ -62,39 +62,52 @@ Map<String, dynamic> groupUpdateBody(String id, GroupSettings before, GroupSetti
 bool groupChanged(Map<String, dynamic> updateBody) => (updateBody['data']['attributes'] as Map).isNotEmpty;
 
 /// Create a tester and put them in groups in one call. Apple emails an invitation to external testers.
-Map<String, dynamic> testerCreateBody({required String email, String firstName = '', String lastName = '', required List<String> groupIds}) => {
-      'data': {
-        'type': 'betaTesters',
-        'attributes': {
-          'email': email.trim(),
-          if (firstName.trim().isNotEmpty) 'firstName': firstName.trim(),
-          if (lastName.trim().isNotEmpty) 'lastName': lastName.trim(),
-        },
-        'relationships': {
-          'betaGroups': {'data': [for (final g in groupIds) {'type': 'betaGroups', 'id': g}]},
-        },
+Map<String, dynamic> testerCreateBody({
+  required String email,
+  String firstName = '',
+  String lastName = '',
+  required List<String> groupIds,
+}) => {
+  'data': {
+    'type': 'betaTesters',
+    'attributes': {
+      'email': email.trim(),
+      if (firstName.trim().isNotEmpty) 'firstName': firstName.trim(),
+      if (lastName.trim().isNotEmpty) 'lastName': lastName.trim(),
+    },
+    'relationships': {
+      'betaGroups': {
+        'data': [
+          for (final g in groupIds) {'type': 'betaGroups', 'id': g},
+        ],
       },
-    };
+    },
+  },
+};
 
 Map<String, dynamic> linkageBody(String type, List<String> ids) => {
-      'data': [for (final id in ids) {'type': type, 'id': id}],
-    };
+  'data': [
+    for (final id in ids) {'type': type, 'id': id},
+  ],
+};
 
 Map<String, dynamic> betaReviewBody(String buildId) => {
-      'data': {
-        'type': 'betaAppReviewSubmissions',
-        'relationships': {
-          'build': {'data': {'type': 'builds', 'id': buildId}},
-        },
+  'data': {
+    'type': 'betaAppReviewSubmissions',
+    'relationships': {
+      'build': {
+        'data': {'type': 'builds', 'id': buildId},
       },
-    };
+    },
+  },
+};
 
 GroupSettings settingsOf(Resource g) => GroupSettings(
-      name: g.str('name') ?? '',
-      feedback: g.flag('feedbackEnabled') ?? true,
-      publicLink: g.flag('publicLinkEnabled') ?? false,
-      limit: g.flag('publicLinkLimitEnabled') == true ? g.integer('publicLinkLimit') : null,
-    );
+  name: g.str('name') ?? '',
+  feedback: g.flag('feedbackEnabled') ?? true,
+  publicLink: g.flag('publicLinkEnabled') ?? false,
+  limit: g.flag('publicLinkLimitEnabled') == true ? g.integer('publicLinkLimit') : null,
+);
 
 /// Builds of an app with their pre-release version and TestFlight state.
 class AppBuild {
@@ -127,9 +140,11 @@ Future<List<AppBuild>> loadAppBuilds(AscClient c, String appId) async {
 
 Future<List<Resource>> loadGroups(AscClient c, String appId) async => (await c.all('/v1/apps/$appId/betaGroups', {'limit': '200'})).data;
 
-Future<List<Resource>> loadGroupTesters(AscClient c, String groupId) async => (await c.all('/v1/betaGroups/$groupId/betaTesters', {'limit': '200'})).data;
+Future<List<Resource>> loadGroupTesters(AscClient c, String groupId) async =>
+    (await c.all('/v1/betaGroups/$groupId/betaTesters', {'limit': '200'})).data;
 
-Future<Set<String>> loadGroupBuildIds(AscClient c, String groupId) async => (await c.all('/v1/betaGroups/$groupId/builds', {'limit': '200', 'fields[builds]': 'version'})).data.map((b) => b.id).toSet();
+Future<Set<String>> loadGroupBuildIds(AscClient c, String groupId) async =>
+    (await c.all('/v1/betaGroups/$groupId/builds', {'limit': '200', 'fields[builds]': 'version'})).data.map((b) => b.id).toSet();
 
 Future<Resource> createGroup(AscClient c, Map<String, dynamic> body) async => (await c.post('/v1/betaGroups', body)).data.first;
 
@@ -174,12 +189,12 @@ Future<bool> addTester(AscClient c, String groupId, {required String email, Stri
 /// Apple has no endpoint that deletes a build. Expiring it is the closest thing: it leaves TestFlight and can no longer be
 /// chosen for a submission. It cannot be undone.
 Map<String, dynamic> expireBuildBody(String id) => {
-      'data': {
-        'type': 'builds',
-        'id': id,
-        'attributes': {'expired': true},
-      },
-    };
+  'data': {
+    'type': 'builds',
+    'id': id,
+    'attributes': {'expired': true},
+  },
+};
 
 Future<void> expireBuild(AscClient c, String id) async {
   await c.patch('/v1/builds/$id', expireBuildBody(id));
@@ -204,24 +219,24 @@ class BuildUpload {
 
   /// What Apple is doing with the delivery, in words: AWAITING_UPLOAD, PROCESSING, FAILED or COMPLETE.
   String get stateLabel => switch (state) {
-        'AWAITING_UPLOAD' => 'Waiting for the file',
-        'PROCESSING' => 'Processing',
-        'FAILED' => 'Failed',
-        'COMPLETE' => 'Processed',
-        final other => other[0] + other.substring(1).toLowerCase().replaceAll('_', ' '),
-      };
+    'AWAITING_UPLOAD' => 'Waiting for the file',
+    'PROCESSING' => 'Processing',
+    'FAILED' => 'Failed',
+    'COMPLETE' => 'Processed',
+    final other => other[0] + other.substring(1).toLowerCase().replaceAll('_', ' '),
+  };
 
   /// Apple's non-fatal notices (for example a missing Info.plist purpose string).
   List<String> get warnings => [
-        for (final e in (_state['warnings'] as List? ?? const []))
-          if (e is Map && e['description'] != null) e['description'].toString(),
-      ];
+    for (final e in (_state['warnings'] as List? ?? const []))
+      if (e is Map && e['description'] != null) e['description'].toString(),
+  ];
 
   /// Apple's error descriptions, when processing failed.
   List<String> get errors => [
-        for (final e in (_state['errors'] as List? ?? const []))
-          if (e is Map && e['description'] != null) e['description'].toString(),
-      ];
+    for (final e in (_state['errors'] as List? ?? const []))
+      if (e is Map && e['description'] != null) e['description'].toString(),
+  ];
 }
 
 Future<List<BuildUpload>> loadBuildUploads(AscClient c, String appId) async {
@@ -240,7 +255,9 @@ List<BuildUpload> pendingUploads(List<BuildUpload> uploads, Set<String> knownBui
   bool within(BuildUpload u, Duration d) => u.uploaded == null || at.difference(u.uploaded!) < d;
   return [
     for (final u in uploads)
-      if (!knownBuilds.contains(buildKey(u.shortVersion, u.buildNumber)) && within(u, u.processing || u.failed ? const Duration(days: 7) : const Duration(hours: 1))) u,
+      if (!knownBuilds.contains(buildKey(u.shortVersion, u.buildNumber)) &&
+          within(u, u.processing || u.failed ? const Duration(days: 7) : const Duration(hours: 1)))
+        u,
   ];
 }
 
@@ -271,21 +288,21 @@ Future<String?> loadAppIconUrl(AscClient c, String appId, {int px = 128}) async 
 
 /// TestFlight state of a build in plain words, from buildBetaDetails (internal/external build state).
 String betaStateLabel(String? s) => switch (s) {
-      null || '' => '',
-      'PROCESSING' => 'Processing',
-      'PROCESSING_EXCEPTION' => 'Processing problem',
-      'MISSING_EXPORT_COMPLIANCE' => 'Missing export compliance',
-      'READY_FOR_BETA_TESTING' => 'Ready to test',
-      'IN_BETA_TESTING' => 'In testing',
-      'EXPIRED' => 'Expired',
-      'IN_EXPORT_COMPLIANCE_REVIEW' => 'Export compliance review',
-      'READY_FOR_BETA_SUBMISSION' => 'Ready for beta review',
-      'WAITING_FOR_BETA_REVIEW' => 'Waiting for beta review',
-      'IN_BETA_REVIEW' => 'In beta review',
-      'BETA_REJECTED' => 'Beta rejected',
-      'BETA_APPROVED' => 'Beta approved',
-      final other => other[0] + other.substring(1).toLowerCase().replaceAll('_', ' '),
-    };
+  null || '' => '',
+  'PROCESSING' => 'Processing',
+  'PROCESSING_EXCEPTION' => 'Processing problem',
+  'MISSING_EXPORT_COMPLIANCE' => 'Missing export compliance',
+  'READY_FOR_BETA_TESTING' => 'Ready to test',
+  'IN_BETA_TESTING' => 'In testing',
+  'EXPIRED' => 'Expired',
+  'IN_EXPORT_COMPLIANCE_REVIEW' => 'Export compliance review',
+  'READY_FOR_BETA_SUBMISSION' => 'Ready for beta review',
+  'WAITING_FOR_BETA_REVIEW' => 'Waiting for beta review',
+  'IN_BETA_REVIEW' => 'In beta review',
+  'BETA_REJECTED' => 'Beta rejected',
+  'BETA_APPROVED' => 'Beta approved',
+  final other => other[0] + other.substring(1).toLowerCase().replaceAll('_', ' '),
+};
 
 /// Build id -> its buildBetaDetails, in one light request.
 Future<Map<String, Resource>> loadBetaDetails(AscClient c, String appId) async {
@@ -296,8 +313,5 @@ Future<Map<String, Resource>> loadBetaDetails(AscClient c, String appId) async {
     'include': 'buildBetaDetail',
     'fields[builds]': 'buildBetaDetail',
   });
-  return {
-    for (final b in page.data)
-      b.id: ?page.inc('buildBetaDetails', b.relId('buildBetaDetail')),
-  };
+  return {for (final b in page.data) b.id: ?page.inc('buildBetaDetails', b.relId('buildBetaDetail'))};
 }

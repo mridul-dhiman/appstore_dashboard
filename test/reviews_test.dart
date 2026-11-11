@@ -9,34 +9,64 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_asc.dart';
 
-Map<String, dynamic> res(String type, String id, Map<String, dynamic> a, [Map<String, dynamic> rel = const {}]) => {'type': type, 'id': id, 'attributes': a, 'relationships': rel};
+Map<String, dynamic> res(String type, String id, Map<String, dynamic> a, [Map<String, dynamic> rel = const {}]) => {
+  'type': type,
+  'id': id,
+  'attributes': a,
+  'relationships': rel,
+};
 
 Map<String, dynamic> review(String id, int rating, String title, {String? response, String nick = 'Asha'}) => res(
-      'customerReviews',
-      id,
-      {'rating': rating, 'title': title, 'body': 'body of $title', 'reviewerNickname': nick, 'territory': 'IND', 'createdDate': '2026-11-03T02:05:58-08:00'},
-      {'response': {'data': response == null ? null : {'type': 'customerReviewResponses', 'id': response}}},
-    );
+  'customerReviews',
+  id,
+  {
+    'rating': rating,
+    'title': title,
+    'body': 'body of $title',
+    'reviewerNickname': nick,
+    'territory': 'IND',
+    'createdDate': '2026-11-03T02:05:58-08:00',
+  },
+  {
+    'response': {
+      'data': response == null ? null : {'type': 'customerReviewResponses', 'id': response},
+    },
+  },
+);
 
 Map<String, dynamic> reviewsJson() => {
-      'data': [review('R1', 5, 'Great'), review('R2', 2, 'Crashes', nick: 'Bhuvan'), review('R3', 1, 'Bad', response: 'S3'), review('R4', 3, 'Okay')],
-      'included': [res('customerReviewResponses', 'S3', {'responseBody': 'Sorry about that', 'state': 'PUBLISHED'})],
-      'meta': {'paging': {'total': 4, 'limit': 200}},
-    };
+  'data': [
+    review('R1', 5, 'Great'),
+    review('R2', 2, 'Crashes', nick: 'Bhuvan'),
+    review('R3', 1, 'Bad', response: 'S3'),
+    review('R4', 3, 'Okay'),
+  ],
+  'included': [
+    res('customerReviewResponses', 'S3', {'responseBody': 'Sorry about that', 'state': 'PUBLISHED'}),
+  ],
+  'meta': {
+    'paging': {'total': 4, 'limit': 200},
+  },
+};
 
 FakeAsc account({void Function(Recorded)? onWrite}) => FakeAsc((r) {
-      final p = r.path.split('?').first;
-      if (r.method == 'GET' && p == '/v1/apps/APP/customerReviews') return json(reviewsJson());
-      if (r.method == 'POST' && p == '/v1/customerReviewResponses') {
-        onWrite?.call(r);
-        return json({'data': res('customerReviewResponses', 'NEW', {'responseBody': r.body!['data']['attributes']['responseBody'], 'state': 'PENDING_PUBLISH'})}, 201);
-      }
-      if (r.method == 'DELETE' && p == '/v1/customerReviewResponses/S3') {
-        onWrite?.call(r);
-        return noContent();
-      }
-      return null;
-    });
+  final p = r.path.split('?').first;
+  if (r.method == 'GET' && p == '/v1/apps/APP/customerReviews') return json(reviewsJson());
+  if (r.method == 'POST' && p == '/v1/customerReviewResponses') {
+    onWrite?.call(r);
+    return json({
+      'data': res('customerReviewResponses', 'NEW', {
+        'responseBody': r.body!['data']['attributes']['responseBody'],
+        'state': 'PENDING_PUBLISH',
+      }),
+    }, 201);
+  }
+  if (r.method == 'DELETE' && p == '/v1/customerReviewResponses/S3') {
+    onWrite?.call(r);
+    return noContent();
+  }
+  return null;
+});
 
 void main() {
   group('api', () {
@@ -54,7 +84,8 @@ void main() {
 
     test('filters: needs reply is 1-3★ with no response; unanswered is any rating with none', () async {
       final d = await loadReviews(account().client, 'APP');
-      List<String> ids(ReviewFilter f, {int? stars, String q = ''}) => filterReviews(d.reviews, f, stars: stars, query: q).map((r) => r.id).toList();
+      List<String> ids(ReviewFilter f, {int? stars, String q = ''}) =>
+          filterReviews(d.reviews, f, stars: stars, query: q).map((r) => r.id).toList();
       expect(ids(ReviewFilter.all), ['R1', 'R2', 'R3', 'R4']);
       expect(ids(ReviewFilter.needsReply), ['R2', 'R4'], reason: 'R3 is 1★ but already answered; R1 is 5★');
       expect(ids(ReviewFilter.unanswered), ['R1', 'R2', 'R4']);
@@ -71,7 +102,11 @@ void main() {
         'data': {
           'type': 'customerReviewResponses',
           'attributes': {'responseBody': 'Thanks for telling us.'},
-          'relationships': {'review': {'data': {'type': 'customerReviews', 'id': 'R2'}}},
+          'relationships': {
+            'review': {
+              'data': {'type': 'customerReviews', 'id': 'R2'},
+            },
+          },
         },
       });
     });
@@ -104,7 +139,13 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       final fake = account(onWrite: onWrite);
-      await tester.pumpWidget(MaterialApp(home: Scaffold(body: ReviewsTab(client: fake.client, appId: 'APP'))));
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ReviewsTab(client: fake.client, appId: 'APP'),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
       return fake;
     }
@@ -173,7 +214,11 @@ void main() {
     expect(a.items.keys, defaultReplyTemplates.keys);
     await a.save({'Hello': 'Hi {name}!', ' ': 'x', 'Empty': '  '});
     expect(ReplyTemplates(prefs: prefs, clientId: 'c1').items, {'Hello': 'Hi {name}!'});
-    expect(ReplyTemplates(prefs: prefs, clientId: 'c2').items.keys, defaultReplyTemplates.keys, reason: 'another client keeps its own');
+    expect(
+      ReplyTemplates(prefs: prefs, clientId: 'c2').items.keys,
+      defaultReplyTemplates.keys,
+      reason: 'another client keeps its own',
+    );
   });
 
   test('the default templates mention no particular app', () {
@@ -185,7 +230,21 @@ void main() {
 
   testWidgets('the templates dialog adds, removes and saves', (tester) async {
     final t = ReplyTemplates(prefs: Prefs.memory(), clientId: 'c1');
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: Builder(builder: (c) => TextButton(onPressed: () => showDialog<void>(context: c, builder: (_) => TemplatesDialog(templates: t)), child: const Text('open'))))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (c) => TextButton(
+              onPressed: () => showDialog<void>(
+                context: c,
+                builder: (_) => TemplatesDialog(templates: t),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Remove').first); // drop "Thanks"

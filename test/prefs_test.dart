@@ -32,7 +32,11 @@ void main() {
       if (r.path.startsWith('/v1/apps?')) {
         return json({
           'data': [
-            {'type': 'apps', 'id': 'A1', 'attributes': {'name': 'Vidyagram', 'bundleId': 'com.example.vidya', 'sku': 'VG1'}},
+            {
+              'type': 'apps',
+              'id': 'A1',
+              'attributes': {'name': 'Vidyagram', 'bundleId': 'com.example.vidya', 'sku': 'VG1'},
+            },
           ],
         });
       }

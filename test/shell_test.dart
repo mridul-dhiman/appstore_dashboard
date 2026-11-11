@@ -7,10 +7,14 @@ import 'support/fake_asc.dart';
 import 'support/fake_state.dart';
 
 Map<String, dynamic> appsJson() => {
-      'data': [
-        {'type': 'apps', 'id': 'A1', 'attributes': {'name': 'Vidyagram', 'bundleId': 'com.example.vidya', 'sku': 'VG1'}},
-      ],
-    };
+  'data': [
+    {
+      'type': 'apps',
+      'id': 'A1',
+      'attributes': {'name': 'Vidyagram', 'bundleId': 'com.example.vidya', 'sku': 'VG1'},
+    },
+  ],
+};
 
 Future<StateHarness> pumpShell(WidgetTester tester) async {
   tester.view.physicalSize = const Size(1400, 900);
@@ -77,9 +81,20 @@ void main() {
     await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
     expect(
       tester.getSemantics(find.text('Apps').first),
-      matchesSemantics(label: 'Apps', isButton: true, isSelected: true, hasSelectedState: true, hasTapAction: true, isFocusable: true, hasFocusAction: true),
+      matchesSemantics(
+        label: 'Apps',
+        isButton: true,
+        isSelected: true,
+        hasSelectedState: true,
+        hasTapAction: true,
+        isFocusable: true,
+        hasFocusAction: true,
+      ),
     );
-    expect(tester.getSemantics(find.text('Search apps and actions')), isSemantics(isButton: true, hint: 'Opens the command palette, Ctrl K'));
+    expect(
+      tester.getSemantics(find.text('Search apps and actions')),
+      isSemantics(isButton: true, hint: 'Opens the command palette, Ctrl K'),
+    );
     handle.dispose();
   });
 }

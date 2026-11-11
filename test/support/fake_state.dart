@@ -61,24 +61,39 @@ class ClosableClient extends http.BaseClient {
   void close() => closed = true;
 }
 
-const testCreds = Credentials(keyId: 'TESTKEY123', issuerId: '00000000-0000-0000-0000-000000000000', privateKeyPem: testKeyPem, name: 'Test');
+const testCreds = Credentials(
+  keyId: 'TESTKEY123',
+  issuerId: '00000000-0000-0000-0000-000000000000',
+  privateKeyPem: testKeyPem,
+  name: 'Test',
+);
 
 /// An [AppState] whose clients answer from [responder]. Every request is recorded in [log].
 class StateHarness {
   StateHarness(Responder responder, {VaultData? vault, UnlockResult unlock = UnlockResult.unlocked})
-      : vault = MemoryVault(vault ?? const VaultData(accounts: [testCreds], activeId: '00000000-0000-0000-0000-000000000000:TESTKEY123')),
-        lock = FakeLock(unlock) {
+    : vault = MemoryVault(vault ?? const VaultData(accounts: [testCreds], activeId: '00000000-0000-0000-0000-000000000000:TESTKEY123')),
+      lock = FakeLock(unlock) {
     state = AppState(
       lock: lock,
       vault: this.vault,
       httpClient: () {
-        final c = ClosableClient(MockClient((req) async {
-          Map<String, dynamic>? body;
-          if (req.body.isNotEmpty) body = (jsonDecode(req.body) as Map).cast<String, dynamic>();
-          final rec = Recorded(req.method, req.url.path + (req.url.hasQuery ? '?${req.url.query}' : ''), body);
-          log.add(rec);
-          return responder(rec) ?? http.Response(jsonEncode({'errors': [{'title': 'Unexpected', 'detail': rec.toString()}]}), 500);
-        }));
+        final c = ClosableClient(
+          MockClient((req) async {
+            Map<String, dynamic>? body;
+            if (req.body.isNotEmpty) body = (jsonDecode(req.body) as Map).cast<String, dynamic>();
+            final rec = Recorded(req.method, req.url.path + (req.url.hasQuery ? '?${req.url.query}' : ''), body);
+            log.add(rec);
+            return responder(rec) ??
+                http.Response(
+                  jsonEncode({
+                    'errors': [
+                      {'title': 'Unexpected', 'detail': rec.toString()},
+                    ],
+                  }),
+                  500,
+                );
+          }),
+        );
         clients.add(c);
         return c;
       },

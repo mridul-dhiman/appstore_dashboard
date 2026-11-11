@@ -1,4 +1,5 @@
 import 'package:archive/archive.dart';
+
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -7,7 +8,8 @@ import 'package:appstore_dashboard/api/ipa_info.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // A real binary plist (bplist00) produced by plutil from known values, so the reader is checked against Apple's format.
-const _fixture = 'YnBsaXN0MDDYAQIDBAUGBwgJCgsMDRAREl8QGkNGQnVuZGxlU2hvcnRWZXJzaW9uU3RyaW5nXxASQ0ZCdW5kbGVJZGVudGlmaWVyXxATQ0ZCdW5kbGVEaXNwbGF5TmFtZV8QEkxTUmVxdWlyZXNJUGhvbmVPU15VSURldmljZUZhbWlseVRMb25nXxAPQ0ZCdW5kbGVWZXJzaW9uXxAQTWluaW11bU9TVmVyc2lvblUyLjUuMV8QEGNvbS5leGFtcGxlLmRlbW9mAEQA6QBtAG8AICcTCaIODxABEAJfEER4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eFI4OFQxNi42AAgAGQA2AEsAYQB2AIUAigCcAK8AtQDIANUA1gDZANsA3QEkAScAAAAAAAACAQAAAAAAAAATAAAAAAAAAAAAAAAAAAABLA==';
+const _fixture =
+    'YnBsaXN0MDDYAQIDBAUGBwgJCgsMDRAREl8QGkNGQnVuZGxlU2hvcnRWZXJzaW9uU3RyaW5nXxASQ0ZCdW5kbGVJZGVudGlmaWVyXxATQ0ZCdW5kbGVEaXNwbGF5TmFtZV8QEkxTUmVxdWlyZXNJUGhvbmVPU15VSURldmljZUZhbWlseVRMb25nXxAPQ0ZCdW5kbGVWZXJzaW9uXxAQTWluaW11bU9TVmVyc2lvblUyLjUuMV8QEGNvbS5leGFtcGxlLmRlbW9mAEQA6QBtAG8AICcTCaIODxABEAJfEER4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eFI4OFQxNi42AAgAGQA2AEsAYQB2AIUAigCcAK8AtQDIANUA1gDZANsA3QEkAScAAAAAAAACAQAAAAAAAAATAAAAAAAAAAAAAAAAAAABLA==';
 
 void main() {
   test('binary Info.plist: strings, UTF-16, bools, arrays, long strings', () {
@@ -23,7 +25,8 @@ void main() {
   });
 
   test('XML Info.plist falls back to the flat string keys', () {
-    const xml = '<?xml version="1.0"?><plist><dict><key>CFBundleVersion</key><string>7</string><key>CFBundleShortVersionString</key><string>1.0</string></dict></plist>';
+    const xml =
+        '<?xml version="1.0"?><plist><dict><key>CFBundleVersion</key><string>7</string><key>CFBundleShortVersionString</key><string>1.0</string></dict></plist>';
     final d = parsePlist(Uint8List.fromList(utf8.encode(xml)));
     expect(d['CFBundleVersion'], '7');
   });
@@ -37,7 +40,11 @@ void main() {
       'data': {
         'type': 'buildUploads',
         'attributes': {'cfBundleShortVersionString': '4.9.0', 'cfBundleVersion': '373', 'platform': 'IOS'},
-        'relationships': {'app': {'data': {'type': 'apps', 'id': 'A1'}}},
+        'relationships': {
+          'app': {
+            'data': {'type': 'apps', 'id': 'A1'},
+          },
+        },
       },
     });
     final f = buildUploadFileBody(uploadId: 'U1', fileName: 'x.ipa', fileSize: 10)['data'] as Map;
@@ -45,7 +52,12 @@ void main() {
     expect(((f['relationships'] as Map)['buildUpload'] as Map)['data'], {'type': 'buildUploads', 'id': 'U1'});
     final c = commitBody(fileId: 'F1', md5Hex: 'abc')['data'] as Map;
     expect(c['id'], 'F1');
-    expect(c['attributes'], {'uploaded': true, 'sourceFileChecksums': {'file': {'hash': 'abc', 'algorithm': 'MD5'}}});
+    expect(c['attributes'], {
+      'uploaded': true,
+      'sourceFileChecksums': {
+        'file': {'hash': 'abc', 'algorithm': 'MD5'},
+      },
+    });
   });
 
   test('MD5 is the standard digest', () {
@@ -53,7 +65,15 @@ void main() {
   });
 
   test('upload operations parse headers and are validated for exact coverage', () {
-    final op = UploadOp.fromJson({'method': 'PUT', 'url': 'https://x/1', 'length': 6, 'offset': 0, 'requestHeaders': [{'name': 'Content-Type', 'value': 'application/octet-stream'}]});
+    final op = UploadOp.fromJson({
+      'method': 'PUT',
+      'url': 'https://x/1',
+      'length': 6,
+      'offset': 0,
+      'requestHeaders': [
+        {'name': 'Content-Type', 'value': 'application/octet-stream'},
+      ],
+    });
     expect(op.headers, {'Content-Type': 'application/octet-stream'});
     UploadOp o(int off, int len) => UploadOp(method: 'PUT', url: 'u', offset: off, length: len, headers: const {});
     expect(validateOps([o(0, 6), o(6, 4)], 10), isNull);
@@ -69,9 +89,13 @@ void main() {
     expect(ascPlatformFor('xros'), 'VISION_OS');
     expect(ascPlatformFor(null), 'IOS');
     final tv = Archive()
-      ..addFile(ArchiveFile.string('Payload/X.app/Info.plist',
+      ..addFile(
+        ArchiveFile.string(
+          'Payload/X.app/Info.plist',
           '<plist><dict><key>CFBundleIdentifier</key><string>a</string><key>CFBundleShortVersionString</key><string>1</string>'
-          '<key>CFBundleVersion</key><string>2</string><key>DTPlatformName</key><string>appletvos</string></dict></plist>'));
+              '<key>CFBundleVersion</key><string>2</string><key>DTPlatformName</key><string>appletvos</string></dict></plist>',
+        ),
+      );
     expect(readIpaInfo(Uint8List.fromList(ZipEncoder().encode(tv))).platform, 'TV_OS');
   });
 }

@@ -1,12 +1,17 @@
 import 'package:appstore_dashboard/api/screenshots.dart';
 import 'package:appstore_dashboard/api/models.dart';
+
 import 'dart:typed_data';
+
 import 'package:appstore_dashboard/api/listing.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('only changed fields are sent; null and empty count as equal', () {
-    final changed = changedFields({'description': 'old', 'keywords': null, 'whatsNew': 'same'}, {'description': 'new', 'keywords': '', 'whatsNew': 'same'});
+    final changed = changedFields(
+      {'description': 'old', 'keywords': null, 'whatsNew': 'same'},
+      {'description': 'new', 'keywords': '', 'whatsNew': 'same'},
+    );
     expect(changed, {'description': 'new'});
   });
 
@@ -26,7 +31,11 @@ void main() {
 
   test('patch body is JSON:API shaped', () {
     expect(localizationPatchBody('appStoreVersionLocalizations', 'L1', {'whatsNew': 'Bug fixes'}), {
-      'data': {'type': 'appStoreVersionLocalizations', 'id': 'L1', 'attributes': {'whatsNew': 'Bug fixes'}},
+      'data': {
+        'type': 'appStoreVersionLocalizations',
+        'id': 'L1',
+        'attributes': {'whatsNew': 'Bug fixes'},
+      },
     });
   });
 
@@ -42,7 +51,9 @@ void main() {
   });
 
   test('image size is read from PNG and JPEG headers', () {
-    final png = Uint8List(32)..setAll(0, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0x05, 0x0A, 0, 0, 0x0A, 0xEC]);
+    final png = Uint8List(
+      32,
+    )..setAll(0, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0x05, 0x0A, 0, 0, 0x0A, 0xEC]);
     expect(imageSize(png), (w: 1290, h: 2796));
     final jpg = Uint8List.fromList([0xFF, 0xD8, 0xFF, 0xE0, 0, 4, 0, 0, 0xFF, 0xC0, 0, 11, 8, 0x0A, 0xEC, 0x05, 0x0A, 3, 0]);
     expect(imageSize(jpg), (w: 1290, h: 2796));
@@ -50,17 +61,49 @@ void main() {
   });
 
   test('specs map exact sizes to device groups', () {
-    final specs = ScreenshotSpecs.parse(Resource(id: '1', type: 'appAssetLibraryRefData', relationships: const {}, attributes: {
-      'imageSpecs': [
-        {'specId': 'a', 'dimensions': {'minWidth': 1290, 'maxWidth': 1290, 'minHeight': 2796, 'maxHeight': 2796}},
-        {'specId': 'b', 'dimensions': {'minWidth': 2796, 'maxWidth': 2796, 'minHeight': 1290, 'maxHeight': 1290}},
-        {'specId': 'range', 'dimensions': {'minWidth': 100, 'maxWidth': 200, 'minHeight': 100, 'maxHeight': 200}},
-      ],
-      'placementTypes': [
-        {'placementTypeId': 'APP_PREVIEW', 'specMappings': [{'placementGroupId': 'X', 'specs': ['a']}]},
-        {'placementTypeId': 'APP_SCREENSHOT', 'specMappings': [{'placementGroupId': 'IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE', 'specs': ['a', 'b', 'range']}]},
-      ],
-    }));
+    final specs = ScreenshotSpecs.parse(
+      Resource(
+        id: '1',
+        type: 'appAssetLibraryRefData',
+        relationships: const {},
+        attributes: {
+          'imageSpecs': [
+            {
+              'specId': 'a',
+              'dimensions': {'minWidth': 1290, 'maxWidth': 1290, 'minHeight': 2796, 'maxHeight': 2796},
+            },
+            {
+              'specId': 'b',
+              'dimensions': {'minWidth': 2796, 'maxWidth': 2796, 'minHeight': 1290, 'maxHeight': 1290},
+            },
+            {
+              'specId': 'range',
+              'dimensions': {'minWidth': 100, 'maxWidth': 200, 'minHeight': 100, 'maxHeight': 200},
+            },
+          ],
+          'placementTypes': [
+            {
+              'placementTypeId': 'APP_PREVIEW',
+              'specMappings': [
+                {
+                  'placementGroupId': 'X',
+                  'specs': ['a'],
+                },
+              ],
+            },
+            {
+              'placementTypeId': 'APP_SCREENSHOT',
+              'specMappings': [
+                {
+                  'placementGroupId': 'IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE',
+                  'specs': ['a', 'b', 'range'],
+                },
+              ],
+            },
+          ],
+        },
+      ),
+    );
     expect(specs.groups, ['IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE']);
     expect(specs.accepts('IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE', 1290, 2796), isTrue);
     expect(specs.accepts('IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE', 1000, 2000), isFalse);

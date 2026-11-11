@@ -12,7 +12,15 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    final users = [res('users', 'U1', {'username': 'me@x.com', 'firstName': 'Me', 'lastName': 'Owner', 'roles': ['ADMIN'], 'allAppsVisible': true})];
+    final users = [
+      res('users', 'U1', {
+        'username': 'me@x.com',
+        'firstName': 'Me',
+        'lastName': 'Owner',
+        'roles': ['ADMIN'],
+        'allAppsVisible': true,
+      }),
+    ];
     final invites = <Map<String, dynamic>>[];
     final fake = FakeAsc((r) {
       final p = r.path.split('?').first;
@@ -30,7 +38,11 @@ void main() {
       return null;
     });
 
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: TeamPage(client: fake.client))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: TeamPage(client: fake.client)),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Me Owner'), findsOneWidget);
     expect(find.text('PENDING INVITATIONS'), findsNothing);
@@ -50,7 +62,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('PENDING INVITATIONS'), findsNothing, reason: 'a revoked invitation should disappear');
 
-    users.add(res('users', 'U2', {'username': 'two@x.com', 'firstName': 'Two', 'roles': ['DEVELOPER']}));
+    users.add(
+      res('users', 'U2', {
+        'username': 'two@x.com',
+        'firstName': 'Two',
+        'roles': ['DEVELOPER'],
+      }),
+    );
     await tester.tap(find.byTooltip('Refresh'));
     await tester.pumpAndSettle();
     expect(find.text('Two'), findsOneWidget, reason: 'Refresh should pick up a new user');
@@ -69,19 +87,35 @@ void main() {
       if (r.method == 'GET' && p == '/v1/users') {
         return json({
           'data': [
-            res('users', 'U1', {'username': 'me@x.com', 'firstName': 'Me', 'roles': ['ADMIN']}),
-            res('users', 'U2', {'username': 'dev@x.com', 'firstName': 'Dev', 'roles': ['DEVELOPER']}),
+            res('users', 'U1', {
+              'username': 'me@x.com',
+              'firstName': 'Me',
+              'roles': ['ADMIN'],
+            }),
+            res('users', 'U2', {
+              'username': 'dev@x.com',
+              'firstName': 'Dev',
+              'roles': ['DEVELOPER'],
+            }),
           ],
         });
       }
       if (r.method == 'GET' && p == '/v1/userInvitations') return json({'data': []});
       if (r.method == 'GET' && p == '/v1/apps') return json({'data': []});
-      if (r.method == 'POST' && p == '/v1/userInvitations') return json({'data': res('userInvitations', 'INV1', {'email': 'new@x.com'})}, 201);
+      if (r.method == 'POST' && p == '/v1/userInvitations') {
+        return json({
+          'data': res('userInvitations', 'INV1', {'email': 'new@x.com'}),
+        }, 201);
+      }
       if (r.method == 'DELETE' && p == '/v1/users/U2') return noContent();
       return null;
     });
 
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: TeamPage(client: fake.client))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: TeamPage(client: fake.client)),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Dev'), findsOneWidget);
 
@@ -117,17 +151,41 @@ void main() {
       final p = r.path.split('?').first;
       if (r.method == 'GET' && p == '/v1/users') {
         userLoads++;
-        return json({'data': [res('users', 'U1', {'username': 'me@x.com', 'firstName': 'Me', 'roles': ['ADMIN']})]});
+        return json({
+          'data': [
+            res('users', 'U1', {
+              'username': 'me@x.com',
+              'firstName': 'Me',
+              'roles': ['ADMIN'],
+            }),
+          ],
+        });
       }
       if (r.method == 'GET' && p == '/v1/userInvitations') {
         // Apple lists the new invitation from the second reload after it was sent.
-        return json({'data': [if (caughtUp) res('userInvitations', 'INV1', {'email': 'new@x.com', 'roles': ['DEVELOPER']})]});
+        return json({
+          'data': [
+            if (caughtUp)
+              res('userInvitations', 'INV1', {
+                'email': 'new@x.com',
+                'roles': ['DEVELOPER'],
+              }),
+          ],
+        });
       }
       if (r.method == 'GET' && p == '/v1/apps') return json({'data': []});
-      if (r.method == 'POST' && p == '/v1/userInvitations') return json({'data': res('userInvitations', 'INV1', {'email': 'new@x.com'})}, 201);
+      if (r.method == 'POST' && p == '/v1/userInvitations') {
+        return json({
+          'data': res('userInvitations', 'INV1', {'email': 'new@x.com'}),
+        }, 201);
+      }
       return null;
     });
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: TeamPage(client: fake.client))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: TeamPage(client: fake.client)),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Invite user'));

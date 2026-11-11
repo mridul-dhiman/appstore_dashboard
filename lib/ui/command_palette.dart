@@ -53,8 +53,14 @@ Future<void> showCommandPalette(BuildContext context, PaletteActions actions) {
     barrierLabel: 'Close',
     barrierColor: const Color(0x66000000),
     transitionDuration: const Duration(milliseconds: 120),
-    pageBuilder: (ctx, _, _) => Align(alignment: const Alignment(0, -0.45), child: _Palette(actions: actions)),
-    transitionBuilder: (ctx, anim, _, child) => FadeTransition(opacity: anim, child: ScaleTransition(scale: Tween(begin: 0.98, end: 1.0).animate(anim), child: child)),
+    pageBuilder: (ctx, _, _) => Align(
+      alignment: const Alignment(0, -0.45),
+      child: _Palette(actions: actions),
+    ),
+    transitionBuilder: (ctx, anim, _, child) => FadeTransition(
+      opacity: anim,
+      child: ScaleTransition(scale: Tween(begin: 0.98, end: 1.0).animate(anim), child: child),
+    ),
   );
 }
 
@@ -79,11 +85,13 @@ class _PaletteState extends State<_Palette> {
   @override
   void initState() {
     super.initState();
-    widget.actions.store.apps.then((a) {
-      if (mounted) setState(() => _apps = a);
-    }).catchError((Object e) {
-      if (mounted) setState(() => _error = e);
-    });
+    widget.actions.store.apps
+        .then((a) {
+          if (mounted) setState(() => _apps = a);
+        })
+        .catchError((Object e) {
+          if (mounted) setState(() => _error = e);
+        });
   }
 
   @override
@@ -115,7 +123,13 @@ class _PaletteState extends State<_Palette> {
     if (_items.isEmpty) return;
     setState(() => _selected = (_selected + d) % _items.length);
     final target = _selected * 52.0;
-    if (_scroll.hasClients && (target < _scroll.offset || target > _scroll.offset + 52.0 * 6)) _scroll.animateTo((target - 52.0 * 3).clamp(0, _scroll.position.maxScrollExtent), duration: const Duration(milliseconds: 80), curve: Curves.easeOut);
+    if (_scroll.hasClients && (target < _scroll.offset || target > _scroll.offset + 52.0 * 6)) {
+      _scroll.animateTo(
+        (target - 52.0 * 3).clamp(0, _scroll.position.maxScrollExtent),
+        duration: const Duration(milliseconds: 80),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   void _choose(int i) {
@@ -129,12 +143,12 @@ class _PaletteState extends State<_Palette> {
     final a = widget.actions;
     final apps = _apps ?? const <AppSummary>[];
     PaletteItem appItem(AppSummary s, {int tab = 0, String? verb}) => PaletteItem(
-          title: s.name,
-          subtitle: verb ?? '${s.bundleId}  ·  ${prettyPlatform(s.platform)}${s.versionString == null ? '' : '  ·  v${s.versionString}'}',
-          icon: Icons.apps,
-          leading: AppSquircleIcon(name: s.name, platform: s.platform, size: 30),
-          run: () => a.openApp(s, tab: tab),
-        );
+      title: s.name,
+      subtitle: verb ?? '${s.bundleId}  ·  ${prettyPlatform(s.platform)}${s.versionString == null ? '' : '  ·  v${s.versionString}'}',
+      icon: Icons.apps,
+      leading: AppSquircleIcon(name: s.name, platform: s.platform, size: 30),
+      run: () => a.openApp(s, tab: tab),
+    );
     final q = _query.text;
 
     if (_pickingForUpload) {
@@ -162,7 +176,8 @@ class _PaletteState extends State<_Palette> {
       ),
       PaletteItem(title: 'Check Sales & Proceeds', subtitle: 'Sales & Trends', icon: Icons.bar_chart, run: () => a.go(1)),
       PaletteItem(title: 'Manage Team', subtitle: 'Users and Access', icon: Icons.group_outlined, run: () => a.go(3)),
-      if (a.lock != null) PaletteItem(title: 'Lock Console', subtitle: 'Ask for your password or Touch ID again', icon: Icons.lock_outline, run: a.lock!),
+      if (a.lock != null)
+        PaletteItem(title: 'Lock Console', subtitle: 'Ask for your password or Touch ID again', icon: Icons.lock_outline, run: a.lock!),
     ];
     final scored = <(int, PaletteItem)>[
       for (final it in actionsList)
@@ -190,87 +205,136 @@ class _PaletteState extends State<_Palette> {
           border: Border.all(color: k.line),
           boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 40, offset: Offset(0, 16))],
         ),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(children: [
-              Icon(_pickingForUpload ? Icons.upload_file : Icons.search, size: 20, color: k.muted),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: _query,
-                  focusNode: _focus,
-                  autofocus: true,
-                  onChanged: (_) => setState(() => _selected = 0),
-                  style: const TextStyle(fontSize: 16),
-                  decoration: InputDecoration(
-                    hintText: _pickingForUpload ? 'Upload to which app?' : 'Search apps, or type an action',
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    filled: false,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  Icon(_pickingForUpload ? Icons.upload_file : Icons.search, size: 20, color: k.muted),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _query,
+                      focusNode: _focus,
+                      autofocus: true,
+                      onChanged: (_) => setState(() => _selected = 0),
+                      style: const TextStyle(fontSize: 16),
+                      decoration: InputDecoration(
+                        hintText: _pickingForUpload ? 'Upload to which app?' : 'Search apps, or type an action',
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        filled: false,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
                   ),
-                ),
+                  if (_pickingForUpload) TextButton(onPressed: () => setState(() => _pickingForUpload = false), child: const Text('Back')),
+                ],
               ),
-              if (_pickingForUpload) TextButton(onPressed: () => setState(() => _pickingForUpload = false), child: const Text('Back')),
-            ]),
-          ),
-          Divider(color: k.line),
-          Flexible(
-            child: _error != null
-                ? Padding(padding: const EdgeInsets.all(24), child: Text('Could not load apps: $_error', style: TextStyle(color: Theme.of(context).colorScheme.error)))
-                : _apps == null && _items.isEmpty
-                    ? const Padding(padding: EdgeInsets.all(28), child: Center(child: CircularProgressIndicator()))
-                    : _items.isEmpty
-                        ? Padding(padding: const EdgeInsets.all(28), child: Center(child: Text('Nothing matches “${_query.text}”.', style: TextStyle(color: k.muted))))
-                        : ListView.builder(
-                            controller: _scroll,
-                            shrinkWrap: true,
-                            padding: const EdgeInsets.all(6),
-                            itemExtent: 52,
-                            itemCount: _items.length,
-                            itemBuilder: (context, i) {
-                              final it = _items[i];
-                              final on = i == _selected;
-                              return Material(
-                                color: on ? k.accentSoft : Colors.transparent,
+            ),
+            Divider(color: k.line),
+            Flexible(
+              child: _error != null
+                  ? Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text('Could not load apps: $_error', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                    )
+                  : _apps == null && _items.isEmpty
+                  ? const Padding(
+                      padding: EdgeInsets.all(28),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  : _items.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(28),
+                      child: Center(
+                        child: Text('Nothing matches “${_query.text}”.', style: TextStyle(color: k.muted)),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: _scroll,
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.all(6),
+                      itemExtent: 52,
+                      itemCount: _items.length,
+                      itemBuilder: (context, i) {
+                        final it = _items[i];
+                        final on = i == _selected;
+                        return Material(
+                          color: on ? k.accentSoft : Colors.transparent,
+                          borderRadius: BorderRadius.circular(9),
+                          child: MergeSemantics(
+                            child: Semantics(
+                              button: true,
+                              selected: on,
+                              child: InkWell(
                                 borderRadius: BorderRadius.circular(9),
-                                child: MergeSemantics(child: Semantics(button: true, selected: on, child: InkWell(
-                                  borderRadius: BorderRadius.circular(9),
-                                  onTap: () => _choose(i),
-                                  onHover: (h) {
-                                    if (h && _selected != i) setState(() => _selected = i);
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                                    child: Row(children: [
-                                      it.leading ?? Container(width: 30, height: 30, decoration: BoxDecoration(color: k.inset, borderRadius: BorderRadius.circular(8)), child: Icon(it.icon, size: 17, color: on ? k.accentInk : k.muted)),
+                                onTap: () => _choose(i),
+                                onHover: (h) {
+                                  if (h && _selected != i) setState(() => _selected = i);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  child: Row(
+                                    children: [
+                                      it.leading ??
+                                          Container(
+                                            width: 30,
+                                            height: 30,
+                                            decoration: BoxDecoration(color: k.inset, borderRadius: BorderRadius.circular(8)),
+                                            child: Icon(it.icon, size: 17, color: on ? k.accentInk : k.muted),
+                                          ),
                                       const SizedBox(width: 12),
                                       Expanded(
-                                        child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                          Text(it.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w600, color: on ? k.accentInk : null)),
-                                          Text(it.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: k.muted)),
-                                        ]),
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              it.title,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(fontWeight: FontWeight.w600, color: on ? k.accentInk : null),
+                                            ),
+                                            Text(
+                                              it.subtitle,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(fontSize: 12, color: k.muted),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                       if (on) Icon(Icons.keyboard_return, size: 15, color: k.accentInk),
-                                    ]),
+                                    ],
                                   ),
-                                ))),
-                              );
-                            },
+                                ),
+                              ),
+                            ),
                           ),
-          ),
-          Divider(color: k.line),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-            child: Row(children: [
-              Text('↑↓ navigate     ⏎ open     esc close', style: TextStyle(fontSize: 11.5, color: k.muted)),
-              const Spacer(),
-              Text(_apps == null ? 'Loading apps…' : '${_apps!.length} app${_apps!.length == 1 ? '' : 's'}', style: TextStyle(fontSize: 11.5, color: k.muted)),
-            ]),
-          ),
-        ]),
+                        );
+                      },
+                    ),
+            ),
+            Divider(color: k.line),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+              child: Row(
+                children: [
+                  Text('↑↓ navigate     ⏎ open     esc close', style: TextStyle(fontSize: 11.5, color: k.muted)),
+                  const Spacer(),
+                  Text(
+                    _apps == null ? 'Loading apps…' : '${_apps!.length} app${_apps!.length == 1 ? '' : 's'}',
+                    style: TextStyle(fontSize: 11.5, color: k.muted),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

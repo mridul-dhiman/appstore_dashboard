@@ -27,7 +27,18 @@ void main() {
     });
 
     test('connecting a key afterwards clears the warning', () async {
-      final h = StateHarness((r) => json({'data': [{'type': 'apps', 'id': 'A1', 'attributes': {'name': 'App'}}]}), vault: const VaultData(unreadable: true));
+      final h = StateHarness(
+        (r) => json({
+          'data': [
+            {
+              'type': 'apps',
+              'id': 'A1',
+              'attributes': {'name': 'App'},
+            },
+          ],
+        }),
+        vault: const VaultData(unreadable: true),
+      );
       await h.state.unlock();
       await h.state.connect(testCreds);
       expect(h.state.message, isNull);
@@ -56,7 +67,10 @@ void main() {
 
     test('switching clients waits for the save and reports a failure', () async {
       const other = Credentials(keyId: 'OTHERKEY12', issuerId: '00000000-0000-0000-0000-000000000000', privateKeyPem: testKeyPem);
-      final h = StateHarness((_) => null, vault: VaultData(accounts: const [testCreds, other], activeId: testCreds.id));
+      final h = StateHarness(
+        (_) => null,
+        vault: VaultData(accounts: const [testCreds, other], activeId: testCreds.id),
+      );
       await h.state.unlock();
       h.vault.failWrite = Exception('nope');
       await expectLater(h.state.switchTo(other.id), throwsA(isA<Exception>()));

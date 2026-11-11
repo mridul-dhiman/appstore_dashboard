@@ -18,7 +18,8 @@ class DeviceLock {
     if (!supported) return UnlockResult.unavailable;
     try {
       if (!await _auth.isDeviceSupported()) {
-        lastMessage = 'This device has no login password or Touch ID set up, so the keys cannot be protected. '
+        lastMessage =
+            'This device has no login password or Touch ID set up, so the keys cannot be protected. '
             'Set a login password in system settings and try again.';
         return UnlockResult.unavailable;
       }

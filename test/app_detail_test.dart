@@ -11,9 +11,9 @@ import 'support/fake_asc.dart';
 Resource res(String type, String id, Map<String, dynamic> a) => Resource(id: id, type: type, attributes: a, relationships: const {});
 
 AppSummary summary() => AppSummary(
-      res('apps', 'A1', {'name': 'Vidyagram', 'bundleId': 'com.example.vidya', 'sku': 'VG1'}),
-      res('appStoreVersions', 'V1', {'versionString': '1.1.16', 'appStoreState': 'READY_FOR_SALE', 'platform': 'IOS'}),
-    );
+  res('apps', 'A1', {'name': 'Vidyagram', 'bundleId': 'com.example.vidya', 'sku': 'VG1'}),
+  res('appStoreVersions', 'V1', {'versionString': '1.1.16', 'appStoreState': 'READY_FOR_SALE', 'platform': 'IOS'}),
+);
 
 /// Every read answers "nothing here", so a tab renders its empty state; the tests are about the page around the tabs.
 FakeAsc quiet() => FakeAsc((r) => r.method == 'GET' ? json({'data': []}) : null);
@@ -24,7 +24,13 @@ Future<(FakeAsc, List<String>)> pump(WidgetTester tester, {int tab = 0}) async {
   addTearDown(tester.view.reset);
   final fake = quiet();
   final events = <String>[];
-  await tester.pumpWidget(MaterialApp(home: Scaffold(body: AppDetailPage(client: fake.client, summary: summary(), initialTab: tab, onBack: () => events.add('back')))));
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: AppDetailPage(client: fake.client, summary: summary(), initialTab: tab, onBack: () => events.add('back')),
+      ),
+    ),
+  );
   await tester.pumpAndSettle();
   return (fake, events);
 }
@@ -45,7 +51,15 @@ void main() {
 
   testWidgets('the tabs come in the specified order', (tester) async {
     await pump(tester);
-    final labels = ['Store Listing', 'TestFlight & Groups', 'Customer Reviews', 'Builds', 'Upload .IPA', 'In-App Purchases', 'App Review Preflight'];
+    final labels = [
+      'Store Listing',
+      'TestFlight & Groups',
+      'Customer Reviews',
+      'Builds',
+      'Upload .IPA',
+      'In-App Purchases',
+      'App Review Preflight',
+    ];
     final xs = [for (final l in labels) tester.getTopLeft(find.descendant(of: find.byType(SegmentedTabs), matching: find.text(l))).dx];
     expect([...xs]..sort(), xs, reason: 'left to right in the order given');
     expect(find.text('Versions'), findsNothing);
@@ -81,19 +95,35 @@ void main() {
     final fake = FakeAsc((r) {
       if (r.method == 'PATCH') {
         expired = true;
-        return json({'data': {'type': 'builds', 'id': 'B1'}});
+        return json({
+          'data': {'type': 'builds', 'id': 'B1'},
+        });
       }
       if (r.path.startsWith('/v1/builds') && r.method == 'GET') {
         return json({
           'data': [
-            {'type': 'builds', 'id': 'B1', 'attributes': {'version': '7', 'processingState': 'VALID', 'expired': expired, 'uploadedDate': '2026-01-01T00:00:00Z'}},
-            {'type': 'builds', 'id': 'B0', 'attributes': {'version': '6', 'processingState': 'VALID', 'expired': true, 'uploadedDate': '2025-12-01T00:00:00Z'}},
-          ]
+            {
+              'type': 'builds',
+              'id': 'B1',
+              'attributes': {'version': '7', 'processingState': 'VALID', 'expired': expired, 'uploadedDate': '2026-01-01T00:00:00Z'},
+            },
+            {
+              'type': 'builds',
+              'id': 'B0',
+              'attributes': {'version': '6', 'processingState': 'VALID', 'expired': true, 'uploadedDate': '2025-12-01T00:00:00Z'},
+            },
+          ],
         });
       }
       return r.method == 'GET' ? json({'data': []}) : null;
     });
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: AppDetailPage(client: fake.client, summary: summary(), initialTab: 3, onBack: () {}))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AppDetailPage(client: fake.client, summary: summary(), initialTab: 3, onBack: () {}),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(OutlinedButton, 'Expire'), findsOneWidget, reason: 'only the unexpired build');
@@ -133,16 +163,29 @@ void main() {
                 'state': {'state': 'PROCESSING', 'errors': []},
               },
             },
-          ]
+          ],
         });
       }
       if (r.path.startsWith('/v1/builds') && r.path.contains('buildBetaDetail')) {
         return json({
           'data': [
-            {'type': 'builds', 'id': 'B1', 'attributes': {}, 'relationships': {'buildBetaDetail': {'data': {'type': 'buildBetaDetails', 'id': 'D1'}}}},
+            {
+              'type': 'builds',
+              'id': 'B1',
+              'attributes': {},
+              'relationships': {
+                'buildBetaDetail': {
+                  'data': {'type': 'buildBetaDetails', 'id': 'D1'},
+                },
+              },
+            },
           ],
           'included': [
-            {'type': 'buildBetaDetails', 'id': 'D1', 'attributes': {'internalBuildState': 'IN_BETA_TESTING', 'externalBuildState': 'READY_FOR_BETA_SUBMISSION'}}
+            {
+              'type': 'buildBetaDetails',
+              'id': 'D1',
+              'attributes': {'internalBuildState': 'IN_BETA_TESTING', 'externalBuildState': 'READY_FOR_BETA_SUBMISSION'},
+            },
           ],
         });
       }
@@ -153,17 +196,31 @@ void main() {
               'type': 'builds',
               'id': 'B1',
               'attributes': {'version': '1', 'processingState': 'VALID', 'expired': false, 'uploadedDate': '2026-01-01T00:00:00Z'},
-              'relationships': {'preReleaseVersion': {'data': {'type': 'preReleaseVersions', 'id': 'P1'}}},
+              'relationships': {
+                'preReleaseVersion': {
+                  'data': {'type': 'preReleaseVersions', 'id': 'P1'},
+                },
+              },
             },
           ],
           'included': [
-            {'type': 'preReleaseVersions', 'id': 'P1', 'attributes': {'version': '2.0.0'}}
+            {
+              'type': 'preReleaseVersions',
+              'id': 'P1',
+              'attributes': {'version': '2.0.0'},
+            },
           ],
         });
       }
       return r.method == 'GET' ? json({'data': []}) : null;
     });
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: AppDetailPage(client: fake.client, summary: summary(), initialTab: 3, onBack: () {}))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AppDetailPage(client: fake.client, summary: summary(), initialTab: 3, onBack: () {}),
+        ),
+      ),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
@@ -185,14 +242,24 @@ void main() {
       if (r.path.startsWith('/v1/builds') && !r.path.contains('buildBetaDetail')) {
         return json({
           'data': [
-            {'type': 'builds', 'id': 'B1', 'attributes': {'version': '1', 'processingState': 'VALID', 'expired': true, 'uploadedDate': '2026-01-01T00:00:00Z'}},
+            {
+              'type': 'builds',
+              'id': 'B1',
+              'attributes': {'version': '1', 'processingState': 'VALID', 'expired': true, 'uploadedDate': '2026-01-01T00:00:00Z'},
+            },
           ],
           'links': {'next': 'https://api.appstoreconnect.apple.com/v1/builds?cursor=abc'},
         });
       }
       return r.method == 'GET' ? json({'data': []}) : null;
     });
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: AppDetailPage(client: fake.client, summary: summary(), initialTab: 3, onBack: () {}))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AppDetailPage(client: fake.client, summary: summary(), initialTab: 3, onBack: () {}),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.textContaining('Showing the first 1 builds'), findsOneWidget);
   });
@@ -222,8 +289,26 @@ void main() {
       if (r.path.startsWith('/v1/apps/A1/appStoreVersions')) {
         return json({
           'data': [
-            {'type': 'appStoreVersions', 'id': 'V2', 'attributes': {'platform': 'IOS'}, 'relationships': {'build': {'data': {'type': 'builds', 'id': 'B1'}}}},
-            {'type': 'appStoreVersions', 'id': 'V1', 'attributes': {'platform': 'IOS'}, 'relationships': {'build': {'data': {'type': 'builds', 'id': 'B0'}}}},
+            {
+              'type': 'appStoreVersions',
+              'id': 'V2',
+              'attributes': {'platform': 'IOS'},
+              'relationships': {
+                'build': {
+                  'data': {'type': 'builds', 'id': 'B1'},
+                },
+              },
+            },
+            {
+              'type': 'appStoreVersions',
+              'id': 'V1',
+              'attributes': {'platform': 'IOS'},
+              'relationships': {
+                'build': {
+                  'data': {'type': 'builds', 'id': 'B0'},
+                },
+              },
+            },
           ],
         });
       }
@@ -231,20 +316,65 @@ void main() {
         return json({
           'data': [
             if (done)
-              {'type': 'builds', 'id': 'B2', 'attributes': {'version': '2', 'processingState': 'VALID', 'expired': false}, 'relationships': {'preReleaseVersion': {'data': {'type': 'preReleaseVersions', 'id': 'P2'}}}},
-            {'type': 'builds', 'id': 'B1', 'attributes': {'version': '1', 'processingState': 'VALID', 'expired': false}, 'relationships': {'preReleaseVersion': {'data': {'type': 'preReleaseVersions', 'id': 'P1'}}}},
-            {'type': 'builds', 'id': 'B0', 'attributes': {'version': '9', 'processingState': 'VALID', 'expired': false}, 'relationships': {'preReleaseVersion': {'data': {'type': 'preReleaseVersions', 'id': 'P0'}}}},
+              {
+                'type': 'builds',
+                'id': 'B2',
+                'attributes': {'version': '2', 'processingState': 'VALID', 'expired': false},
+                'relationships': {
+                  'preReleaseVersion': {
+                    'data': {'type': 'preReleaseVersions', 'id': 'P2'},
+                  },
+                },
+              },
+            {
+              'type': 'builds',
+              'id': 'B1',
+              'attributes': {'version': '1', 'processingState': 'VALID', 'expired': false},
+              'relationships': {
+                'preReleaseVersion': {
+                  'data': {'type': 'preReleaseVersions', 'id': 'P1'},
+                },
+              },
+            },
+            {
+              'type': 'builds',
+              'id': 'B0',
+              'attributes': {'version': '9', 'processingState': 'VALID', 'expired': false},
+              'relationships': {
+                'preReleaseVersion': {
+                  'data': {'type': 'preReleaseVersions', 'id': 'P0'},
+                },
+              },
+            },
           ],
           'included': [
-            {'type': 'preReleaseVersions', 'id': 'P2', 'attributes': {'version': '2.0.0'}},
-            {'type': 'preReleaseVersions', 'id': 'P1', 'attributes': {'version': '1.9.0'}},
-            {'type': 'preReleaseVersions', 'id': 'P0', 'attributes': {'version': '1.8.0'}},
+            {
+              'type': 'preReleaseVersions',
+              'id': 'P2',
+              'attributes': {'version': '2.0.0'},
+            },
+            {
+              'type': 'preReleaseVersions',
+              'id': 'P1',
+              'attributes': {'version': '1.9.0'},
+            },
+            {
+              'type': 'preReleaseVersions',
+              'id': 'P0',
+              'attributes': {'version': '1.8.0'},
+            },
           ],
         });
       }
       return r.method == 'GET' ? json({'data': []}) : null;
     });
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: AppDetailPage(client: fake.client, summary: summary(), initialTab: 3, onBack: () {}))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AppDetailPage(client: fake.client, summary: summary(), initialTab: 3, onBack: () {}),
+        ),
+      ),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('Live on App Store'), findsOneWidget, reason: 'only the newest release is live, not every READY_FOR_SALE one');

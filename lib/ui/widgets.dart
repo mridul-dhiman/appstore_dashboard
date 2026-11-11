@@ -14,13 +14,13 @@ String fmtNum(num n) => NumberFormat.decimalPattern().format(n);
 
 /// `IOS` → `iOS`, `MAC_OS` → `macOS`.
 String prettyPlatform(String? s) => switch (s) {
-      'IOS' => 'iOS',
-      'MAC_OS' => 'macOS',
-      'TV_OS' => 'tvOS',
-      'VISION_OS' => 'visionOS',
-      'UNIVERSAL' => 'Universal',
-      _ => prettyEnum(s),
-    };
+  'IOS' => 'iOS',
+  'MAC_OS' => 'macOS',
+  'TV_OS' => 'tvOS',
+  'VISION_OS' => 'visionOS',
+  'UNIVERSAL' => 'Universal',
+  _ => prettyEnum(s),
+};
 
 /// `READY_FOR_SALE` → `Ready for sale`.
 String prettyEnum(String? s) {
@@ -137,26 +137,41 @@ class _LoadViewState<T> extends State<LoadView<T>> with AutomaticKeepAliveClient
             color: cs.errorContainer,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Row(children: [
-                Icon(Icons.cloud_off_outlined, size: 16, color: cs.onErrorContainer),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Could not refresh: $_error', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: cs.onErrorContainer, fontSize: 12.5))),
-                TextButton(onPressed: _reload, child: const Text('Try again')),
-              ]),
+              child: Row(
+                children: [
+                  Icon(Icons.cloud_off_outlined, size: 16, color: cs.onErrorContainer),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Could not refresh: $_error',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: cs.onErrorContainer, fontSize: 12.5),
+                    ),
+                  ),
+                  TextButton(onPressed: _reload, child: const Text('Try again')),
+                ],
+              ),
             ),
           )
         : null;
     // Same 2 px either way, so the content does not jump when a reload starts or ends.
     final progress = SizedBox(height: 2, child: _loading ? const LinearProgressIndicator(minHeight: 2) : null);
-    return LayoutBuilder(builder: (context, c) {
-      final page = widget.builder(context, _data as T);
-      // A page that fills its space keeps filling it; one placed in an unbounded height (a scroll view) keeps its own.
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: c.hasBoundedHeight ? MainAxisSize.max : MainAxisSize.min,
-        children: [progress, ?bar, if (c.hasBoundedHeight) Expanded(child: page) else page],
-      );
-    });
+    return LayoutBuilder(
+      builder: (context, c) {
+        final page = widget.builder(context, _data as T);
+        // A page that fills its space keeps filling it; one placed in an unbounded height (a scroll view) keeps its own.
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: c.hasBoundedHeight ? MainAxisSize.max : MainAxisSize.min,
+          children: [
+            progress,
+            ?bar,
+            if (c.hasBoundedHeight) Expanded(child: page) else page,
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -173,15 +188,18 @@ class ErrorView extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 460),
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.cloud_off_outlined, size: 40, color: cs.error),
-            const SizedBox(height: 12),
-            Text('$error', textAlign: TextAlign.center),
-            if (onRetry != null) ...[
-              const SizedBox(height: 16),
-              FilledButton.tonalIcon(onPressed: onRetry, icon: const Icon(Icons.refresh), label: const Text('Try again')),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cloud_off_outlined, size: 40, color: cs.error),
+              const SizedBox(height: 12),
+              Text('$error', textAlign: TextAlign.center),
+              if (onRetry != null) ...[
+                const SizedBox(height: 16),
+                FilledButton.tonalIcon(onPressed: onRetry, icon: const Icon(Icons.refresh), label: const Text('Try again')),
+              ],
             ],
-          ]),
+          ),
         ),
       ),
     );
@@ -199,11 +217,18 @@ class EmptyView extends StatelessWidget {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 40, color: muted),
-          const SizedBox(height: 10),
-          Text(text, textAlign: TextAlign.center, style: TextStyle(color: muted)),
-        ]),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 40, color: muted),
+            const SizedBox(height: 10),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: muted),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -236,7 +261,12 @@ class StateChip extends StatelessWidget {
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: [Text(label ?? prettyEnum(state), style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600))],
+        children: [
+          Text(
+            label ?? prettyEnum(state),
+            style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }
@@ -255,17 +285,25 @@ class PageHeader extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     return Padding(
       padding: const EdgeInsets.fromLTRB(40, 30, 40, 18),
-      child: Row(children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: t.headlineSmall?.copyWith(fontWeight: FontWeight.w700, fontSize: 26, letterSpacing: -0.5)),
-            if (subtitle != null)
-              Padding(padding: const EdgeInsets.only(top: 4), child: Text(subtitle!, style: t.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant))),
-          ]),
-        ),
-        ...actions,
-        if (reload != null) IconButton(tooltip: 'Refresh', onPressed: reload!.reload, icon: const Icon(Icons.refresh)),
-      ]),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: t.headlineSmall?.copyWith(fontWeight: FontWeight.w700, fontSize: 26, letterSpacing: -0.5)),
+                if (subtitle != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(subtitle!, style: t.bodyMedium?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  ),
+              ],
+            ),
+          ),
+          ...actions,
+          if (reload != null) IconButton(tooltip: 'Refresh', onPressed: reload!.reload, icon: const Icon(Icons.refresh)),
+        ],
+      ),
     );
   }
 }
@@ -279,9 +317,11 @@ class RowsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: Column(children: [
-        for (var i = 0; i < children.length; i++) ...[if (i > 0) const Divider(), children[i]],
-      ]),
+      child: Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[if (i > 0) const Divider(), children[i]],
+        ],
+      ),
     );
   }
 }
@@ -299,11 +339,20 @@ class Stat extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: t.colorScheme.onSurfaceVariant)),
-          const SizedBox(height: 6),
-          Text(value, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: tone ?? t.colorScheme.onSurface)),
-        ]),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: t.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, letterSpacing: -0.5, color: tone ?? t.colorScheme.onSurface),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -338,7 +387,10 @@ class Avatar extends StatelessWidget {
       height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(shape: BoxShape.circle, color: dark ? pick.$2.withValues(alpha: 0.22) : pick.$1),
-      child: Text(initials(name), style: TextStyle(fontSize: size * 0.36, fontWeight: FontWeight.w700, color: dark ? pick.$1 : pick.$2)),
+      child: Text(
+        initials(name),
+        style: TextStyle(fontSize: size * 0.36, fontWeight: FontWeight.w700, color: dark ? pick.$1 : pick.$2),
+      ),
     );
   }
 }
@@ -353,7 +405,15 @@ class SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: padding,
-      child: Text(text.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.8, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.8,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+      ),
     );
   }
 }
@@ -372,11 +432,11 @@ class Debouncer {
 }
 
 (Color, Color) _badgeColors(Tone tone, bool dark) => switch (tone) {
-      Tone.good => dark ? (const Color(0x2410B981), const Color(0xFF34D399)) : (const Color(0xFFE4F7EA), const Color(0xFF13773B)),
-      Tone.warn => dark ? (const Color(0x24F59E0B), const Color(0xFFFBBF24)) : (const Color(0xFFFFF4E5), const Color(0xFF9A5B00)),
-      Tone.bad => dark ? (const Color(0x24F43F5E), const Color(0xFFFB7185)) : (const Color(0xFFFFEBEE), const Color(0xFFB4232C)),
-      Tone.neutral => dark ? (const Color(0xFF232832), const Color(0xFFC3CAD6)) : (const Color(0xFFEEF0F4), const Color(0xFF3A3A3C)),
-    };
+  Tone.good => dark ? (const Color(0x2410B981), const Color(0xFF34D399)) : (const Color(0xFFE4F7EA), const Color(0xFF13773B)),
+  Tone.warn => dark ? (const Color(0x24F59E0B), const Color(0xFFFBBF24)) : (const Color(0xFFFFF4E5), const Color(0xFF9A5B00)),
+  Tone.bad => dark ? (const Color(0x24F43F5E), const Color(0xFFFB7185)) : (const Color(0xFFFFEBEE), const Color(0xFFB4232C)),
+  Tone.neutral => dark ? (const Color(0xFF232832), const Color(0xFFC3CAD6)) : (const Color(0xFFEEF0F4), const Color(0xFF3A3A3C)),
+};
 
 /// A status pill with a live dot: green for ready for sale, amber while in review, red for rejected, grey otherwise.
 class StatusBadge extends StatelessWidget {
@@ -392,26 +452,40 @@ class StatusBadge extends StatelessWidget {
     return Container(
       height: 24,
       padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(20), border: Border.all(color: fg.withValues(alpha: 0.22))),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-          width: 7,
-          height: 7,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: fg, boxShadow: dark && tone != Tone.neutral ? [BoxShadow(color: fg.withValues(alpha: 0.7), blurRadius: 6)] : null),
-        ),
-        const SizedBox(width: 6),
-        Text(label ?? prettyEnum(state), style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
-      ]),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: fg.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: fg,
+              boxShadow: dark && tone != Tone.neutral ? [BoxShadow(color: fg.withValues(alpha: 0.7), blurRadius: 6)] : null,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label ?? prettyEnum(state),
+            style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
     );
   }
 }
 
 IconData platformIcon(String? platform) => switch (platform) {
-      'MAC_OS' => Icons.laptop_mac,
-      'TV_OS' => Icons.tv,
-      'VISION_OS' => Icons.vrpano_outlined,
-      _ => Icons.phone_iphone,
-    };
+  'MAC_OS' => Icons.laptop_mac,
+  'TV_OS' => Icons.tv,
+  'VISION_OS' => Icons.vrpano_outlined,
+  _ => Icons.phone_iphone,
+};
 
 /// App icon stand-in: a squircle with a gradient picked from the app's name and the platform glyph in the corner. The
 /// real icon needs a request per app, which the Apps list deliberately avoids.
@@ -442,7 +516,10 @@ class AppSquircleIcon extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      decoration: ShapeDecoration(shape: shape, shadows: const [BoxShadow(color: Color(0x22000000), blurRadius: 4, offset: Offset(0, 1))]),
+      decoration: ShapeDecoration(
+        shape: shape,
+        shadows: const [BoxShadow(color: Color(0x22000000), blurRadius: 4, offset: Offset(0, 1))],
+      ),
       child: ClipPath(
         clipper: ShapeBorderClipper(shape: shape),
         child: Image.network(
@@ -466,10 +543,21 @@ class AppSquircleIcon extends StatelessWidget {
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [g.$1, g.$2]),
         shadows: const [BoxShadow(color: Color(0x22000000), blurRadius: 4, offset: Offset(0, 1))],
       ),
-      child: Stack(children: [
-        Center(child: Text(Avatar.initials(name).characters.first, style: TextStyle(color: Colors.white, fontSize: size * 0.42, fontWeight: FontWeight.w700))),
-        Positioned(right: size * 0.07, bottom: size * 0.07, child: Icon(platformIcon(platform), size: size * 0.24, color: Colors.white.withValues(alpha: 0.85))),
-      ]),
+      child: Stack(
+        children: [
+          Center(
+            child: Text(
+              Avatar.initials(name).characters.first,
+              style: TextStyle(color: Colors.white, fontSize: size * 0.42, fontWeight: FontWeight.w700),
+            ),
+          ),
+          Positioned(
+            right: size * 0.07,
+            bottom: size * 0.07,
+            child: Icon(platformIcon(platform), size: size * 0.24, color: Colors.white.withValues(alpha: 0.85)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -496,42 +584,73 @@ class MacTitleBar extends StatelessWidget {
       onDoubleTap: MacWindow.zoom,
       child: Container(
         height: 52,
-        decoration: BoxDecoration(color: k.titlebar, border: Border(bottom: BorderSide(color: k.line))),
+        decoration: BoxDecoration(
+          color: k.titlebar,
+          border: Border(bottom: BorderSide(color: k.line)),
+        ),
         padding: EdgeInsets.only(left: MacWindow.hasOverlayTrafficLights ? 84 : 20, right: 16),
-        child: Row(children: [
-          if (title != null) Text(title!, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: k.muted)),
-          const Spacer(),
-          Tooltip(
-            message: 'Search apps and actions',
-            child: MergeSemantics(child: Semantics(button: true, label: 'Search apps and actions', hint: 'Opens the command palette, $hint', child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: onSearch,
-              child: Container(
-                width: 340,
-                height: 30,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(color: k.inset, borderRadius: BorderRadius.circular(8), border: Border.all(color: k.line)),
-                child: Row(children: [
-                  Icon(Icons.search, size: 16, color: k.muted),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('Search apps and actions', style: TextStyle(color: k.muted, fontSize: 13))),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(color: k.surface, borderRadius: BorderRadius.circular(5), border: Border.all(color: k.line)),
-                    child: Text(hint, style: TextStyle(color: k.muted, fontSize: 11, fontWeight: FontWeight.w600)),
-                  ),
-                ]),
+        child: Row(
+          children: [
+            if (title != null)
+              Text(
+                title!,
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: k.muted),
               ),
-            ))),
-          ),
-          const Spacer(),
-          IconButton(
-            tooltip: dark ? 'Switch to light mode' : 'Switch to dark mode',
-            visualDensity: VisualDensity.compact,
-            onPressed: onToggleTheme,
-            icon: Icon(dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 19, color: k.muted),
-          ),
-        ]),
+            const Spacer(),
+            Tooltip(
+              message: 'Search apps and actions',
+              child: MergeSemantics(
+                child: Semantics(
+                  button: true,
+                  label: 'Search apps and actions',
+                  hint: 'Opens the command palette, $hint',
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: onSearch,
+                    child: Container(
+                      width: 340,
+                      height: 30,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: k.inset,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: k.line),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.search, size: 16, color: k.muted),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text('Search apps and actions', style: TextStyle(color: k.muted, fontSize: 13)),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: k.surface,
+                              borderRadius: BorderRadius.circular(5),
+                              border: Border.all(color: k.line),
+                            ),
+                            child: Text(
+                              hint,
+                              style: TextStyle(color: k.muted, fontSize: 11, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const Spacer(),
+            IconButton(
+              tooltip: dark ? 'Switch to light mode' : 'Switch to dark mode',
+              visualDensity: VisualDensity.compact,
+              onPressed: onToggleTheme,
+              icon: Icon(dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 19, color: k.muted),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -554,29 +673,55 @@ class SegmentedTabs extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           child: Container(
             padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(color: k.inset, borderRadius: BorderRadius.circular(10), border: Border.all(color: k.line)),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              for (var i = 0; i < labels.length; i++)
-                Padding(
-                  padding: EdgeInsets.only(left: i == 0 ? 0 : 2),
-                  child: Material(
-                    color: i == current ? k.surface : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    elevation: 0,
-                    child: MergeSemantics(child: Semantics(button: true, selected: i == current, child: InkWell(
+            decoration: BoxDecoration(
+              color: k.inset,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: k.line),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < labels.length; i++)
+                  Padding(
+                    padding: EdgeInsets.only(left: i == 0 ? 0 : 2),
+                    child: Material(
+                      color: i == current ? k.surface : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
-                      onTap: () => controller.animateTo(i),
-                      child: Container(
-                        height: 30,
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        alignment: Alignment.center,
-                        decoration: i == current ? BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: k.line), boxShadow: k.shadow) : null,
-                        child: Text(labels[i], style: TextStyle(fontSize: 13, fontWeight: i == current ? FontWeight.w600 : FontWeight.w500, color: i == current ? k.ink : k.muted)),
+                      elevation: 0,
+                      child: MergeSemantics(
+                        child: Semantics(
+                          button: true,
+                          selected: i == current,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () => controller.animateTo(i),
+                            child: Container(
+                              height: 30,
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              alignment: Alignment.center,
+                              decoration: i == current
+                                  ? BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: k.line),
+                                      boxShadow: k.shadow,
+                                    )
+                                  : null,
+                              child: Text(
+                                labels[i],
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: i == current ? FontWeight.w600 : FontWeight.w500,
+                                  color: i == current ? k.ink : k.muted,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ))),
+                    ),
                   ),
-                ),
-            ]),
+              ],
+            ),
           ),
         );
       },

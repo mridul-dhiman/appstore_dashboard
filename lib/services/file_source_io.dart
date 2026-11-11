@@ -40,16 +40,16 @@ class FileSource implements UploadSource {
 
 /// Reads only the zip directory and the Info.plist entry, on a background isolate.
 Future<IpaInfo> readIpaInfoFromFile(String path) => Isolate.run(() {
-      final input = InputFileStream(path);
-      try {
-        final Archive archive;
-        try {
-          archive = ZipDecoder().decodeStream(input);
-        } catch (_) {
-          throw IpaException('That file is not a valid .ipa (it could not be opened as a zip).');
-        }
-        return readIpaInfoFromArchive(archive);
-      } finally {
-        input.closeSync();
-      }
-    });
+  final input = InputFileStream(path);
+  try {
+    final Archive archive;
+    try {
+      archive = ZipDecoder().decodeStream(input);
+    } catch (_) {
+      throw IpaException('That file is not a valid .ipa (it could not be opened as a zip).');
+    }
+    return readIpaInfoFromArchive(archive);
+  } finally {
+    input.closeSync();
+  }
+});

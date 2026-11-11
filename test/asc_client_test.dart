@@ -5,12 +5,14 @@ import 'support/fake_asc.dart';
 
 void main() {
   test('an error keeps Apple\'s status, code and the readable message', () async {
-    final fake = FakeAsc((r) => json({
-          'errors': [
-            {'status': '409', 'code': 'STATE_ERROR.ASSET_IN_POST_PROCESSING', 'title': 'Busy', 'detail': 'Try again shortly.'},
-            {'status': '409', 'code': 'OTHER', 'title': 'Second', 'detail': 'More.'},
-          ],
-        }, 409));
+    final fake = FakeAsc(
+      (r) => json({
+        'errors': [
+          {'status': '409', 'code': 'STATE_ERROR.ASSET_IN_POST_PROCESSING', 'title': 'Busy', 'detail': 'Try again shortly.'},
+          {'status': '409', 'code': 'OTHER', 'title': 'Second', 'detail': 'More.'},
+        ],
+      }, 409),
+    );
     try {
       await fake.client.page('/v1/apps');
       fail('should have thrown');
@@ -30,7 +32,10 @@ void main() {
 
   test('a 401 explains the key problem instead of Apple\'s terse text', () async {
     final fake = FakeAsc((r) => apiError(401, 'NOT_AUTHORIZED', 'Authentication credentials are missing or invalid.'));
-    await expectLater(fake.client.page('/v1/apps'), throwsA(isA<AscException>().having((e) => e.message, 'message', contains('Key ID, Issuer ID'))));
+    await expectLater(
+      fake.client.page('/v1/apps'),
+      throwsA(isA<AscException>().having((e) => e.message, 'message', contains('Key ID, Issuer ID'))),
+    );
   });
 
   group('retries', () {
@@ -55,7 +60,14 @@ void main() {
 
     test('a write is retried on 429 only, never on 5xx (it may have happened)', () async {
       var n = 0;
-      final limited = FakeAsc((r) => ++n == 1 ? apiError(429, 'Rate limited', 'x') : json({'data': {'type': 'x', 'id': '1'}}, 201), maxAttempts: 4);
+      final limited = FakeAsc(
+        (r) => ++n == 1
+            ? apiError(429, 'Rate limited', 'x')
+            : json({
+                'data': {'type': 'x', 'id': '1'},
+              }, 201),
+        maxAttempts: 4,
+      );
       await limited.client.post('/v1/things', {'data': {}});
       expect(limited.log, hasLength(2));
 

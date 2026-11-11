@@ -30,7 +30,11 @@ class UploadJob extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> run(AscClient client, {Duration pollEvery = const Duration(seconds: 6), Duration giveUpAfter = const Duration(minutes: 30)}) async {
+  Future<void> run(
+    AscClient client, {
+    Duration pollEvery = const Duration(seconds: 6),
+    Duration giveUpAfter = const Duration(minutes: 30),
+  }) async {
     progress = UploadProgress(UploadPhase.reserving, totalBytes: source.length);
     notifyListeners();
     // Its own copy of the client: renaming or locking closes the shell's client, and must not cut an upload short.

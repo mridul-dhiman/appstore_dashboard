@@ -33,8 +33,8 @@ String toCsv(ExportTable t) {
 }
 
 String toJsonText(ExportTable t) => const JsonEncoder.withIndent('  ').convert([
-      for (final r in t.rows) {for (final c in t.columns) c: r[c] is DateTime ? (r[c] as DateTime).toIso8601String() : r[c]},
-    ]);
+  for (final r in t.rows) {for (final c in t.columns) c: r[c] is DateTime ? (r[c] as DateTime).toIso8601String() : r[c]},
+]);
 
 String exportFileName(String base, String ext) {
   final safe = base.replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '_').replaceAll(RegExp(r'^_+|_+$'), '');
@@ -42,37 +42,48 @@ String exportFileName(String base, String ext) {
 }
 
 ExportTable reviewsTable(String appName, List<Review> reviews) => ExportTable(
-      '${appName}_reviews',
-      const ['id', 'rating', 'title', 'body', 'reviewer', 'territory', 'date', 'replied', 'reply'],
-      [
-        for (final r in reviews)
-          {'id': r.id, 'rating': r.rating, 'title': r.title, 'body': r.body, 'reviewer': r.nickname, 'territory': r.territory, 'date': r.created, 'replied': r.answered, 'reply': r.replyText ?? ''},
-      ],
-    );
+  '${appName}_reviews',
+  const ['id', 'rating', 'title', 'body', 'reviewer', 'territory', 'date', 'replied', 'reply'],
+  [
+    for (final r in reviews)
+      {
+        'id': r.id,
+        'rating': r.rating,
+        'title': r.title,
+        'body': r.body,
+        'reviewer': r.nickname,
+        'territory': r.territory,
+        'date': r.created,
+        'replied': r.answered,
+        'reply': r.replyText ?? '',
+      },
+  ],
+);
 
 ExportTable purchasesTable(String appName, List<Resource> iaps) => ExportTable(
-      '${appName}_in_app_purchases',
-      const ['name', 'productId', 'type', 'state'],
-      [
-        for (final i in iaps) {'name': i.str('name'), 'productId': i.str('productId'), 'type': i.str('inAppPurchaseType'), 'state': i.str('state')},
-      ],
-    );
+  '${appName}_in_app_purchases',
+  const ['name', 'productId', 'type', 'state'],
+  [
+    for (final i in iaps)
+      {'name': i.str('name'), 'productId': i.str('productId'), 'type': i.str('inAppPurchaseType'), 'state': i.str('state')},
+  ],
+);
 
 ExportTable salesTable(List<SalesRow> rows) => ExportTable(
-      'sales_report',
-      const ['date', 'title', 'sku', 'productType', 'units', 'proceedsPerUnit', 'proceeds', 'currency', 'country'],
-      [
-        for (final r in rows)
-          {
-            'date': DateFormat('yyyy-MM-dd').format(r.day),
-            'title': r.title,
-            'sku': r.sku,
-            'productType': r.type,
-            'units': r.units,
-            'proceedsPerUnit': r.proceedsPerUnit,
-            'proceeds': r.proceeds,
-            'currency': r.currency,
-            'country': r.country,
-          },
-      ],
-    );
+  'sales_report',
+  const ['date', 'title', 'sku', 'productType', 'units', 'proceedsPerUnit', 'proceeds', 'currency', 'country'],
+  [
+    for (final r in rows)
+      {
+        'date': DateFormat('yyyy-MM-dd').format(r.day),
+        'title': r.title,
+        'sku': r.sku,
+        'productType': r.type,
+        'units': r.units,
+        'proceedsPerUnit': r.proceedsPerUnit,
+        'proceeds': r.proceeds,
+        'currency': r.currency,
+        'country': r.country,
+      },
+  ],
+);

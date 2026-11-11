@@ -8,11 +8,11 @@ class Resource {
   final Map<String, dynamic> relationships;
 
   factory Resource.fromJson(Map<String, dynamic> j) => Resource(
-        id: j['id'].toString(),
-        type: j['type'].toString(),
-        attributes: (j['attributes'] as Map?)?.cast<String, dynamic>() ?? const {},
-        relationships: (j['relationships'] as Map?)?.cast<String, dynamic>() ?? const {},
-      );
+    id: j['id'].toString(),
+    type: j['type'].toString(),
+    attributes: (j['attributes'] as Map?)?.cast<String, dynamic>() ?? const {},
+    relationships: (j['relationships'] as Map?)?.cast<String, dynamic>() ?? const {},
+  );
 
   String? str(String key) {
     return attributes[key]?.toString();
@@ -54,8 +54,7 @@ class Resource {
 
 /// One or more merged pages of a collection, plus everything the API `include`d.
 class ResourcePage {
-  ResourcePage({required this.data, Map<String, Resource>? included, this.next, this.total})
-      : included = included ?? {};
+  ResourcePage({required this.data, Map<String, Resource>? included, this.next, this.total}) : included = included ?? {};
 
   final List<Resource> data;
   final Map<String, Resource> included;
@@ -69,8 +68,8 @@ class ResourcePage {
     final list = data is List
         ? data.map((e) => Resource.fromJson((e as Map).cast<String, dynamic>())).toList()
         : data is Map
-            ? [Resource.fromJson(data.cast<String, dynamic>())]
-            : <Resource>[];
+        ? [Resource.fromJson(data.cast<String, dynamic>())]
+        : <Resource>[];
     final included = <String, Resource>{};
     for (final e in (json['included'] as List? ?? const [])) {
       final r = Resource.fromJson((e as Map).cast<String, dynamic>());

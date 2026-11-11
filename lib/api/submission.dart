@@ -10,90 +10,123 @@ const releaseTypes = {
   'SCHEDULED': 'Release on a date',
 };
 
-Map<String, dynamic> versionCreateBody({required String appId, required String versionString, String platform = 'IOS', String releaseType = 'MANUAL', String? buildId}) => {
-      'data': {
-        'type': 'appStoreVersions',
-        'attributes': {'versionString': versionString, 'platform': platform, 'releaseType': releaseType},
-        'relationships': {
-          'app': {'data': {'type': 'apps', 'id': appId}},
-          'build': ?(buildId == null ? null : {'data': {'type': 'builds', 'id': buildId}}),
-        },
+Map<String, dynamic> versionCreateBody({
+  required String appId,
+  required String versionString,
+  String platform = 'IOS',
+  String releaseType = 'MANUAL',
+  String? buildId,
+}) => {
+  'data': {
+    'type': 'appStoreVersions',
+    'attributes': {'versionString': versionString, 'platform': platform, 'releaseType': releaseType},
+    'relationships': {
+      'app': {
+        'data': {'type': 'apps', 'id': appId},
       },
-    };
+      'build': ?(buildId == null
+          ? null
+          : {
+              'data': {'type': 'builds', 'id': buildId},
+            }),
+    },
+  },
+};
 
 /// PATCH /v1/appStoreVersions/{id}/relationships/build
 Map<String, dynamic> buildLinkBody(String buildId) => {
-      'data': {'type': 'builds', 'id': buildId},
-    };
+  'data': {'type': 'builds', 'id': buildId},
+};
 
 Map<String, dynamic> exportComplianceBody(String buildId, bool usesNonExemptEncryption) => {
-      'data': {
-        'type': 'builds',
-        'id': buildId,
-        'attributes': {'usesNonExemptEncryption': usesNonExemptEncryption},
-      },
-    };
+  'data': {
+    'type': 'builds',
+    'id': buildId,
+    'attributes': {'usesNonExemptEncryption': usesNonExemptEncryption},
+  },
+};
 
 Map<String, dynamic> releaseTypeBody(String versionId, String releaseType, {DateTime? earliest}) => {
-      'data': {
-        'type': 'appStoreVersions',
-        'id': versionId,
-        'attributes': {
-          'releaseType': releaseType,
-          if (releaseType == 'SCHEDULED' && earliest != null) 'earliestReleaseDate': earliest.toUtc().toIso8601String(),
+  'data': {
+    'type': 'appStoreVersions',
+    'id': versionId,
+    'attributes': {
+      'releaseType': releaseType,
+      if (releaseType == 'SCHEDULED' && earliest != null) 'earliestReleaseDate': earliest.toUtc().toIso8601String(),
+    },
+  },
+};
+
+const reviewDetailFields = [
+  'contactFirstName',
+  'contactLastName',
+  'contactPhone',
+  'contactEmail',
+  'demoAccountName',
+  'demoAccountPassword',
+  'notes',
+];
+
+Map<String, dynamic> reviewDetailBody({
+  String? existingId,
+  required String versionId,
+  required Map<String, String> fields,
+  required bool demoAccountRequired,
+}) => {
+  'data': {
+    'type': 'appStoreReviewDetails',
+    'id': ?existingId,
+    'attributes': {...fields, 'demoAccountRequired': demoAccountRequired},
+    if (existingId == null)
+      'relationships': {
+        'appStoreVersion': {
+          'data': {'type': 'appStoreVersions', 'id': versionId},
         },
       },
-    };
-
-const reviewDetailFields = ['contactFirstName', 'contactLastName', 'contactPhone', 'contactEmail', 'demoAccountName', 'demoAccountPassword', 'notes'];
-
-Map<String, dynamic> reviewDetailBody({String? existingId, required String versionId, required Map<String, String> fields, required bool demoAccountRequired}) => {
-      'data': {
-        'type': 'appStoreReviewDetails',
-        'id': ?existingId,
-        'attributes': {...fields, 'demoAccountRequired': demoAccountRequired},
-        if (existingId == null)
-          'relationships': {
-            'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': versionId}},
-          },
-      },
-    };
+  },
+};
 
 Map<String, dynamic> submissionCreateBody(String appId, String platform) => {
-      'data': {
-        'type': 'reviewSubmissions',
-        'attributes': {'platform': platform},
-        'relationships': {
-          'app': {'data': {'type': 'apps', 'id': appId}},
-        },
+  'data': {
+    'type': 'reviewSubmissions',
+    'attributes': {'platform': platform},
+    'relationships': {
+      'app': {
+        'data': {'type': 'apps', 'id': appId},
       },
-    };
+    },
+  },
+};
 
 Map<String, dynamic> submissionItemBody(String submissionId, String versionId) => {
-      'data': {
-        'type': 'reviewSubmissionItems',
-        'relationships': {
-          'reviewSubmission': {'data': {'type': 'reviewSubmissions', 'id': submissionId}},
-          'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': versionId}},
-        },
+  'data': {
+    'type': 'reviewSubmissionItems',
+    'relationships': {
+      'reviewSubmission': {
+        'data': {'type': 'reviewSubmissions', 'id': submissionId},
       },
-    };
+      'appStoreVersion': {
+        'data': {'type': 'appStoreVersions', 'id': versionId},
+      },
+    },
+  },
+};
 
 Map<String, dynamic> submitBody(String submissionId) => {
-      'data': {
-        'type': 'reviewSubmissions',
-        'id': submissionId,
-        'attributes': {'submitted': true},
-      },
-    };
+  'data': {
+    'type': 'reviewSubmissions',
+    'id': submissionId,
+    'attributes': {'submitted': true},
+  },
+};
 
 Map<String, dynamic> cancelSubmissionBody(String submissionId) => {
-      'data': {
-        'type': 'reviewSubmissions',
-        'id': submissionId,
-        'attributes': {'canceled': true},
-      },
-    };
+  'data': {
+    'type': 'reviewSubmissions',
+    'id': submissionId,
+    'attributes': {'canceled': true},
+  },
+};
 
 // ---- Preflight: everything Apple will refuse, found before asking ------------------------------------------------------
 
@@ -125,7 +158,15 @@ class ActiveSubmission {
 }
 
 class PreflightData {
-  PreflightData({required this.version, this.build, this.localizations = const [], this.screenshotsByLoc = const {}, this.reviewDetail, this.submissions = const [], this.hasPriorVersion = true});
+  PreflightData({
+    required this.version,
+    this.build,
+    this.localizations = const [],
+    this.screenshotsByLoc = const {},
+    this.reviewDetail,
+    this.submissions = const [],
+    this.hasPriorVersion = true,
+  });
   final Resource version;
   final Resource? build;
   final List<Resource> localizations;
@@ -144,12 +185,21 @@ List<Check> evaluatePreflight(PreflightData d) {
 
   final inFlight = d.submissions.where((s) => !s.isDraft && s.versionIds.contains(d.version.id));
   if (inFlight.isNotEmpty) {
-    out.add(Check(CheckLevel.fail, 'Already submitted', 'Version $label is in a review submission (${prettyState(inFlight.first.state)}).'));
+    out.add(
+      Check(CheckLevel.fail, 'Already submitted', 'Version $label is in a review submission (${prettyState(inFlight.first.state)}).'),
+    );
   }
   if (isVersionEditable(state)) {
     out.add(Check(CheckLevel.pass, 'Version can be submitted', 'Version $label is ${prettyState(state)}.'));
   } else {
-    out.add(Check(CheckLevel.fail, 'Version is not submittable', 'Version $label is ${prettyState(state)}. Only a version being prepared (or one that was rejected) can be sent for review. Create a new version.', 'version'));
+    out.add(
+      Check(
+        CheckLevel.fail,
+        'Version is not submittable',
+        'Version $label is ${prettyState(state)}. Only a version being prepared (or one that was rejected) can be sent for review. Create a new version.',
+        'version',
+      ),
+    );
   }
 
   final b = d.build;
@@ -160,14 +210,29 @@ List<Check> evaluatePreflight(PreflightData d) {
     if (b.flag('expired') == true) {
       out.add(Check(CheckLevel.fail, 'Build ${b.str('version')} has expired', 'Upload and attach a newer build.', 'build'));
     } else if (bs != 'VALID') {
-      out.add(Check(CheckLevel.fail, 'Build ${b.str('version')} is ${prettyState(bs)}', 'Wait for processing to finish, or attach another build.', 'build'));
+      out.add(
+        Check(
+          CheckLevel.fail,
+          'Build ${b.str('version')} is ${prettyState(bs)}',
+          'Wait for processing to finish, or attach another build.',
+          'build',
+        ),
+      );
     } else {
       out.add(Check(CheckLevel.pass, 'Build ${b.str('version')} attached', 'Processed and valid.'));
     }
     if (b.attributes['usesNonExemptEncryption'] == null) {
-      out.add(const Check(CheckLevel.fail, 'Export compliance not answered', 'Say whether the app uses non-exempt encryption.', 'compliance'));
+      out.add(
+        const Check(CheckLevel.fail, 'Export compliance not answered', 'Say whether the app uses non-exempt encryption.', 'compliance'),
+      );
     } else {
-      out.add(Check(CheckLevel.pass, 'Export compliance answered', b.flag('usesNonExemptEncryption') == true ? 'Uses non-exempt encryption.' : 'No non-exempt encryption.'));
+      out.add(
+        Check(
+          CheckLevel.pass,
+          'Export compliance answered',
+          b.flag('usesNonExemptEncryption') == true ? 'Uses non-exempt encryption.' : 'No non-exempt encryption.',
+        ),
+      );
     }
   }
 
@@ -229,15 +294,19 @@ String prettyState(String? s) => s == null ? '—' : (s.replaceAll('_', ' ').toL
 
 Future<PreflightData> loadPreflight(AscClient c, String appId, Resource version, {required bool hasPriorVersion}) async {
   final r = await Future.wait<Object?>([
-    nullIfMissing(c.page('/v1/appStoreVersions/${version.id}/build')).then<Resource?>((p) => p == null || p.data.isEmpty ? null : p.data.first),
+    nullIfMissing(c.page('/v1/appStoreVersions/${version.id}/build'))
+        .then<Resource?>((p) => p == null || p.data.isEmpty ? null : p.data.first),
     c.all('/v1/appStoreVersions/${version.id}/appStoreVersionLocalizations', {'limit': '200'}, 2),
-    nullIfMissing(c.page('/v1/appStoreVersions/${version.id}/appStoreReviewDetail')).then<Resource?>((p) => p == null || p.data.isEmpty ? null : p.data.first),
+    nullIfMissing(c.page('/v1/appStoreVersions/${version.id}/appStoreReviewDetail'))
+        .then<Resource?>((p) => p == null || p.data.isEmpty ? null : p.data.first),
     listActiveSubmissions(c, appId),
   ]);
   final locs = (r[1] as ResourcePage).data;
   final shots = await Future.wait([
     for (final l in locs)
-      c.page('/v1/appStoreVersionLocalizations/${l.id}/placements', {'filter[placementType]': 'APP_SCREENSHOT', 'limit': '1'}).then((p) => p.total ?? p.data.length),
+      c
+          .page('/v1/appStoreVersionLocalizations/${l.id}/placements', {'filter[placementType]': 'APP_SCREENSHOT', 'limit': '1'})
+          .then((p) => p.total ?? p.data.length),
   ]);
   return PreflightData(
     version: version,
@@ -253,12 +322,22 @@ Future<PreflightData> loadPreflight(AscClient c, String appId, Resource version,
 const _activeStates = 'READY_FOR_REVIEW,WAITING_FOR_REVIEW,IN_REVIEW,UNRESOLVED_ISSUES';
 
 Future<List<ActiveSubmission>> listActiveSubmissions(AscClient c, String appId, {String? platform, String states = _activeStates}) async {
-  final subs = await c.page('/v1/reviewSubmissions', {'filter[app]': appId, 'filter[state]': states, 'filter[platform]': ?platform, 'limit': '20'});
-  return Future.wait(subs.data.map((s) async {
-    // Not swallowed: an unreadable draft must not look empty, or submitting it could send items nobody saw.
-    final items = await c.page('/v1/reviewSubmissions/${s.id}/items', {'include': 'appStoreVersion', 'limit': '50'});
-    return ActiveSubmission(s, [for (final i in items.data) if (i.relId('appStoreVersion') != null) i.relId('appStoreVersion')!], itemCount: items.data.length);
-  }));
+  final subs = await c.page('/v1/reviewSubmissions', {
+    'filter[app]': appId,
+    'filter[state]': states,
+    'filter[platform]': ?platform,
+    'limit': '20',
+  });
+  return Future.wait(
+    subs.data.map((s) async {
+      // Not swallowed: an unreadable draft must not look empty, or submitting it could send items nobody saw.
+      final items = await c.page('/v1/reviewSubmissions/${s.id}/items', {'include': 'appStoreVersion', 'limit': '50'});
+      return ActiveSubmission(s, [
+        for (final i in items.data)
+          if (i.relId('appStoreVersion') != null) i.relId('appStoreVersion')!,
+      ], itemCount: items.data.length);
+    }),
+  );
 }
 
 class SubmitOutcome {
@@ -272,16 +351,31 @@ class SubmissionFlow {
   final AscClient client;
   final String appId;
 
-  Future<Resource> createVersion({required String versionString, String platform = 'IOS', String releaseType = 'MANUAL', String? buildId}) async =>
-      (await client.post('/v1/appStoreVersions', versionCreateBody(appId: appId, versionString: versionString, platform: platform, releaseType: releaseType, buildId: buildId))).data.first;
+  Future<Resource> createVersion({
+    required String versionString,
+    String platform = 'IOS',
+    String releaseType = 'MANUAL',
+    String? buildId,
+  }) async => (await client.post(
+    '/v1/appStoreVersions',
+    versionCreateBody(appId: appId, versionString: versionString, platform: platform, releaseType: releaseType, buildId: buildId),
+  )).data.first;
 
-  Future<void> attachBuild(String versionId, String buildId) => client.patch('/v1/appStoreVersions/$versionId/relationships/build', buildLinkBody(buildId));
+  Future<void> attachBuild(String versionId, String buildId) =>
+      client.patch('/v1/appStoreVersions/$versionId/relationships/build', buildLinkBody(buildId));
 
-  Future<void> setExportCompliance(String buildId, bool usesNonExemptEncryption) => client.patch('/v1/builds/$buildId', exportComplianceBody(buildId, usesNonExemptEncryption));
+  Future<void> setExportCompliance(String buildId, bool usesNonExemptEncryption) =>
+      client.patch('/v1/builds/$buildId', exportComplianceBody(buildId, usesNonExemptEncryption));
 
-  Future<void> setReleaseType(String versionId, String releaseType, {DateTime? earliest}) => client.patch('/v1/appStoreVersions/$versionId', releaseTypeBody(versionId, releaseType, earliest: earliest));
+  Future<void> setReleaseType(String versionId, String releaseType, {DateTime? earliest}) =>
+      client.patch('/v1/appStoreVersions/$versionId', releaseTypeBody(versionId, releaseType, earliest: earliest));
 
-  Future<void> saveReviewDetail(String versionId, {String? existingId, required Map<String, String> fields, required bool demoAccountRequired}) async {
+  Future<void> saveReviewDetail(
+    String versionId, {
+    String? existingId,
+    required Map<String, String> fields,
+    required bool demoAccountRequired,
+  }) async {
     final body = reviewDetailBody(existingId: existingId, versionId: versionId, fields: fields, demoAccountRequired: demoAccountRequired);
     if (existingId == null) {
       await client.post('/v1/appStoreReviewDetails', body);

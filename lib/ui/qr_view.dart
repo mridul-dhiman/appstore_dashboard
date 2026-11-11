@@ -15,8 +15,14 @@ class QrView extends StatelessWidget {
         width: size,
         height: size,
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0x22000000))),
-        child: CustomPaint(painter: QrPainter(QrImage(QrCode.fromData(data: data, errorCorrectLevel: QrErrorCorrectLevel.M)))),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0x22000000)),
+        ),
+        child: CustomPaint(
+          painter: QrPainter(QrImage(QrCode.fromData(data: data, errorCorrectLevel: QrErrorCorrectLevel.M))),
+        ),
       ),
     );
   }

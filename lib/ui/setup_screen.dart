@@ -68,7 +68,9 @@ class _SetupScreenState extends State<SetupScreen> {
       _error = null;
     });
     try {
-      await widget.state.connect(Credentials(keyId: keyId, issuerId: issuer, privateKeyPem: pem, name: _name.text.trim(), vendorNumber: _vendor.text.trim()));
+      await widget.state.connect(
+        Credentials(keyId: keyId, issuerId: issuer, privateKeyPem: pem, name: _name.text.trim(), vendorNumber: _vendor.text.trim()),
+      );
       if (mounted && widget.embedded) Navigator.of(context).pop();
     } on AscException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -92,81 +94,98 @@ class _SetupScreenState extends State<SetupScreen> {
             child: Card(
               child: Padding(
                 padding: const EdgeInsets.all(28),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                  Text(widget.embedded ? 'Add another client' : 'Connect your App Store Connect key', style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 6),
-                  Text(
-                    'App Store Connect → Users and Access → Integrations → App Store Connect API. '
-                    'No Apple ID sign-in is needed, only the key.',
-                    style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant),
-                  ),
-                  if (s.message != null && !widget.embedded) ...[
-                    const SizedBox(height: 14),
-                    Text(s.message!, style: TextStyle(color: t.colorScheme.error)),
-                  ],
-                  const SizedBox(height: 20),
-                  TextField(controller: _issuer, decoration: const InputDecoration(labelText: 'Issuer ID', hintText: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')),
-                  const SizedBox(height: 14),
-                  TextField(controller: _keyId, decoration: const InputDecoration(labelText: 'Key ID', hintText: '10 characters, e.g. TX5ZF2BVG6')),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _name,
-                    decoration: const InputDecoration(labelText: 'Name (optional)', helperText: 'Shown in the client switcher. Defaults to your first app.'),
-                  ),
-                  const SizedBox(height: 14),
-                  Row(children: [
-                    OutlinedButton.icon(onPressed: _pick, icon: const Icon(Icons.upload_file), label: const Text('Choose .p8 file')),
-                    const SizedBox(width: 12),
-                    if (_fileName != null) Flexible(child: Text(_fileName!, overflow: TextOverflow.ellipsis)),
-                  ]),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _pem,
-                    // A private key should never sit on screen. Pasted newlines are stripped by the single-line field;
-                    // normalizePem() puts the PEM back together.
-                    obscureText: true,
-                    enableSuggestions: false,
-                    autocorrect: false,
-                    decoration: InputDecoration(
-                      labelText: _fileName != null ? 'Private key loaded from $_fileName' : 'or paste the private key',
-                      helperText: 'Hidden. Paste the whole .p8 contents, including the BEGIN/END lines.',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.embedded ? 'Add another client' : 'Connect your App Store Connect key',
+                      style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _vendor,
-                    decoration: const InputDecoration(
-                      labelText: 'Vendor number (optional)',
-                      helperText: 'Only for Sales & Trends. Payments and Financial Reports → top left.',
+                    const SizedBox(height: 6),
+                    Text(
+                      'App Store Connect → Users and Access → Integrations → App Store Connect API. '
+                      'No Apple ID sign-in is needed, only the key.',
+                      style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant),
                     ),
-                  ),
-                  if (_error != null) ...[
+                    if (s.message != null && !widget.embedded) ...[
+                      const SizedBox(height: 14),
+                      Text(s.message!, style: TextStyle(color: t.colorScheme.error)),
+                    ],
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: _issuer,
+                      decoration: const InputDecoration(labelText: 'Issuer ID', hintText: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'),
+                    ),
                     const SizedBox(height: 14),
-                    Text(_error!, style: TextStyle(color: t.colorScheme.error)),
-                  ],
-                  const SizedBox(height: 20),
-                  Row(children: [
-                    Expanded(
-                      child: Text(
-                        s.keysPersist
-                            ? 'Stored in your system keychain. Opening the app asks for your password or Touch ID.'
-                            : 'Kept in this tab only. Close or reload it and you will add the key again.',
-                        style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant),
+                    TextField(
+                      controller: _keyId,
+                      decoration: const InputDecoration(labelText: 'Key ID', hintText: '10 characters, e.g. TX5ZF2BVG6'),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _name,
+                      decoration: const InputDecoration(
+                        labelText: 'Name (optional)',
+                        helperText: 'Shown in the client switcher. Defaults to your first app.',
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    if (widget.embedded) ...[
-                      TextButton(onPressed: _busy ? null : () => Navigator.of(context).pop(), child: const Text('Cancel')),
-                      const SizedBox(width: 8),
-                    ],
-                    FilledButton(
-                      onPressed: _busy ? null : _connect,
-                      child: _busy
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Text('Connect'),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(onPressed: _pick, icon: const Icon(Icons.upload_file), label: const Text('Choose .p8 file')),
+                        const SizedBox(width: 12),
+                        if (_fileName != null) Flexible(child: Text(_fileName!, overflow: TextOverflow.ellipsis)),
+                      ],
                     ),
-                  ]),
-                ]),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _pem,
+                      // A private key should never sit on screen. Pasted newlines are stripped by the single-line field;
+                      // normalizePem() puts the PEM back together.
+                      obscureText: true,
+                      enableSuggestions: false,
+                      autocorrect: false,
+                      decoration: InputDecoration(
+                        labelText: _fileName != null ? 'Private key loaded from $_fileName' : 'or paste the private key',
+                        helperText: 'Hidden. Paste the whole .p8 contents, including the BEGIN/END lines.',
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _vendor,
+                      decoration: const InputDecoration(
+                        labelText: 'Vendor number (optional)',
+                        helperText: 'Only for Sales & Trends. Payments and Financial Reports → top left.',
+                      ),
+                    ),
+                    if (_error != null) ...[const SizedBox(height: 14), Text(_error!, style: TextStyle(color: t.colorScheme.error))],
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            s.keysPersist
+                                ? 'Stored in your system keychain. Opening the app asks for your password or Touch ID.'
+                                : 'Kept in this tab only. Close or reload it and you will add the key again.',
+                            style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        if (widget.embedded) ...[
+                          TextButton(onPressed: _busy ? null : () => Navigator.of(context).pop(), child: const Text('Cancel')),
+                          const SizedBox(width: 8),
+                        ],
+                        FilledButton(
+                          onPressed: _busy ? null : _connect,
+                          child: _busy
+                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Text('Connect'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

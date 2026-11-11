@@ -93,12 +93,12 @@ class _ShellState extends State<Shell> {
   }
 
   void _select(int i) => _guard(() {
-        setState(() {
-          _index = i;
-          _app = null;
-        });
-        _remember(null);
-      });
+    setState(() {
+      _index = i;
+      _app = null;
+    });
+    _remember(null);
+  });
 
   void _openApp(AppSummary app, {int tab = 0}) => _guard(() => _show(app, tab: tab));
 
@@ -134,10 +134,10 @@ class _ShellState extends State<Shell> {
   int _currentTab = 0; // the open app's tab right now, so a refresh keeps it
 
   void _reloadPage() => _guard(() {
-        if (_app != null) _appTab = _currentTab;
-        if (_index == 0 && _app == null) _store?.refresh(); // the list is cached in the store, not the page
-        setState(() => _refresh++);
-      });
+    if (_app != null) _appTab = _currentTab;
+    if (_index == 0 && _app == null) _store?.refresh(); // the list is cached in the store, not the page
+    setState(() => _refresh++);
+  });
 
   void _back() {
     if (_app != null) _select(0);
@@ -147,53 +147,97 @@ class _ShellState extends State<Shell> {
   /// from an app. Ctrl works too, for the web build on other systems. (No bare Esc: it would leave the page from inside
   /// a text field.) Each one asks first when the listing has unsent edits.
   Map<ShortcutActivator, VoidCallback> get _shortcuts => {
-        for (final mod in [(meta: true, control: false), (meta: false, control: true)]) ...{
-          SingleActivator(LogicalKeyboardKey.keyK, meta: mod.meta, control: mod.control): _palette,
-          SingleActivator(LogicalKeyboardKey.keyR, meta: mod.meta, control: mod.control): _reloadPage,
-          SingleActivator(LogicalKeyboardKey.bracketLeft, meta: mod.meta, control: mod.control): _back,
-          for (var i = 0; i < _dests.length; i++) SingleActivator(LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i), meta: mod.meta, control: mod.control): () => _select(i),
-        },
-      };
+    for (final mod in [(meta: true, control: false), (meta: false, control: true)]) ...{
+      SingleActivator(LogicalKeyboardKey.keyK, meta: mod.meta, control: mod.control): _palette,
+      SingleActivator(LogicalKeyboardKey.keyR, meta: mod.meta, control: mod.control): _reloadPage,
+      SingleActivator(LogicalKeyboardKey.bracketLeft, meta: mod.meta, control: mod.control): _back,
+      for (var i = 0; i < _dests.length; i++)
+        SingleActivator(LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i), meta: mod.meta, control: mod.control): () => _select(i),
+    },
+  };
 
   /// The macOS menu bar, replacing Flutter's default one. Its shortcuts are the same as [_shortcuts].
   List<PlatformMenuItem> _menus(Brightness brightness) => [
-        PlatformMenu(label: 'App Store Dashboard', menus: [
-          const PlatformMenuItemGroup(members: [PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.about)]),
-          if (widget.state.supportsDeviceLock)
-            PlatformMenuItemGroup(members: [
-              PlatformMenuItem(label: 'Lock', shortcut: const SingleActivator(LogicalKeyboardKey.keyL, meta: true, control: true), onSelected: widget.state.lock),
-            ]),
-          const PlatformMenuItemGroup(members: [
+    PlatformMenu(
+      label: 'App Store Dashboard',
+      menus: [
+        const PlatformMenuItemGroup(members: [PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.about)]),
+        if (widget.state.supportsDeviceLock)
+          PlatformMenuItemGroup(
+            members: [
+              PlatformMenuItem(
+                label: 'Lock',
+                shortcut: const SingleActivator(LogicalKeyboardKey.keyL, meta: true, control: true),
+                onSelected: widget.state.lock,
+              ),
+            ],
+          ),
+        const PlatformMenuItemGroup(
+          members: [
             PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.hide),
             PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.hideOtherApplications),
             PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.showAllApplications),
-          ]),
-          const PlatformMenuItemGroup(members: [PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.quit)]),
-        ]),
-        PlatformMenu(label: 'View', menus: [
-          PlatformMenuItemGroup(members: [
-            PlatformMenuItem(label: 'Reload Page', shortcut: const SingleActivator(LogicalKeyboardKey.keyR, meta: true), onSelected: _reloadPage),
+          ],
+        ),
+        const PlatformMenuItemGroup(members: [PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.quit)]),
+      ],
+    ),
+    PlatformMenu(
+      label: 'View',
+      menus: [
+        PlatformMenuItemGroup(
+          members: [
+            PlatformMenuItem(
+              label: 'Reload Page',
+              shortcut: const SingleActivator(LogicalKeyboardKey.keyR, meta: true),
+              onSelected: _reloadPage,
+            ),
             PlatformMenuItem(label: 'Search…', shortcut: const SingleActivator(LogicalKeyboardKey.keyK, meta: true), onSelected: _palette),
-            PlatformMenuItem(label: brightness == Brightness.dark ? 'Light Appearance' : 'Dark Appearance', onSelected: () => widget.state.toggleTheme(brightness)),
-          ]),
-          const PlatformMenuItemGroup(members: [PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.toggleFullScreen)]),
-        ]),
-        PlatformMenu(label: 'Go', menus: [
-          PlatformMenuItemGroup(members: [
+            PlatformMenuItem(
+              label: brightness == Brightness.dark ? 'Light Appearance' : 'Dark Appearance',
+              onSelected: () => widget.state.toggleTheme(brightness),
+            ),
+          ],
+        ),
+        const PlatformMenuItemGroup(members: [PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.toggleFullScreen)]),
+      ],
+    ),
+    PlatformMenu(
+      label: 'Go',
+      menus: [
+        PlatformMenuItemGroup(
+          members: [
             for (var i = 0; i < _dests.length; i++)
-              PlatformMenuItem(label: _dests[i].label, shortcut: SingleActivator(LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i), meta: true), onSelected: () => _select(i)),
-          ]),
-          PlatformMenuItemGroup(members: [
-            PlatformMenuItem(label: 'Back to Applications', shortcut: const SingleActivator(LogicalKeyboardKey.bracketLeft, meta: true), onSelected: _app == null ? null : _back),
-          ]),
-        ]),
-        const PlatformMenu(label: 'Window', menus: [
-          PlatformMenuItemGroup(members: [
+              PlatformMenuItem(
+                label: _dests[i].label,
+                shortcut: SingleActivator(LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i), meta: true),
+                onSelected: () => _select(i),
+              ),
+          ],
+        ),
+        PlatformMenuItemGroup(
+          members: [
+            PlatformMenuItem(
+              label: 'Back to Applications',
+              shortcut: const SingleActivator(LogicalKeyboardKey.bracketLeft, meta: true),
+              onSelected: _app == null ? null : _back,
+            ),
+          ],
+        ),
+      ],
+    ),
+    const PlatformMenu(
+      label: 'Window',
+      menus: [
+        PlatformMenuItemGroup(
+          members: [
             PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.minimizeWindow),
             PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.zoomWindow),
-          ]),
-        ]),
-      ];
+          ],
+        ),
+      ],
+    ),
+  ];
 
   void _palette() {
     final store = _store;
@@ -206,10 +250,20 @@ class _ShellState extends State<Shell> {
 
   Widget _page(AscClient client, Credentials creds, AppsStore store) {
     if (_index == 0 && _app != null) {
-      return AppDetailPage(key: ValueKey('${_app!.id}/$_appTab/$_refresh'), client: client, summary: _app!, initialTab: _appTab, uploads: _uploads, templates: _templates, onTabChanged: (t) {
+      return AppDetailPage(
+        key: ValueKey('${_app!.id}/$_appTab/$_refresh'),
+        client: client,
+        summary: _app!,
+        initialTab: _appTab,
+        uploads: _uploads,
+        templates: _templates,
+        onTabChanged: (t) {
           _currentTab = t;
           _remember(_app?.id, t);
-        }, onUnsavedChanged: (v) => _unsaved = v, onBack: () => _select(0));
+        },
+        onUnsavedChanged: (v) => _unsaved = v,
+        onBack: () => _select(0),
+      );
     }
     return switch (_index) {
       0 => AppsPage(store: store, onOpen: _openApp, prefs: widget.state.prefs),
@@ -232,22 +286,30 @@ class _ShellState extends State<Shell> {
         final body = KeyedSubtree(key: ValueKey('${creds.id}/$_index/$_refresh'), child: _page(client, creds, store));
         final wide = MediaQuery.sizeOf(context).width >= 860;
         final brightness = Theme.of(context).brightness;
-        final bar = MacTitleBar(onSearch: _palette, themeMode: widget.state.themeMode, onToggleTheme: () => widget.state.toggleTheme(brightness));
+        final bar = MacTitleBar(
+          onSearch: _palette,
+          themeMode: widget.state.themeMode,
+          onToggleTheme: () => widget.state.toggleTheme(brightness),
+        );
         final shell = CallbackShortcuts(
           bindings: _shortcuts,
           child: Focus(
             autofocus: true,
             child: wide
                 ? Scaffold(
-                    body: Column(children: [
-                      bar,
-                      Expanded(
-                        child: Row(children: [
-                          _Sidebar(state: widget.state, index: _index, onSelect: _select),
-                          Expanded(child: body),
-                        ]),
-                      ),
-                    ]),
+                    body: Column(
+                      children: [
+                        bar,
+                        Expanded(
+                          child: Row(
+                            children: [
+                              _Sidebar(state: widget.state, index: _index, onSelect: _select),
+                              Expanded(child: body),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   )
                 : Scaffold(
                     appBar: AppBar(
@@ -261,7 +323,10 @@ class _ShellState extends State<Shell> {
                     bottomNavigationBar: NavigationBar(
                       selectedIndex: _index,
                       onDestinationSelected: _select,
-                      destinations: [for (final d in _dests) NavigationDestination(icon: Icon(d.icon), selectedIcon: Icon(d.selectedIcon), label: d.label)],
+                      destinations: [
+                        for (final d in _dests)
+                          NavigationDestination(icon: Icon(d.icon), selectedIcon: Icon(d.selectedIcon), label: d.label),
+                      ],
                     ),
                   ),
           ),
@@ -286,43 +351,63 @@ class _Sidebar extends StatelessWidget {
     final k = Tokens.of(context);
     return Container(
       width: 240,
-      decoration: BoxDecoration(color: k.sidebar, border: Border(right: BorderSide(color: k.line))),
+      decoration: BoxDecoration(
+        color: k.sidebar,
+        border: Border(right: BorderSide(color: k.line)),
+      ),
       padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const SectionLabel('Workspace', padding: EdgeInsets.fromLTRB(10, 0, 10, 8)),
-        for (var i = 0; i < _dests.length; i++)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 2),
-            child: Material(
-              color: i == index ? k.accentSoft : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-              child: MergeSemantics(child: Semantics(button: true, selected: i == index, child: InkWell(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SectionLabel('Workspace', padding: EdgeInsets.fromLTRB(10, 0, 10, 8)),
+          for (var i = 0; i < _dests.length; i++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Material(
+                color: i == index ? k.accentSoft : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
-                onTap: () => onSelect(i),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  child: Row(children: [
-                    Icon(i == index ? _dests[i].selectedIcon : _dests[i].icon, size: 19, color: i == index ? k.accentInk : k.muted),
-                    const SizedBox(width: 11),
-                    Expanded(
-                      child: Text(_dests[i].label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 13.5, fontWeight: i == index ? FontWeight.w600 : FontWeight.w500, color: i == index ? k.accentInk : t.colorScheme.onSurface.withValues(alpha: 0.82))),
+                child: MergeSemantics(
+                  child: Semantics(
+                    button: true,
+                    selected: i == index,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => onSelect(i),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(i == index ? _dests[i].selectedIcon : _dests[i].icon, size: 19, color: i == index ? k.accentInk : k.muted),
+                            const SizedBox(width: 11),
+                            Expanded(
+                              child: Text(
+                                _dests[i].label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: i == index ? FontWeight.w600 : FontWeight.w500,
+                                  color: i == index ? k.accentInk : t.colorScheme.onSurface.withValues(alpha: 0.82),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ]),
+                  ),
                 ),
-              ))),
+              ),
             ),
-          ),
-        const Spacer(),
-        ClientSwitcher(state: state),
-        if (state.supportsDeviceLock)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: OutlinedButton.icon(onPressed: state.lock, icon: const Icon(Icons.lock_outline, size: 16), label: const Text('Lock')),
-          ),
-      ]),
+          const Spacer(),
+          ClientSwitcher(state: state),
+          if (state.supportsDeviceLock)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: OutlinedButton.icon(onPressed: state.lock, icon: const Icon(Icons.lock_outline, size: 16), label: const Text('Lock')),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -338,7 +423,12 @@ class ClientSwitcher extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(title),
-        content: TextField(controller: c, autofocus: true, decoration: InputDecoration(labelText: label, helperText: helper), onSubmitted: (v) => Navigator.pop(ctx, v)),
+        content: TextField(
+          controller: c,
+          autofocus: true,
+          decoration: InputDecoration(labelText: label, helperText: helper),
+          onSubmitted: (v) => Navigator.pop(ctx, v),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('Save')),
@@ -365,8 +455,13 @@ class ClientSwitcher extends StatelessWidget {
         final n = await _ask(context, 'Rename client', 'Name', active.label);
         if (n != null && n.trim().isNotEmpty) await state.rename(active.id, n);
       case '__vendor':
-        final v = await _ask(context, 'Vendor number', 'Vendor number', active.vendorNumber,
-            helper: 'App Store Connect → Payments and Financial Reports. Used for Sales & Trends.');
+        final v = await _ask(
+          context,
+          'Vendor number',
+          'Vendor number',
+          active.vendorNumber,
+          helper: 'App Store Connect → Payments and Financial Reports. Used for Sales & Trends.',
+        );
         if (v != null) await state.setVendorNumber(v);
       case '__remove':
         final ok = await showDialog<bool>(
@@ -400,49 +495,92 @@ class ClientSwitcher extends StatelessWidget {
         for (final a in state.accounts)
           PopupMenuItem(
             value: a.id,
-            child: Row(children: [
-              SizedBox(width: 24, child: a.id == active.id ? const Icon(Icons.check, size: 18) : null),
-              Flexible(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(a.label, overflow: TextOverflow.ellipsis),
-                  Text('Key ${a.keyId}', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
-                ]),
-              ),
-            ]),
+            child: Row(
+              children: [
+                SizedBox(width: 24, child: a.id == active.id ? const Icon(Icons.check, size: 18) : null),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(a.label, overflow: TextOverflow.ellipsis),
+                      Text('Key ${a.keyId}', style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         const PopupMenuDivider(),
-        const PopupMenuItem(value: '__add', child: ListTile(dense: true, leading: Icon(Icons.add), title: Text('Add client (key + issuer ID)…'))),
-        const PopupMenuItem(value: '__rename', child: ListTile(dense: true, leading: Icon(Icons.edit_outlined), title: Text('Rename this client…'))),
-        const PopupMenuItem(value: '__vendor', child: ListTile(dense: true, leading: Icon(Icons.tag), title: Text('Vendor number…'))),
-        const PopupMenuItem(value: '__remove', child: ListTile(dense: true, leading: Icon(Icons.delete_outline), title: Text('Remove this client'))),
-        if (state.supportsDeviceLock) const PopupMenuItem(value: '__lock', child: ListTile(dense: true, leading: Icon(Icons.lock_outline), title: Text('Lock now'))),
+        const PopupMenuItem(
+          value: '__add',
+          child: ListTile(dense: true, leading: Icon(Icons.add), title: Text('Add client (key + issuer ID)…')),
+        ),
+        const PopupMenuItem(
+          value: '__rename',
+          child: ListTile(dense: true, leading: Icon(Icons.edit_outlined), title: Text('Rename this client…')),
+        ),
+        const PopupMenuItem(
+          value: '__vendor',
+          child: ListTile(dense: true, leading: Icon(Icons.tag), title: Text('Vendor number…')),
+        ),
+        const PopupMenuItem(
+          value: '__remove',
+          child: ListTile(dense: true, leading: Icon(Icons.delete_outline), title: Text('Remove this client')),
+        ),
+        if (state.supportsDeviceLock)
+          const PopupMenuItem(
+            value: '__lock',
+            child: ListTile(dense: true, leading: Icon(Icons.lock_outline), title: Text('Lock now')),
+          ),
       ],
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(color: Tokens.of(context).surface, borderRadius: BorderRadius.circular(10), border: Border.all(color: Tokens.of(context).line)),
-        child: Row(children: [
-          Stack(clipBehavior: Clip.none, children: [
-            Avatar(active.label, size: 32),
-            // Green: the key is loaded and requests are going through.
-            Positioned(
-              right: -1,
-              bottom: -1,
-              child: Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(color: const Color(0xFF34C759), shape: BoxShape.circle, border: Border.all(color: Tokens.of(context).surface, width: 2)),
+        decoration: BoxDecoration(
+          color: Tokens.of(context).surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Tokens.of(context).line),
+        ),
+        child: Row(
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Avatar(active.label, size: 32),
+                // Green: the key is loaded and requests are going through.
+                Positioned(
+                  right: -1,
+                  bottom: -1,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF34C759),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Tokens.of(context).surface, width: 2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    active.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  Text('Key ${active.keyId}', style: TextStyle(fontSize: 11.5, color: t.colorScheme.onSurfaceVariant)),
+                ],
               ),
             ),
-          ]),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(active.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-              Text('Key ${active.keyId}', style: TextStyle(fontSize: 11.5, color: t.colorScheme.onSurfaceVariant)),
-            ]),
-          ),
-          const Icon(Icons.unfold_more, size: 17),
-        ]),
+            const Icon(Icons.unfold_more, size: 17),
+          ],
+        ),
       ),
     );
   }

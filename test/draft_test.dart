@@ -17,12 +17,14 @@ const descField = ListingField('description', 'Description');
 const newsField = ListingField('whatsNew', "What's new");
 
 ShotSetDraft existingSet() => ShotSetDraft(
-      exists: true,
-      group: 'IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE',
-      versionLocId: 'L1',
-      locale: 'en-US',
-      items: [for (final id in ['A', 'B', 'C']) ShotItem.existing(id: 'P$id', name: '$id.png')],
-    );
+  exists: true,
+  group: 'IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE',
+  versionLocId: 'L1',
+  locale: 'en-US',
+  items: [
+    for (final id in ['A', 'B', 'C']) ShotItem.existing(id: 'P$id', name: '$id.png'),
+  ],
+);
 
 void main() {
   group('text edits', () {
@@ -35,29 +37,57 @@ void main() {
     });
 
     test('apply sends ONE patch per localization containing only the edited fields, then empties the draft', () async {
-      final fake = FakeAsc((r) => r.method == 'PATCH' ? json({'data': {'type': 'x', 'id': 'L1'}}) : null);
+      final fake = FakeAsc(
+        (r) => r.method == 'PATCH'
+            ? json({
+                'data': {'type': 'x', 'id': 'L1'},
+              })
+            : null,
+      );
       final d = ListingDraft();
       d.setText(target: 'version', locId: 'L1', locale: 'en-US', field: descField, before: 'old', after: 'new text');
       d.setText(target: 'version', locId: 'L1', locale: 'en-US', field: newsField, before: '', after: 'Bug fixes');
       final results = await d.apply(fake.client);
       expect(fake.log.single.toString(), 'PATCH /v1/appStoreVersionLocalizations/L1');
       expect(fake.log.single.body, {
-        'data': {'type': 'appStoreVersionLocalizations', 'id': 'L1', 'attributes': {'description': 'new text', 'whatsNew': 'Bug fixes'}},
+        'data': {
+          'type': 'appStoreVersionLocalizations',
+          'id': 'L1',
+          'attributes': {'description': 'new text', 'whatsNew': 'Bug fixes'},
+        },
       });
       expect(results.single.ok, isTrue);
       expect(d.isEmpty, isTrue);
     });
 
     test('app-info edits go to appInfoLocalizations', () async {
-      final fake = FakeAsc((r) => json({'data': {'type': 'x', 'id': 'I1'}}));
-      final d = ListingDraft()..setText(target: 'info', locId: 'I1', locale: 'en-US', field: const ListingField('subtitle', 'Subtitle'), before: '', after: 'Learn faster');
+      final fake = FakeAsc(
+        (r) => json({
+          'data': {'type': 'x', 'id': 'I1'},
+        }),
+      );
+      final d = ListingDraft()
+        ..setText(
+          target: 'info',
+          locId: 'I1',
+          locale: 'en-US',
+          field: const ListingField('subtitle', 'Subtitle'),
+          before: '',
+          after: 'Learn faster',
+        );
       await d.apply(fake.client);
       expect(fake.log.single.path, '/v1/appInfoLocalizations/I1');
       expect(fake.log.single.body!['data']['attributes'], {'subtitle': 'Learn faster'});
     });
 
     test('one failing locale does not block the others, and the failed edit stays in the draft', () async {
-      final fake = FakeAsc((r) => r.path.endsWith('/L2') ? apiError(409, 'Conflict', 'Version is not editable') : json({'data': {'type': 'x', 'id': 'L1'}}));
+      final fake = FakeAsc(
+        (r) => r.path.endsWith('/L2')
+            ? apiError(409, 'Conflict', 'Version is not editable')
+            : json({
+                'data': {'type': 'x', 'id': 'L1'},
+              }),
+      );
       final d = ListingDraft()
         ..setText(target: 'version', locId: 'L1', locale: 'en-US', field: descField, before: 'a', after: 'b')
         ..setText(target: 'version', locId: 'L2', locale: 'hi', field: descField, before: 'a', after: 'c');
@@ -75,9 +105,9 @@ void main() {
     setUp(() {
       puts = [];
       assetHttpClientFactory = () => MockClient((req) async {
-            puts.add('${req.method} ${req.url} ${req.bodyBytes.length}B ${req.headers['Content-Type']}');
-            return http.Response('', 200);
-          });
+        puts.add('${req.method} ${req.url} ${req.bodyBytes.length}B ${req.headers['Content-Type']}');
+        return http.Response('', 200);
+      });
     });
     tearDown(() => assetHttpClientFactory = http.Client.new);
 
@@ -92,18 +122,44 @@ void main() {
             'attributes': {
               'state': 'AWAITING_UPLOAD',
               'uploadOperations': [
-                {'method': 'PUT', 'url': 'https://upload.test/part1', 'offset': 0, 'length': size, 'requestHeaders': [{'name': 'Content-Type', 'value': 'image/png'}]},
+                {
+                  'method': 'PUT',
+                  'url': 'https://upload.test/part1',
+                  'offset': 0,
+                  'length': size,
+                  'requestHeaders': [
+                    {'name': 'Content-Type', 'value': 'image/png'},
+                  ],
+                },
               ],
             },
           },
         }, 201);
       }
-      if (r.method == 'PATCH' && r.path == '/v1/appAssetLibraryImages/IMG1') return json({'data': {'type': 'appAssetLibraryImages', 'id': 'IMG1'}});
-      if (r.method == 'GET' && r.path == '/v1/appAssetLibraryImages/IMG1') {
-        return json({'data': {'type': 'appAssetLibraryImages', 'id': 'IMG1', 'attributes': {'state': 'PREPARE_FOR_SUBMISSION'}}});
+      if (r.method == 'PATCH' && r.path == '/v1/appAssetLibraryImages/IMG1') {
+        return json({
+          'data': {'type': 'appAssetLibraryImages', 'id': 'IMG1'},
+        });
       }
-      if (r.method == 'POST' && r.path == '/v1/appAssetLibraryPlacements') return json({'data': {'type': 'appAssetLibraryPlacements', 'id': 'PLC1'}}, 201);
-      if (r.method == 'POST' && r.path == '/v1/appAssetLibraryPlacementOrderingRequests') return json({'data': {'type': 'appAssetLibraryPlacementOrderingRequests', 'id': 'ORD1'}}, 201);
+      if (r.method == 'GET' && r.path == '/v1/appAssetLibraryImages/IMG1') {
+        return json({
+          'data': {
+            'type': 'appAssetLibraryImages',
+            'id': 'IMG1',
+            'attributes': {'state': 'PREPARE_FOR_SUBMISSION'},
+          },
+        });
+      }
+      if (r.method == 'POST' && r.path == '/v1/appAssetLibraryPlacements') {
+        return json({
+          'data': {'type': 'appAssetLibraryPlacements', 'id': 'PLC1'},
+        }, 201);
+      }
+      if (r.method == 'POST' && r.path == '/v1/appAssetLibraryPlacementOrderingRequests') {
+        return json({
+          'data': {'type': 'appAssetLibraryPlacementOrderingRequests', 'id': 'ORD1'},
+        }, 201);
+      }
       return null;
     }
 
@@ -134,7 +190,11 @@ void main() {
         'data': {
           'type': 'appAssetLibraryImages',
           'attributes': {'category': 'APP_SCREENSHOTS_AND_PREVIEWS', 'fileName': 'new.png', 'fileSize': 2048, 'referenceName': 'new.png'},
-          'relationships': {'assetLibrary': {'data': {'type': 'appAssetLibraries', 'id': 'APP'}}},
+          'relationships': {
+            'assetLibrary': {
+              'data': {'type': 'appAssetLibraries', 'id': 'APP'},
+            },
+          },
         },
       });
       expect(puts.single, 'PUT https://upload.test/part1 2048B image/png');
@@ -144,8 +204,12 @@ void main() {
           'type': 'appAssetLibraryPlacements',
           'attributes': {'placementType': 'APP_SCREENSHOT'},
           'relationships': {
-            'image': {'data': {'type': 'appAssetLibraryImages', 'id': 'IMG1'}},
-            'appStoreVersionLocalization': {'data': {'type': 'appStoreVersionLocalizations', 'id': 'L1'}},
+            'image': {
+              'data': {'type': 'appAssetLibraryImages', 'id': 'IMG1'},
+            },
+            'appStoreVersionLocalization': {
+              'data': {'type': 'appStoreVersionLocalizations', 'id': 'L1'},
+            },
           },
         },
       });
@@ -159,7 +223,10 @@ void main() {
     test('a new device group needs no creation call: its first screenshot is just uploaded and placed', () async {
       final fake = FakeAsc(asc);
       final d = ListingDraft(libraryId: 'APP');
-      d.ensureShotSet('L1:IPAD_13_PROFILE', () => ShotSetDraft(exists: false, group: 'IPAD_13_PROFILE', versionLocId: 'L1', locale: 'en-US', items: []));
+      d.ensureShotSet(
+        'L1:IPAD_13_PROFILE',
+        () => ShotSetDraft(exists: false, group: 'IPAD_13_PROFILE', versionLocId: 'L1', locale: 'en-US', items: []),
+      );
       d.addShots('L1:IPAD_13_PROFILE', [(name: 'a.png', bytes: Uint8List(10))]);
       final results = await d.apply(fake.client);
       expect(results.single.ok, isTrue, reason: results.single.error);
@@ -176,14 +243,26 @@ void main() {
       final fake = FakeAsc((r) {
         if (r.method == 'POST' && r.path == '/v1/appAssetLibraryPlacements') {
           tries++;
-          if (tries < 3) return json({'errors': [{'status': '409', 'code': 'STATE_ERROR.ASSET_IN_POST_PROCESSING', 'title': 'Busy', 'detail': 'later'}]}, 409);
+          if (tries < 3) {
+            return json({
+              'errors': [
+                {'status': '409', 'code': 'STATE_ERROR.ASSET_IN_POST_PROCESSING', 'title': 'Busy', 'detail': 'later'},
+              ],
+            }, 409);
+          }
         }
         return asc(r);
       });
       expect(await createPlacement(fake.client, 'IMG1', 'L1', retryEvery: Duration.zero), 'PLC1');
       expect(tries, 3);
 
-      final bad = FakeAsc((r) => json({'errors': [{'status': '409', 'code': 'STATE_ERROR.EXPERIMENT_IN_PROGRESS', 'title': 'Test running', 'detail': 'no'}]}, 409));
+      final bad = FakeAsc(
+        (r) => json({
+          'errors': [
+            {'status': '409', 'code': 'STATE_ERROR.EXPERIMENT_IN_PROGRESS', 'title': 'Test running', 'detail': 'no'},
+          ],
+        }, 409),
+      );
       await expectLater(createPlacement(bad.client, 'IMG1', 'L1', retryEvery: Duration.zero), throwsA(isA<AscException>()));
       expect(bad.log.length, 1);
     });
@@ -191,7 +270,18 @@ void main() {
     test('Apple rejecting the processed image is reported with its reason', () async {
       final fake = FakeAsc((r) {
         if (r.method == 'GET' && r.path == '/v1/appAssetLibraryImages/IMG1') {
-          return json({'data': {'type': 'appAssetLibraryImages', 'id': 'IMG1', 'attributes': {'state': 'FAILED', 'stateDetails': [{'code': 'IMAGE_BAD_SIZE', 'description': 'Wrong dimensions'}]}}});
+          return json({
+            'data': {
+              'type': 'appAssetLibraryImages',
+              'id': 'IMG1',
+              'attributes': {
+                'state': 'FAILED',
+                'stateDetails': [
+                  {'code': 'IMAGE_BAD_SIZE', 'description': 'Wrong dimensions'},
+                ],
+              },
+            },
+          });
         }
         return asc(r);
       });
@@ -208,7 +298,15 @@ void main() {
       final fake = FakeAsc((r) {
         if (r.method == 'POST') {
           return json({
-            'data': {'type': 'appAssetLibraryImages', 'id': 'IMG1', 'attributes': {'uploadOperations': [{'method': 'PUT', 'url': 'https://upload.test/p', 'offset': 0, 'length': 5}]}},
+            'data': {
+              'type': 'appAssetLibraryImages',
+              'id': 'IMG1',
+              'attributes': {
+                'uploadOperations': [
+                  {'method': 'PUT', 'url': 'https://upload.test/p', 'offset': 0, 'length': 5},
+                ],
+              },
+            },
           }, 201);
         }
         return null;
@@ -240,7 +338,12 @@ void main() {
       expect(first.single.ok, isFalse);
       expect(d.isEmpty, isFalse, reason: 'the failed set is kept, with its pictures');
       expect(identical(d.shotSet(key), set), isTrue);
-      expect(set.items.map((i) => i.name).toList(), ['A.png', 'C.png', 'one.png', 'two.png'], reason: 'B is gone for good; one.png is placed');
+      expect(set.items.map((i) => i.name).toList(), [
+        'A.png',
+        'C.png',
+        'one.png',
+        'two.png',
+      ], reason: 'B is gone for good; one.png is placed');
       expect(set.items[2].isNew, isFalse);
       expect(set.items[3].isNew, isTrue);
 

@@ -3,22 +3,10 @@ import 'models.dart';
 
 /// Roles that can be handed to someone in App Store Connect, most powerful first. `ACCOUNT_HOLDER` is deliberately absent:
 /// it belongs to one person and cannot be assigned through the API.
-const assignableRoles = [
-  'ADMIN',
-  'APP_MANAGER',
-  'DEVELOPER',
-  'MARKETING',
-  'SALES',
-  'FINANCE',
-  'CUSTOMER_SUPPORT',
-  'ACCESS_TO_REPORTS',
-];
+const assignableRoles = ['ADMIN', 'APP_MANAGER', 'DEVELOPER', 'MARKETING', 'SALES', 'FINANCE', 'CUSTOMER_SUPPORT', 'ACCESS_TO_REPORTS'];
 
 /// Extra permissions that sit on top of a role.
-const extraPermissions = {
-  'CREATE_APPS': 'Create apps',
-  'GENERATE_INDIVIDUAL_KEYS': 'Generate individual API keys',
-};
+const extraPermissions = {'CREATE_APPS': 'Create apps', 'GENERATE_INDIVIDUAL_KEYS': 'Generate individual API keys'};
 
 const roleHelp = {
   'ADMIN': 'Full access to everything except the Account Holder’s rights.',
@@ -73,26 +61,36 @@ Map<String, dynamic> inviteBody({
       },
       if (!all)
         'relationships': {
-          'visibleApps': {'data': [for (final id in appIds) {'type': 'apps', 'id': id}]},
+          'visibleApps': {
+            'data': [
+              for (final id in appIds) {'type': 'apps', 'id': id},
+            ],
+          },
         },
     },
   };
 }
 
-Map<String, dynamic> accessUpdateBody(String userId, {required Set<String> roles, required bool allApps, required Set<String> appIds, bool? provisioning}) {
+Map<String, dynamic> accessUpdateBody(
+  String userId, {
+  required Set<String> roles,
+  required bool allApps,
+  required Set<String> appIds,
+  bool? provisioning,
+}) {
   final all = allApps || rolesSeeAllApps(roles);
   return {
     'data': {
       'type': 'users',
       'id': userId,
-      'attributes': {
-        'roles': _ordered(roles),
-        'allAppsVisible': all,
-        'provisioningAllowed': ?provisioning,
-      },
+      'attributes': {'roles': _ordered(roles), 'allAppsVisible': all, 'provisioningAllowed': ?provisioning},
       if (!all)
         'relationships': {
-          'visibleApps': {'data': [for (final id in appIds) {'type': 'apps', 'id': id}]},
+          'visibleApps': {
+            'data': [
+              for (final id in appIds) {'type': 'apps', 'id': id},
+            ],
+          },
         },
     },
   };
@@ -100,7 +98,10 @@ Map<String, dynamic> accessUpdateBody(String userId, {required Set<String> roles
 
 List<String> _ordered(Set<String> roles) {
   final order = [...assignableRoles, 'ACCOUNT_HOLDER', ...extraPermissions.keys];
-  return [for (final r in order) if (roles.contains(r)) r];
+  return [
+    for (final r in order)
+      if (roles.contains(r)) r,
+  ];
 }
 
 /// People and pending invitations of the team.
@@ -121,7 +122,10 @@ Future<TeamData> loadTeam(AscClient c) async {
   } on AscException catch (e) {
     invitesError = e.message;
   }
-  final apps = await c.all('/v1/apps', {'limit': '200', 'fields[apps]': 'name,bundleId'}).then((p) => p.data).catchError((_) => <Resource>[]);
+  final apps = await c
+      .all('/v1/apps', {'limit': '200', 'fields[apps]': 'name,bundleId'})
+      .then((p) => p.data)
+      .catchError((_) => <Resource>[]);
   return TeamData(users, invites, apps, invitesError);
 }
 

@@ -6,11 +6,7 @@ const iapNameMax = 30; // customer-facing display name
 const iapDescriptionMax = 45;
 const iapReferenceMax = 64; // internal reference name
 
-const iapTypes = {
-  'CONSUMABLE': 'Consumable',
-  'NON_CONSUMABLE': 'Non-consumable',
-  'NON_RENEWING_SUBSCRIPTION': 'Non-renewing subscription',
-};
+const iapTypes = {'CONSUMABLE': 'Consumable', 'NON_CONSUMABLE': 'Non-consumable', 'NON_RENEWING_SUBSCRIPTION': 'Non-renewing subscription'};
 
 /// One in-app purchase to create.
 class IapSpec {
@@ -70,30 +66,34 @@ class IapOptions {
 // ---- Request bodies (shapes checked against Apple's OpenAPI spec) -------------------------------------------------
 
 Map<String, dynamic> iapCreateBody(String appId, IapSpec s) => {
-      'data': {
-        'type': 'inAppPurchases',
-        'attributes': {
-          'name': s.referenceName,
-          'productId': s.productId,
-          'inAppPurchaseType': s.type,
-          'familySharable': s.familySharable,
-          if (s.reviewNote.trim().isNotEmpty) 'reviewNote': s.reviewNote.trim(),
-        },
-        'relationships': {
-          'app': {'data': {'type': 'apps', 'id': appId}},
-        },
+  'data': {
+    'type': 'inAppPurchases',
+    'attributes': {
+      'name': s.referenceName,
+      'productId': s.productId,
+      'inAppPurchaseType': s.type,
+      'familySharable': s.familySharable,
+      if (s.reviewNote.trim().isNotEmpty) 'reviewNote': s.reviewNote.trim(),
+    },
+    'relationships': {
+      'app': {
+        'data': {'type': 'apps', 'id': appId},
       },
-    };
+    },
+  },
+};
 
 Map<String, dynamic> iapLocalizationBody(String iapId, IapSpec s) => {
-      'data': {
-        'type': 'inAppPurchaseLocalizations',
-        'attributes': {'name': s.displayName, 'locale': s.locale, 'description': s.description},
-        'relationships': {
-          'inAppPurchaseV2': {'data': {'type': 'inAppPurchases', 'id': iapId}},
-        },
+  'data': {
+    'type': 'inAppPurchaseLocalizations',
+    'attributes': {'name': s.displayName, 'locale': s.locale, 'description': s.description},
+    'relationships': {
+      'inAppPurchaseV2': {
+        'data': {'type': 'inAppPurchases', 'id': iapId},
       },
-    };
+    },
+  },
+};
 
 /// Lowest price point at or above [target] (round UP to the next tier), else the highest one. Free (0) points are skipped.
 Resource? pickPricePoint(List<Resource> points, double target) {
@@ -106,43 +106,55 @@ Resource? pickPricePoint(List<Resource> points, double target) {
 }
 
 Map<String, dynamic> iapPriceScheduleBody(String iapId, String territory, String pricePointId) => {
-      'data': {
-        'type': 'inAppPurchasePriceSchedules',
-        'relationships': {
-          'inAppPurchase': {'data': {'type': 'inAppPurchases', 'id': iapId}},
-          'manualPrices': {
-            'data': [
-              {'type': 'inAppPurchasePrices', 'id': r'${price1}'},
-            ],
-          },
-          'baseTerritory': {'data': {'type': 'territories', 'id': territory}},
+  'data': {
+    'type': 'inAppPurchasePriceSchedules',
+    'relationships': {
+      'inAppPurchase': {
+        'data': {'type': 'inAppPurchases', 'id': iapId},
+      },
+      'manualPrices': {
+        'data': [
+          {'type': 'inAppPurchasePrices', 'id': r'${price1}'},
+        ],
+      },
+      'baseTerritory': {
+        'data': {'type': 'territories', 'id': territory},
+      },
+    },
+  },
+  'included': [
+    {
+      'type': 'inAppPurchasePrices',
+      'id': r'${price1}',
+      'attributes': {'startDate': null},
+      'relationships': {
+        'inAppPurchaseV2': {
+          'data': {'type': 'inAppPurchases', 'id': iapId},
+        },
+        'inAppPurchasePricePoint': {
+          'data': {'type': 'inAppPurchasePricePoints', 'id': pricePointId},
         },
       },
-      'included': [
-        {
-          'type': 'inAppPurchasePrices',
-          'id': r'${price1}',
-          'attributes': {'startDate': null},
-          'relationships': {
-            'inAppPurchaseV2': {'data': {'type': 'inAppPurchases', 'id': iapId}},
-            'inAppPurchasePricePoint': {'data': {'type': 'inAppPurchasePricePoints', 'id': pricePointId}},
-          },
-        },
-      ],
-    };
+    },
+  ],
+};
 
 Map<String, dynamic> iapAvailabilityBody(String iapId, List<String> territoryIds) => {
-      'data': {
-        'type': 'inAppPurchaseAvailabilities',
-        'attributes': {'availableInNewTerritories': true},
-        'relationships': {
-          'inAppPurchase': {'data': {'type': 'inAppPurchases', 'id': iapId}},
-          'availableTerritories': {
-            'data': [for (final t in territoryIds) {'type': 'territories', 'id': t}],
-          },
-        },
+  'data': {
+    'type': 'inAppPurchaseAvailabilities',
+    'attributes': {'availableInNewTerritories': true},
+    'relationships': {
+      'inAppPurchase': {
+        'data': {'type': 'inAppPurchases', 'id': iapId},
       },
-    };
+      'availableTerritories': {
+        'data': [
+          for (final t in territoryIds) {'type': 'territories', 'id': t},
+        ],
+      },
+    },
+  },
+};
 
 // ---- Running it ---------------------------------------------------------------------------------------------------
 
@@ -166,7 +178,10 @@ class IapCreator {
   List<String>? _territories;
 
   Future<List<String>> _allTerritories() async {
-    return _territories ??= (await client.all('/v1/territories', {'limit': '200', 'fields[territories]': 'currency'}, 5)).data.map((t) => t.id).toList();
+    return _territories ??= (await client.all('/v1/territories', {
+      'limit': '200',
+      'fields[territories]': 'currency',
+    }, 5)).data.map((t) => t.id).toList();
   }
 
   /// The existing in-app purchase with [productId] in this app, or null.
@@ -187,8 +202,10 @@ class IapCreator {
       final existing = await findExisting(spec.productId);
       if (existing != null) {
         if (existing.str('inAppPurchaseType') != spec.type) {
-          throw AscException('Product ID ${spec.productId} already exists as ${iapTypes[existing.str('inAppPurchaseType')] ?? existing.str('inAppPurchaseType')}, '
-              'not ${iapTypes[spec.type]}. Product IDs can not be reused for another type.');
+          throw AscException(
+            'Product ID ${spec.productId} already exists as ${iapTypes[existing.str('inAppPurchaseType')] ?? existing.str('inAppPurchaseType')}, '
+            'not ${iapTypes[spec.type]}. Product IDs can not be reused for another type.',
+          );
         }
         r.id = existing.id;
         r.done.add('existing');
@@ -200,7 +217,9 @@ class IapCreator {
       }
 
       step = 'localization';
-      final locs = existing == null ? const <Resource>[] : (await client.page('/v2/inAppPurchases/${r.id}/inAppPurchaseLocalizations', {'limit': '50'})).data;
+      final locs = existing == null
+          ? const <Resource>[]
+          : (await client.page('/v2/inAppPurchases/${r.id}/inAppPurchaseLocalizations', {'limit': '50'})).data;
       if (locs.any((l) => l.str('locale') == spec.locale)) {
         r.done.add('localization (already there)');
       } else {
@@ -213,11 +232,11 @@ class IapCreator {
         if (existing != null && await _has('/v2/inAppPurchases/${r.id}/iapPriceSchedule')) {
           r.done.add('price (already set)');
         } else {
-          final points = await client.all(
-            '/v2/inAppPurchases/${r.id}/pricePoints',
-            {'filter[territory]': options.baseTerritory, 'limit': '200', 'fields[inAppPurchasePricePoints]': 'customerPrice'},
-            12,
-          );
+          final points = await client.all('/v2/inAppPurchases/${r.id}/pricePoints', {
+            'filter[territory]': options.baseTerritory,
+            'limit': '200',
+            'fields[inAppPurchasePricePoints]': 'customerPrice',
+          }, 12);
           final best = pickPricePoint(points.data, spec.price!);
           if (best == null) throw AscException('No price points returned for ${options.baseTerritory}.');
           await client.post('/v1/inAppPurchasePriceSchedules', iapPriceScheduleBody(r.id!, options.baseTerritory, best.id));

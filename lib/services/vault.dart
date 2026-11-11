@@ -63,7 +63,10 @@ class Vault {
     }
     await _storage.write(
       key: _key,
-      value: jsonEncode({'accounts': [for (final a in d.accounts) a.toJson()], 'activeId': d.activeId}),
+      value: jsonEncode({
+        'accounts': [for (final a in d.accounts) a.toJson()],
+        'activeId': d.activeId,
+      }),
     );
   }
 }

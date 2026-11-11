@@ -20,7 +20,8 @@ void main() {
   });
 
   test('an internal group never sends public-link fields; it can have access to all builds', () {
-    final a = groupCreateBody('APP', const GroupSettings(name: 'Team', publicLink: true, limit: 5), internal: true)['data']['attributes'] as Map;
+    final a =
+        groupCreateBody('APP', const GroupSettings(name: 'Team', publicLink: true, limit: 5), internal: true)['data']['attributes'] as Map;
     expect(a.containsKey('publicLinkEnabled'), isFalse);
     expect(a['hasAccessToAllBuilds'], isTrue);
     expect(a['isInternalGroup'], isTrue);
@@ -43,26 +44,50 @@ void main() {
   });
 
   test('adding a tester creates them in the group; an existing tester (409) is looked up and linked', () async {
-    final fresh = FakeAsc((r) => json({'data': {'type': 'betaTesters', 'id': 'T1'}}, 201));
+    final fresh = FakeAsc(
+      (r) => json({
+        'data': {'type': 'betaTesters', 'id': 'T1'},
+      }, 201),
+    );
     expect(await addTester(fresh.client, 'G1', email: 'a@b.co', firstName: 'A'), isFalse);
     expect(fresh.log.single.body!['data']['attributes'], {'email': 'a@b.co', 'firstName': 'A'});
-    expect(fresh.log.single.body!['data']['relationships']['betaGroups']['data'], [{'type': 'betaGroups', 'id': 'G1'}]);
+    expect(fresh.log.single.body!['data']['relationships']['betaGroups']['data'], [
+      {'type': 'betaGroups', 'id': 'G1'},
+    ]);
 
     final existing = FakeAsc((r) {
       if (r.method == 'POST' && r.path == '/v1/betaTesters') return apiError(409, 'Conflict', 'exists');
-      if (r.method == 'GET') return json({'data': [{'type': 'betaTesters', 'id': 'T9', 'attributes': {}}]});
+      if (r.method == 'GET') {
+        return json({
+          'data': [
+            {'type': 'betaTesters', 'id': 'T9', 'attributes': {}},
+          ],
+        });
+      }
       if (r.path == '/v1/betaGroups/G1/relationships/betaTesters') return noContent();
       return null;
     });
     expect(await addTester(existing.client, 'G1', email: 'a@b.co'), isTrue);
-    expect(existing.log.map((r) => '${r.method} ${r.path}').toList(), ['POST /v1/betaTesters', 'GET /v1/betaTesters?filter%5Bemail%5D=a%40b.co&limit=1', 'POST /v1/betaGroups/G1/relationships/betaTesters']);
-    expect(existing.log.last.body!['data'], [{'type': 'betaTesters', 'id': 'T9'}]);
+    expect(existing.log.map((r) => '${r.method} ${r.path}').toList(), [
+      'POST /v1/betaTesters',
+      'GET /v1/betaTesters?filter%5Bemail%5D=a%40b.co&limit=1',
+      'POST /v1/betaGroups/G1/relationships/betaTesters',
+    ]);
+    expect(existing.log.last.body!['data'], [
+      {'type': 'betaTesters', 'id': 'T9'},
+    ]);
 
     await expectLater(addTester(fresh.client, 'G1', email: 'nope'), throwsA(isA<AscException>()));
   });
 
   test('builds and testers are linked and unlinked with linkage bodies; beta review posts the build', () async {
-    final fake = FakeAsc((r) => r.method == 'POST' && r.path == '/v1/betaAppReviewSubmissions' ? json({'data': {'type': 'betaAppReviewSubmissions', 'id': 'S1'}}, 201) : noContent());
+    final fake = FakeAsc(
+      (r) => r.method == 'POST' && r.path == '/v1/betaAppReviewSubmissions'
+          ? json({
+              'data': {'type': 'betaAppReviewSubmissions', 'id': 'S1'},
+            }, 201)
+          : noContent(),
+    );
     await addBuildsToGroup(fake.client, 'G', ['B1', 'B2']);
     await removeBuildsFromGroup(fake.client, 'G', ['B1']);
     await removeTestersFromGroup(fake.client, 'G', ['T1']);
@@ -75,44 +100,71 @@ void main() {
       'POST /v1/betaAppReviewSubmissions',
       'DELETE /v1/betaGroups/G',
     ]);
-    expect(fake.log[0].body!['data'], [{'type': 'builds', 'id': 'B1'}, {'type': 'builds', 'id': 'B2'}]);
+    expect(fake.log[0].body!['data'], [
+      {'type': 'builds', 'id': 'B1'},
+      {'type': 'builds', 'id': 'B2'},
+    ]);
     expect(fake.log[3].body!['data']['relationships']['build']['data'], {'type': 'builds', 'id': 'B2'});
   });
 
   test('expiring a build sends one PATCH with expired: true', () async {
-    final fake = FakeAsc((r) => json({'data': {'type': 'builds', 'id': 'B1'}}));
+    final fake = FakeAsc(
+      (r) => json({
+        'data': {'type': 'builds', 'id': 'B1'},
+      }),
+    );
     await expireBuild(fake.client, 'B1');
     expect(fake.log.single.method, 'PATCH');
     expect(fake.log.single.path, '/v1/builds/B1');
     expect(fake.log.single.body, {
-      'data': {'type': 'builds', 'id': 'B1', 'attributes': {'expired': true}}
+      'data': {
+        'type': 'builds',
+        'id': 'B1',
+        'attributes': {'expired': true},
+      },
     });
   });
 
   group('build uploads', () {
-    BuildUpload up(String short, String num, String state, String uploaded, {List<String> errors = const []}) => BuildUpload(Resource(
-          id: 'U$num',
-          type: 'buildUploads',
-          attributes: {
-            'cfBundleShortVersionString': short,
-            'cfBundleVersion': num,
-            'uploadedDate': uploaded,
-            'state': {'state': state, 'errors': [for (final e in errors) {'description': e}]},
+    BuildUpload up(String short, String num, String state, String uploaded, {List<String> errors = const []}) => BuildUpload(
+      Resource(
+        id: 'U$num',
+        type: 'buildUploads',
+        attributes: {
+          'cfBundleShortVersionString': short,
+          'cfBundleVersion': num,
+          'uploadedDate': uploaded,
+          'state': {
+            'state': state,
+            'errors': [
+              for (final e in errors) {'description': e},
+            ],
           },
-          relationships: const {},
-        ));
+        },
+        relationships: const {},
+      ),
+    );
     final now = DateTime.utc(2026, 11, 10, 12);
 
     test('state text and warnings come straight from Apple', () {
-      final u = BuildUpload(Resource(id: 'U', type: 'buildUploads', relationships: const {}, attributes: {
-        'cfBundleShortVersionString': '1.0',
-        'cfBundleVersion': '9',
-        'state': {
-          'state': 'PROCESSING',
-          'errors': [],
-          'warnings': [{'code': '90683', 'description': 'Missing purpose string'}],
-        },
-      }));
+      final u = BuildUpload(
+        Resource(
+          id: 'U',
+          type: 'buildUploads',
+          relationships: const {},
+          attributes: {
+            'cfBundleShortVersionString': '1.0',
+            'cfBundleVersion': '9',
+            'state': {
+              'state': 'PROCESSING',
+              'errors': [],
+              'warnings': [
+                {'code': '90683', 'description': 'Missing purpose string'},
+              ],
+            },
+          },
+        ),
+      );
       expect(u.stateLabel, 'Processing');
       expect(u.warnings, ['Missing purpose string']);
       expect(betaStateLabel('MISSING_EXPORT_COMPLIANCE'), 'Missing export compliance');
@@ -135,7 +187,11 @@ void main() {
     });
 
     test('finished uploads only linger for an hour; failures for a week', () {
-      expect(pendingUploads([up('1.0', '3', 'COMPLETE', '2026-11-10T11:30:00Z')], {}, now: now), hasLength(1), reason: 'Apple lags before the build appears');
+      expect(
+        pendingUploads([up('1.0', '3', 'COMPLETE', '2026-11-10T11:30:00Z')], {}, now: now),
+        hasLength(1),
+        reason: 'Apple lags before the build appears',
+      );
       expect(pendingUploads([up('1.0', '3', 'COMPLETE', '2026-11-10T09:00:00Z')], {}, now: now), isEmpty);
       final failed = up('1.0', '4', 'FAILED', '2026-11-05T09:00:00Z', errors: ['Invalid binary']);
       expect(pendingUploads([failed], {}, now: now), [failed]);
@@ -145,17 +201,19 @@ void main() {
   });
 
   test('the app icon comes from the newest build\'s icon token, in one small request', () async {
-    final fake = FakeAsc((r) => json({
-          'data': [
-            {
-              'type': 'builds',
-              'id': 'B1',
-              'attributes': {
-                'iconAssetToken': {'templateUrl': 'https://is1-ssl.mzstatic.com/x/icon.png/{w}x{h}bb.{f}', 'width': 152, 'height': 152},
-              },
+    final fake = FakeAsc(
+      (r) => json({
+        'data': [
+          {
+            'type': 'builds',
+            'id': 'B1',
+            'attributes': {
+              'iconAssetToken': {'templateUrl': 'https://is1-ssl.mzstatic.com/x/icon.png/{w}x{h}bb.{f}', 'width': 152, 'height': 152},
             },
-          ],
-        }));
+          },
+        ],
+      }),
+    );
     expect(await loadAppIconUrl(fake.client, 'A1'), 'https://is1-ssl.mzstatic.com/x/icon.png/128x128bb.png');
     expect(fake.log.single.path, contains('fields%5Bbuilds%5D=iconAssetToken'));
     expect(fake.log.single.path, contains('limit=1'));

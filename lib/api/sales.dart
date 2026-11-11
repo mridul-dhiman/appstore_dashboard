@@ -1,6 +1,15 @@
 /// Parsing for the Sales & Trends daily SUMMARY report (a tab-separated table with a header row).
 class SalesRow {
-  SalesRow({required this.day, required this.title, required this.sku, required this.type, required this.units, required this.proceedsPerUnit, required this.currency, required this.country});
+  SalesRow({
+    required this.day,
+    required this.title,
+    required this.sku,
+    required this.type,
+    required this.units,
+    required this.proceedsPerUnit,
+    required this.currency,
+    required this.country,
+  });
 
   final DateTime day;
   final String title;
@@ -31,16 +40,18 @@ List<SalesRow> parseSalesReport(String tsv, DateTime day) {
   for (final line in lines.skip(1)) {
     final f = line.split('\t');
     String at(int i) => i >= 0 && i < f.length ? f[i].trim() : '';
-    rows.add(SalesRow(
-      day: day,
-      title: at(iTitle),
-      sku: at(iSku),
-      type: at(iType),
-      units: int.tryParse(at(iUnits)) ?? 0,
-      proceedsPerUnit: double.tryParse(at(iProceeds)) ?? 0,
-      currency: at(iCur),
-      country: at(iCountry),
-    ));
+    rows.add(
+      SalesRow(
+        day: day,
+        title: at(iTitle),
+        sku: at(iSku),
+        type: at(iType),
+        units: int.tryParse(at(iUnits)) ?? 0,
+        proceedsPerUnit: double.tryParse(at(iProceeds)) ?? 0,
+        currency: at(iCur),
+        country: at(iCountry),
+      ),
+    );
   }
   return rows;
 }

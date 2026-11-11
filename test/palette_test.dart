@@ -7,14 +7,29 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_asc.dart';
 
-Map<String, dynamic> res(String type, String id, Map<String, dynamic> a, [Map<String, dynamic> rel = const {}]) => {'type': type, 'id': id, 'attributes': a, 'relationships': rel};
+Map<String, dynamic> res(String type, String id, Map<String, dynamic> a, [Map<String, dynamic> rel = const {}]) => {
+  'type': type,
+  'id': id,
+  'attributes': a,
+  'relationships': rel,
+};
 
 FakeAsc account(List<String> names) => FakeAsc((r) {
-      if (r.method != 'GET' || r.path.split('?').first != '/v1/apps') return null;
-      return json({
-        'data': [for (var i = 0; i < names.length; i++) res('apps', 'A$i', {'name': names[i], 'bundleId': 'com.example.${names[i].toLowerCase().replaceAll(' ', '')}', 'sku': 'S$i'}, {'appStoreVersions': {'data': []}})],
-      });
-    });
+  if (r.method != 'GET' || r.path.split('?').first != '/v1/apps') return null;
+  return json({
+    'data': [
+      for (var i = 0; i < names.length; i++)
+        res(
+          'apps',
+          'A$i',
+          {'name': names[i], 'bundleId': 'com.example.${names[i].toLowerCase().replaceAll(' ', '')}', 'sku': 'S$i'},
+          {
+            'appStoreVersions': {'data': []},
+          },
+        ),
+    ],
+  });
+});
 
 void main() {
   test('fuzzy matching: in-order letters match, tighter and earlier matches win, misses are null', () {
@@ -27,7 +42,13 @@ void main() {
   });
 
   testWidgets('QR view draws for a link, and only Apple links get one', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: Scaffold(body: Center(child: QrView(data: 'https://testflight.apple.com/join/AbCd1234')))));
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(child: QrView(data: 'https://testflight.apple.com/join/AbCd1234')),
+        ),
+      ),
+    );
     expect(find.byType(QrView), findsOneWidget);
     expect(tester.takeException(), isNull);
     expect(isTestFlightLink('https://testflight.apple.com/join/AbCd1234'), isTrue);
@@ -43,21 +64,28 @@ void main() {
       final fake = account(names);
       final events = <String>[];
       final store = AppsStore(fake.client);
-      await tester.pumpWidget(MaterialApp(
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: Center(
-              child: TextButton(
-                onPressed: () => showCommandPalette(
-                  context,
-                  PaletteActions(store: store, openApp: (a, {int tab = 0}) => events.add('open ${a.name} tab $tab'), go: (i) => events.add('go $i'), lock: lock ? () => events.add('lock') : null),
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Center(
+                child: TextButton(
+                  onPressed: () => showCommandPalette(
+                    context,
+                    PaletteActions(
+                      store: store,
+                      openApp: (a, {int tab = 0}) => events.add('open ${a.name} tab $tab'),
+                      go: (i) => events.add('go $i'),
+                      lock: lock ? () => events.add('lock') : null,
+                    ),
+                  ),
+                  child: const Text('open'),
                 ),
-                child: const Text('open'),
               ),
             ),
           ),
         ),
-      ));
+      );
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
       return (events, fake);

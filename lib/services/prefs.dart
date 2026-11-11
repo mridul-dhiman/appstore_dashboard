@@ -37,10 +37,10 @@ class Prefs {
   }
 
   ThemeMode get theme => switch (_str('theme')) {
-        'light' => ThemeMode.light,
-        'dark' => ThemeMode.dark,
-        _ => ThemeMode.system,
-      };
+    'light' => ThemeMode.light,
+    'dark' => ThemeMode.dark,
+    _ => ThemeMode.system,
+  };
   Future<void> setTheme(ThemeMode m) => _set('theme', m.name);
 
   bool get appsGrid => _bool('apps.grid') ?? true;

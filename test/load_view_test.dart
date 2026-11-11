@@ -16,7 +16,13 @@ void main() {
       return pending!.future;
     }
 
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: LoadView<String>(controller: reload, load: load, builder: (_, v) => Text(v)))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoadView<String>(controller: reload, load: load, builder: (_, v) => Text(v)),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('first'), findsOneWidget);
 
@@ -41,18 +47,20 @@ void main() {
   testWidgets('a slow older load can not overwrite a newer one', (tester) async {
     final reload = ReloadController();
     final loads = <Completer<String>>[];
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: LoadView<String>(
-          controller: reload,
-          load: () {
-            loads.add(Completer<String>());
-            return loads.last.future;
-          },
-          builder: (_, v) => Text(v),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoadView<String>(
+            controller: reload,
+            load: () {
+              loads.add(Completer<String>());
+              return loads.last.future;
+            },
+            builder: (_, v) => Text(v),
+          ),
         ),
       ),
-    ));
+    );
     reload.reload();
     loads[1].complete('new');
     await tester.pump();

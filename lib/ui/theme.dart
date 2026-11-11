@@ -35,7 +35,10 @@ class Tokens {
     accentInk: Color(0xFF0062C4),
     sidebar: Color(0xEBF0F2F6),
     titlebar: Color(0xF0F6F7FA),
-    shadow: [BoxShadow(color: Color(0x0A000000), blurRadius: 3, offset: Offset(0, 1)), BoxShadow(color: Color(0x05000000), blurRadius: 2, offset: Offset(0, 1))],
+    shadow: [
+      BoxShadow(color: Color(0x0A000000), blurRadius: 3, offset: Offset(0, 1)),
+      BoxShadow(color: Color(0x05000000), blurRadius: 2, offset: Offset(0, 1)),
+    ],
   );
 
   static const dark = Tokens._(
@@ -92,7 +95,10 @@ ThemeData buildTheme(Brightness b) {
       color: k.surface,
       surfaceTintColor: Colors.transparent,
       shadowColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: k.line)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: k.line),
+      ),
     ),
     dividerTheme: DividerThemeData(color: k.line, space: 1, thickness: 1),
     filledButtonTheme: FilledButtonThemeData(
@@ -110,16 +116,32 @@ ThemeData buildTheme(Brightness b) {
         textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
       ),
     ),
-    textButtonTheme: TextButtonThemeData(style: TextButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: r9), textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-    iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: r9))),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        shape: RoundedRectangleBorder(borderRadius: r9),
+        textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+      ),
+    ),
+    iconButtonTheme: IconButtonThemeData(
+      style: IconButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: r9)),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       isDense: true,
       filled: true,
       fillColor: k.inset,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-      border: OutlineInputBorder(borderRadius: r9, borderSide: BorderSide(color: k.line)),
-      enabledBorder: OutlineInputBorder(borderRadius: r9, borderSide: BorderSide(color: k.line)),
-      focusedBorder: OutlineInputBorder(borderRadius: r9, borderSide: BorderSide(color: k.accent, width: 1.5)),
+      border: OutlineInputBorder(
+        borderRadius: r9,
+        borderSide: BorderSide(color: k.line),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: r9,
+        borderSide: BorderSide(color: k.line),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: r9,
+        borderSide: BorderSide(color: k.accent, width: 1.5),
+      ),
     ),
     // Segmented control, like System Settings: an inset track with a raised selected segment.
     segmentedButtonTheme: SegmentedButtonThemeData(
@@ -141,12 +163,21 @@ ThemeData buildTheme(Brightness b) {
       unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
     ),
     switchTheme: SwitchThemeData(
-      trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? const Color(0xFF34C759) : (dark ? const Color(0xFF3A3F4B) : const Color(0xFFD1D1D6))),
+      trackColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected) ? const Color(0xFF34C759) : (dark ? const Color(0xFF3A3F4B) : const Color(0xFFD1D1D6)),
+      ),
       thumbColor: const WidgetStatePropertyAll(Colors.white),
       trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
     ),
     checkboxTheme: CheckboxThemeData(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4))),
-    dialogTheme: DialogThemeData(backgroundColor: k.surface, surfaceTintColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: k.line))),
+    dialogTheme: DialogThemeData(
+      backgroundColor: k.surface,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: k.line),
+      ),
+    ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: dark ? const Color(0xFF2C2F3A) : const Color(0xFF1D1D1F),
@@ -154,7 +185,17 @@ ThemeData buildTheme(Brightness b) {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       width: 520,
     ),
-    popupMenuTheme: PopupMenuThemeData(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: k.line)), color: k.surface, surfaceTintColor: Colors.transparent),
-    tooltipTheme: TooltipThemeData(decoration: BoxDecoration(color: dark ? const Color(0xFF2C2F3A) : const Color(0xFF1D1D1F), borderRadius: BorderRadius.circular(6)), textStyle: const TextStyle(color: Colors.white, fontSize: 12)),
+    popupMenuTheme: PopupMenuThemeData(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: k.line),
+      ),
+      color: k.surface,
+      surfaceTintColor: Colors.transparent,
+    ),
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(color: dark ? const Color(0xFF2C2F3A) : const Color(0xFF1D1D1F), borderRadius: BorderRadius.circular(6)),
+      textStyle: const TextStyle(color: Colors.white, fontSize: 12),
+    ),
   );
 }

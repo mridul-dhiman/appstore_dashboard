@@ -6,9 +6,9 @@ import '../services/prefs.dart';
 /// The reply templates of one client, editable and remembered on this Mac.
 class ReplyTemplates extends ChangeNotifier {
   ReplyTemplates({Prefs? prefs, String? clientId})
-      : _prefs = prefs,
-        _clientId = clientId,
-        _items = (clientId == null ? null : prefs?.replyTemplates(clientId)) ?? Map.of(defaultReplyTemplates);
+    : _prefs = prefs,
+      _clientId = clientId,
+      _items = (clientId == null ? null : prefs?.replyTemplates(clientId)) ?? Map.of(defaultReplyTemplates);
 
   final Prefs? _prefs;
   final String? _clientId;

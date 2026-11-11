@@ -66,9 +66,7 @@ class ScreenshotSpecs {
       if (type['placementTypeId'] != screenshotPlacementType) continue;
       for (final m in (type['specMappings'] as List? ?? const [])) {
         final map = (m as Map).cast<String, dynamic>();
-        specs[map['placementGroupId'].toString()] = [
-          for (final id in (map['specs'] as List? ?? const [])) ...?bySpecId[id.toString()],
-        ];
+        specs[map['placementGroupId'].toString()] = [for (final id in (map['specs'] as List? ?? const [])) ...?bySpecId[id.toString()]];
       }
     }
     return ScreenshotSpecs(specs);
@@ -85,22 +83,24 @@ Future<ScreenshotSpecs> loadScreenshotSpecs(AscClient client) async {
 String placementGroupLabel(String? g) {
   if (g == null) return 'Screenshots';
   final words = g.replaceFirst(RegExp(r'_PROFILE$'), '').split('_');
-  return words.map((w) {
-    switch (w) {
-      case 'IPHONE':
-        return 'iPhone';
-      case 'IPAD':
-        return 'iPad';
-      case 'TV':
-        return 'Apple TV';
-      case 'MAC':
-        return 'Mac';
-      case 'ID':
-        return 'ID';
-      default:
-        return RegExp(r'^\d').hasMatch(w) ? w : w[0] + w.substring(1).toLowerCase();
-    }
-  }).join(' ');
+  return words
+      .map((w) {
+        switch (w) {
+          case 'IPHONE':
+            return 'iPhone';
+          case 'IPAD':
+            return 'iPad';
+          case 'TV':
+            return 'Apple TV';
+          case 'MAC':
+            return 'Mac';
+          case 'ID':
+            return 'ID';
+          default:
+            return RegExp(r'^\d').hasMatch(w) ? w : w[0] + w.substring(1).toLowerCase();
+        }
+      })
+      .join(' ');
 }
 
 /// Order device groups the way people think of them: phones, then tablets, then the rest.
@@ -139,49 +139,59 @@ int placementGroupRank(String g) {
 }
 
 Map<String, dynamic> imageReservationBody(String libraryId, String fileName, int fileSize) => {
-      'data': {
-        'type': 'appAssetLibraryImages',
-        'attributes': {'category': screenshotCategory, 'fileName': fileName, 'fileSize': fileSize, 'referenceName': fileName},
-        'relationships': {
-          'assetLibrary': {'data': {'type': 'appAssetLibraries', 'id': libraryId}},
-        },
+  'data': {
+    'type': 'appAssetLibraryImages',
+    'attributes': {'category': screenshotCategory, 'fileName': fileName, 'fileSize': fileSize, 'referenceName': fileName},
+    'relationships': {
+      'assetLibrary': {
+        'data': {'type': 'appAssetLibraries', 'id': libraryId},
       },
-    };
+    },
+  },
+};
 
 /// Unlike builds and the classic screenshot endpoints, the library takes no checksum when you confirm the upload.
 Map<String, dynamic> imageCommitBody(String id) => {
-      'data': {
-        'type': 'appAssetLibraryImages',
-        'id': id,
-        'attributes': {'uploaded': true},
-      },
-    };
+  'data': {
+    'type': 'appAssetLibraryImages',
+    'id': id,
+    'attributes': {'uploaded': true},
+  },
+};
 
 /// Puts an uploaded image on a version localization. No `placementGroup`: Apple derives it from the pixel size.
 Map<String, dynamic> placementBody(String imageId, String versionLocId) => {
-      'data': {
-        'type': 'appAssetLibraryPlacements',
-        'attributes': {'placementType': screenshotPlacementType},
-        'relationships': {
-          'image': {'data': {'type': 'appAssetLibraryImages', 'id': imageId}},
-          'appStoreVersionLocalization': {'data': {'type': 'appStoreVersionLocalizations', 'id': versionLocId}},
-        },
+  'data': {
+    'type': 'appAssetLibraryPlacements',
+    'attributes': {'placementType': screenshotPlacementType},
+    'relationships': {
+      'image': {
+        'data': {'type': 'appAssetLibraryImages', 'id': imageId},
       },
-    };
+      'appStoreVersionLocalization': {
+        'data': {'type': 'appStoreVersionLocalizations', 'id': versionLocId},
+      },
+    },
+  },
+};
 
 /// The full, ordered list of placement ids for one device group. Replaces the current order.
 Map<String, dynamic> placementOrderBody(String group, String versionLocId, List<String> placementIds) => {
-      'data': {
-        'type': 'appAssetLibraryPlacementOrderingRequests',
-        'attributes': {'placementGroup': group},
-        'relationships': {
-          'orderedPlacements': {
-            'data': [for (final id in placementIds) {'type': 'appAssetLibraryPlacements', 'id': id}],
-          },
-          'appStoreVersionLocalization': {'data': {'type': 'appStoreVersionLocalizations', 'id': versionLocId}},
-        },
+  'data': {
+    'type': 'appAssetLibraryPlacementOrderingRequests',
+    'attributes': {'placementGroup': group},
+    'relationships': {
+      'orderedPlacements': {
+        'data': [
+          for (final id in placementIds) {'type': 'appAssetLibraryPlacements', 'id': id},
+        ],
       },
-    };
+      'appStoreVersionLocalization': {
+        'data': {'type': 'appStoreVersionLocalizations', 'id': versionLocId},
+      },
+    },
+  },
+};
 
 bool isAllowedScreenshotName(String name) => RegExp(r'\.(png|jpe?g)$', caseSensitive: false).hasMatch(name);
 
@@ -195,7 +205,9 @@ Future<String> uploadLibraryImage(
   Duration giveUpAfter = const Duration(minutes: 3),
 }) async {
   final created = (await client.post('/v1/appAssetLibraryImages', imageReservationBody(libraryId, fileName, bytes.length))).data.first;
-  final ops = [for (final o in (created.attributes['uploadOperations'] as List? ?? const [])) UploadOp.fromJson((o as Map).cast<String, dynamic>())];
+  final ops = [
+    for (final o in (created.attributes['uploadOperations'] as List? ?? const [])) UploadOp.fromJson((o as Map).cast<String, dynamic>()),
+  ];
   await putParts(ops, bytes, (_) {});
   await client.patch('/v1/appAssetLibraryImages/${created.id}', imageCommitBody(created.id));
 
@@ -215,8 +227,13 @@ Future<String> uploadLibraryImage(
 
 /// Places [imageId] on the localization and returns the placement id. Apple can still be post-processing an image that
 /// reports as processed, so that one error is retried a few times.
-Future<String> createPlacement(AscClient client, String imageId, String versionLocId, {Duration retryEvery = const Duration(seconds: 5)}) async {
-  for (var attempt = 1;; attempt++) {
+Future<String> createPlacement(
+  AscClient client,
+  String imageId,
+  String versionLocId, {
+  Duration retryEvery = const Duration(seconds: 5),
+}) async {
+  for (var attempt = 1; ; attempt++) {
     try {
       return (await client.post('/v1/appAssetLibraryPlacements', placementBody(imageId, versionLocId))).data.first.id;
     } on AscException catch (e) {

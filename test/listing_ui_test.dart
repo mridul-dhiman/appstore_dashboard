@@ -7,45 +7,101 @@ import 'support/fake_asc.dart';
 
 /// A mock App Store Connect with ONE editable version (the real account has none), serving just what the Listing tab reads.
 FakeAsc editableAccount() => FakeAsc((r) {
-      final p = r.path.split('?').first;
-      Map<String, dynamic> res(String type, String id, Map<String, dynamic> a, [Map<String, dynamic> rel = const {}]) => {'type': type, 'id': id, 'attributes': a, 'relationships': rel};
-      if (r.method != 'GET') return null; // any write in these tests would be a bug: nothing is applied
-      if (p == '/v1/apps/APP/appStoreVersions') return json({'data': [res('appStoreVersions', 'V1', {'versionString': '2.0.0', 'appStoreState': 'PREPARE_FOR_SUBMISSION'})]});
-      if (p == '/v1/apps/APP/appInfos') return json({'data': [res('appInfos', 'I1', {'appStoreState': 'PREPARE_FOR_SUBMISSION'})]});
-      if (p == '/v1/appInfos/I1/appInfoLocalizations') return json({'data': [res('appInfoLocalizations', 'IL1', {'locale': 'en-US', 'name': 'Demo', 'subtitle': 'Sub'})]});
-      if (p == '/v1/appStoreVersions/V1/appStoreVersionLocalizations') {
-        return json({'data': [res('appStoreVersionLocalizations', 'L1', {'locale': 'en-US', 'description': 'Old description', 'keywords': 'a,b', 'whatsNew': 'Old news'})]});
-      }
-      if (p == '/v1/appStoreVersionLocalizations/L1/placements') {
-        Map<String, dynamic> placement(String id, String img) => res('appAssetLibraryPlacements', id, {'placementType': 'APP_SCREENSHOT', 'placementGroup': 'IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE'}, {'image': {'data': {'type': 'appAssetLibraryImages', 'id': img}}});
-        return json({
-          'data': [placement('PA', 'A'), placement('PB', 'B')],
-          'included': [res('appAssetLibraryImages', 'A', {'fileName': 'A.png'}), res('appAssetLibraryImages', 'B', {'fileName': 'B.png'})],
-        });
-      }
-      if (p == '/v1/appAssetLibraryRefData') {
-        return json({
-          'data': [
-            res('appAssetLibraryRefData', '1', {
-              'imageSpecs': [
-                {'specId': 's1', 'dimensions': {'minWidth': 1290, 'maxWidth': 1290, 'minHeight': 2796, 'maxHeight': 2796}},
-                {'specId': 's2', 'dimensions': {'minWidth': 2064, 'maxWidth': 2064, 'minHeight': 2752, 'maxHeight': 2752}},
-              ],
-              'placementTypes': [
+  final p = r.path.split('?').first;
+  Map<String, dynamic> res(String type, String id, Map<String, dynamic> a, [Map<String, dynamic> rel = const {}]) => {
+    'type': type,
+    'id': id,
+    'attributes': a,
+    'relationships': rel,
+  };
+  if (r.method != 'GET') return null; // any write in these tests would be a bug: nothing is applied
+  if (p == '/v1/apps/APP/appStoreVersions') {
+    return json({
+      'data': [
+        res('appStoreVersions', 'V1', {'versionString': '2.0.0', 'appStoreState': 'PREPARE_FOR_SUBMISSION'}),
+      ],
+    });
+  }
+  if (p == '/v1/apps/APP/appInfos') {
+    return json({
+      'data': [
+        res('appInfos', 'I1', {'appStoreState': 'PREPARE_FOR_SUBMISSION'}),
+      ],
+    });
+  }
+  if (p == '/v1/appInfos/I1/appInfoLocalizations') {
+    return json({
+      'data': [
+        res('appInfoLocalizations', 'IL1', {'locale': 'en-US', 'name': 'Demo', 'subtitle': 'Sub'}),
+      ],
+    });
+  }
+  if (p == '/v1/appStoreVersions/V1/appStoreVersionLocalizations') {
+    return json({
+      'data': [
+        res('appStoreVersionLocalizations', 'L1', {
+          'locale': 'en-US',
+          'description': 'Old description',
+          'keywords': 'a,b',
+          'whatsNew': 'Old news',
+        }),
+      ],
+    });
+  }
+  if (p == '/v1/appStoreVersionLocalizations/L1/placements') {
+    Map<String, dynamic> placement(String id, String img) => res(
+      'appAssetLibraryPlacements',
+      id,
+      {'placementType': 'APP_SCREENSHOT', 'placementGroup': 'IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE'},
+      {
+        'image': {
+          'data': {'type': 'appAssetLibraryImages', 'id': img},
+        },
+      },
+    );
+    return json({
+      'data': [placement('PA', 'A'), placement('PB', 'B')],
+      'included': [
+        res('appAssetLibraryImages', 'A', {'fileName': 'A.png'}),
+        res('appAssetLibraryImages', 'B', {'fileName': 'B.png'}),
+      ],
+    });
+  }
+  if (p == '/v1/appAssetLibraryRefData') {
+    return json({
+      'data': [
+        res('appAssetLibraryRefData', '1', {
+          'imageSpecs': [
+            {
+              'specId': 's1',
+              'dimensions': {'minWidth': 1290, 'maxWidth': 1290, 'minHeight': 2796, 'maxHeight': 2796},
+            },
+            {
+              'specId': 's2',
+              'dimensions': {'minWidth': 2064, 'maxWidth': 2064, 'minHeight': 2752, 'maxHeight': 2752},
+            },
+          ],
+          'placementTypes': [
+            {
+              'placementTypeId': 'APP_SCREENSHOT',
+              'specMappings': [
                 {
-                  'placementTypeId': 'APP_SCREENSHOT',
-                  'specMappings': [
-                    {'placementGroupId': 'IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE', 'specs': ['s1']},
-                    {'placementGroupId': 'IPAD_13_PROFILE', 'specs': ['s2']},
-                  ],
+                  'placementGroupId': 'IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE',
+                  'specs': ['s1'],
+                },
+                {
+                  'placementGroupId': 'IPAD_13_PROFILE',
+                  'specs': ['s2'],
                 },
               ],
-            }),
+            },
           ],
-        });
-      }
-      return null;
+        }),
+      ],
     });
+  }
+  return null;
+});
 
 Future<(FakeAsc, ListingDraft)> pumpTab(WidgetTester tester) async {
   tester.view.physicalSize = const Size(1200, 2600);
@@ -53,7 +109,13 @@ Future<(FakeAsc, ListingDraft)> pumpTab(WidgetTester tester) async {
   addTearDown(tester.view.reset);
   final fake = editableAccount();
   final draft = ListingDraft(libraryId: 'APP');
-  await tester.pumpWidget(MaterialApp(home: Scaffold(body: ListingTab(client: fake.client, appId: 'APP', draft: draft))));
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: ListingTab(client: fake.client, appId: 'APP', draft: draft),
+      ),
+    ),
+  );
   await tester.pumpAndSettle();
   return (fake, draft);
 }

@@ -20,10 +20,7 @@ class _TerritoryField extends StatelessWidget {
   Widget build(BuildContext context) => TextField(
     controller: controller,
     textCapitalization: TextCapitalization.characters,
-    decoration: const InputDecoration(
-      labelText: 'Price territory',
-      helperText: '3-letter code the prices are in: USA, IND, GBR…',
-    ),
+    decoration: const InputDecoration(labelText: 'Price territory', helperText: '3-letter code the prices are in: USA, IND, GBR…'),
   );
 }
 
@@ -33,12 +30,7 @@ String _resultLine(IapResult r) => r.ok
 
 /// Create one in-app purchase.
 class NewIapDialog extends StatefulWidget {
-  const NewIapDialog({
-    super.key,
-    required this.client,
-    required this.appId,
-    required this.appName,
-  });
+  const NewIapDialog({super.key, required this.client, required this.appId, required this.appName});
   final AscClient client;
   final String appId;
   final String appName;
@@ -65,16 +57,7 @@ class _NewIapDialogState extends State<NewIapDialog> {
 
   @override
   void dispose() {
-    for (final c in [
-      _product,
-      _ref,
-      _name,
-      _desc,
-      _locale,
-      _price,
-      _territory,
-      _note,
-    ]) {
+    for (final c in [_product, _ref, _name, _desc, _locale, _price, _territory, _note]) {
       c.dispose();
     }
     super.dispose();
@@ -82,18 +65,12 @@ class _NewIapDialogState extends State<NewIapDialog> {
 
   IapSpec _spec() => IapSpec(
     productId: _product.text.trim(),
-    referenceName: _ref.text.trim().isEmpty
-        ? _name.text.trim()
-        : _ref.text.trim(),
+    referenceName: _ref.text.trim().isEmpty ? _name.text.trim() : _ref.text.trim(),
     type: _type,
     displayName: _name.text.trim(),
-    description: _desc.text.trim().isEmpty
-        ? _name.text.trim()
-        : _desc.text.trim(),
+    description: _desc.text.trim().isEmpty ? _name.text.trim() : _desc.text.trim(),
     locale: _locale.text.trim().isEmpty ? 'en-US' : _locale.text.trim(),
-    price: _price.text.trim().isEmpty
-        ? null
-        : double.tryParse(_price.text.trim()),
+    price: _price.text.trim().isEmpty ? null : double.tryParse(_price.text.trim()),
     reviewNote: _note.text,
     familySharable: _family,
   );
@@ -115,10 +92,7 @@ class _NewIapDialogState extends State<NewIapDialog> {
     final result = await IapCreator(
       widget.client,
       widget.appId,
-      IapOptions(
-        baseTerritory: _territory.text.trim().toUpperCase(),
-        allTerritories: _allTerritories,
-      ),
+      IapOptions(baseTerritory: _territory.text.trim().toUpperCase(), allTerritories: _allTerritories),
     ).create(spec);
     if (!mounted) return;
     setState(() {
@@ -150,9 +124,7 @@ class _NewIapDialogState extends State<NewIapDialog> {
                   if (r.ok)
                     const Padding(
                       padding: EdgeInsets.only(top: 10),
-                      child: Text(
-                        'It still needs a review screenshot before it can be submitted.',
-                      ),
+                      child: Text('It still needs a review screenshot before it can be submitted.'),
                     ),
                 ],
               )
@@ -165,8 +137,7 @@ class _NewIapDialogState extends State<NewIapDialog> {
                       decoration: const InputDecoration(
                         labelText: 'Product ID',
                         hintText: 'com.example.app.gold',
-                        helperText:
-                            'Permanent: cannot be reused or changed later.',
+                        helperText: 'Permanent: cannot be reused or changed later.',
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -174,27 +145,19 @@ class _NewIapDialogState extends State<NewIapDialog> {
                       isExpanded: true,
                       initialValue: _type,
                       decoration: const InputDecoration(labelText: 'Type'),
-                      items: [
-                        for (final e in iapTypes.entries)
-                          DropdownMenuItem(value: e.key, child: Text(e.value)),
-                      ],
+                      items: [for (final e in iapTypes.entries) DropdownMenuItem(value: e.key, child: Text(e.value))],
                       onChanged: (v) => setState(() => _type = v ?? _type),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _name,
                       maxLength: iapNameMax,
-                      decoration: const InputDecoration(
-                        labelText: 'Display name (shown to customers)',
-                      ),
+                      decoration: const InputDecoration(labelText: 'Display name (shown to customers)'),
                     ),
                     TextField(
                       controller: _desc,
                       maxLength: iapDescriptionMax,
-                      decoration: const InputDecoration(
-                        labelText: 'Description',
-                        helperText: 'Defaults to the display name.',
-                      ),
+                      decoration: const InputDecoration(labelText: 'Description', helperText: 'Defaults to the display name.'),
                     ),
                     const SizedBox(height: 8),
                     TextField(
@@ -211,9 +174,7 @@ class _NewIapDialogState extends State<NewIapDialog> {
                         Expanded(
                           child: TextField(
                             controller: _price,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             decoration: const InputDecoration(
                               labelText: 'Price',
                               helperText: 'Next Apple price tier at or above this. Blank = no price.',
@@ -221,9 +182,7 @@ class _NewIapDialogState extends State<NewIapDialog> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: _TerritoryField(controller: _territory),
-                        ),
+                        Expanded(child: _TerritoryField(controller: _territory)),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -236,9 +195,7 @@ class _NewIapDialogState extends State<NewIapDialog> {
                       controller: _note,
                       minLines: 1,
                       maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Note for App Review (optional)',
-                      ),
+                      decoration: const InputDecoration(labelText: 'Note for App Review (optional)'),
                     ),
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
@@ -249,37 +206,24 @@ class _NewIapDialogState extends State<NewIapDialog> {
                     CheckboxListTile(
                       contentPadding: EdgeInsets.zero,
                       value: _allTerritories,
-                      onChanged: (v) =>
-                          setState(() => _allTerritories = v ?? true),
+                      onChanged: (v) => setState(() => _allTerritories = v ?? true),
                       title: const Text('Available in all territories'),
                     ),
                     if (_problems.isNotEmpty)
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: Text(
-                          _problems.join('\n'),
-                          style: TextStyle(color: t.colorScheme.error),
-                        ),
+                        child: Text(_problems.join('\n'), style: TextStyle(color: t.colorScheme.error)),
                       ),
                   ],
                 ),
               ),
       ),
       actions: [
-        TextButton(
-          onPressed: _busy ? null : () => Navigator.pop(context, r?.id != null),
-          child: Text(r == null ? 'Cancel' : 'Close'),
-        ),
+        TextButton(onPressed: _busy ? null : () => Navigator.pop(context, r?.id != null), child: Text(r == null ? 'Cancel' : 'Close')),
         if (r == null)
           FilledButton(
             onPressed: _busy ? null : _create,
-            child: _busy
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Create'),
+            child: _busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Create'),
           ),
       ],
     );
@@ -288,12 +232,7 @@ class _NewIapDialogState extends State<NewIapDialog> {
 
 /// Create many in-app purchases from CSV.
 class BulkIapDialog extends StatefulWidget {
-  const BulkIapDialog({
-    super.key,
-    required this.client,
-    required this.appId,
-    required this.appName,
-  });
+  const BulkIapDialog({super.key, required this.client, required this.appId, required this.appName});
   final AscClient client;
   final String appId;
   final String appName;
@@ -320,10 +259,7 @@ class _BulkIapDialogState extends State<BulkIapDialog> {
   }
 
   Future<void> _pick() async {
-    final f = await FilePicker.pickFile(
-      type: FileType.custom,
-      allowedExtensions: const ['csv', 'txt'],
-    );
+    final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: const ['csv', 'txt']);
     if (f == null) return;
     final text = utf8.decode(await f.readAsBytes(), allowMalformed: true);
     setState(() => _csv.text = text);
@@ -337,23 +273,15 @@ class _BulkIapDialogState extends State<BulkIapDialog> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(
-          'Create ${specs.length} in-app purchase${specs.length == 1 ? '' : 's'}?',
-        ),
+        title: Text('Create ${specs.length} in-app purchase${specs.length == 1 ? '' : 's'}?'),
         content: Text(
           'This creates them in ${widget.appName} on your real App Store Connect account right now. '
           'Product IDs can never be reused, even if you delete them afterwards.'
           '${_parsed!.errors.isEmpty ? '' : '\n\n${_parsed!.errors.length} row(s) with errors will be skipped.'}',
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Create'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Create')),
         ],
       ),
     );
@@ -366,10 +294,7 @@ class _BulkIapDialogState extends State<BulkIapDialog> {
     final creator = IapCreator(
       widget.client,
       widget.appId,
-      IapOptions(
-        baseTerritory: _territory.text.trim().toUpperCase(),
-        allTerritories: _allTerritories,
-      ),
+      IapOptions(baseTerritory: _territory.text.trim().toUpperCase(), allTerritories: _allTerritories),
     );
     // One at a time: Apple rate-limits writes, and a failure should not race the next item.
     for (final s in specs) {
@@ -402,16 +327,13 @@ class _BulkIapDialogState extends State<BulkIapDialog> {
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (_running)
-                    LinearProgressIndicator(value: _done / p!.specs.length),
+                  if (_running) LinearProgressIndicator(value: _done / p!.specs.length),
                   const SizedBox(height: 8),
                   Text(
                     _finished
                         ? '$okCount of ${_results.length} created${okCount == _results.length ? '' : ' · ${_results.length - okCount} need attention'}'
                         : 'Creating $_done / ${p!.specs.length}…',
-                    style: t.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                    style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 8),
                   Expanded(
@@ -420,13 +342,7 @@ class _BulkIapDialogState extends State<BulkIapDialog> {
                         for (final r in _results)
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 3),
-                            child: SelectableText(
-                              _resultLine(r),
-                              style: TextStyle(
-                                color: r.ok ? null : t.colorScheme.error,
-                                fontSize: 13,
-                              ),
-                            ),
+                            child: SelectableText(_resultLine(r), style: TextStyle(color: r.ok ? null : t.colorScheme.error, fontSize: 13)),
                           ),
                       ],
                     ),
@@ -438,11 +354,7 @@ class _BulkIapDialogState extends State<BulkIapDialog> {
                 children: [
                   Row(
                     children: [
-                      OutlinedButton.icon(
-                        onPressed: _pick,
-                        icon: const Icon(Icons.upload_file),
-                        label: const Text('Choose CSV'),
-                      ),
+                      OutlinedButton.icon(onPressed: _pick, icon: const Icon(Icons.upload_file), label: const Text('Choose CSV')),
                       const SizedBox(width: 8),
                       TextButton.icon(
                         onPressed: () => setState(() {
@@ -453,9 +365,7 @@ class _BulkIapDialogState extends State<BulkIapDialog> {
                         label: const Text('Insert example'),
                       ),
                       TextButton.icon(
-                        onPressed: () => Clipboard.setData(
-                          const ClipboardData(text: _csvTemplate),
-                        ),
+                        onPressed: () => Clipboard.setData(const ClipboardData(text: _csvTemplate)),
                         icon: const Icon(Icons.copy, size: 18),
                         label: const Text('Copy template'),
                       ),
@@ -464,9 +374,7 @@ class _BulkIapDialogState extends State<BulkIapDialog> {
                   const SizedBox(height: 8),
                   Text(
                     'Columns: product_id, display_name (required) · reference_name, description, price, type, locale, review_note, family_sharable.',
-                    style: t.textTheme.bodySmall?.copyWith(
-                      color: t.colorScheme.onSurfaceVariant,
-                    ),
+                    style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: 8),
                   Expanded(
@@ -477,27 +385,20 @@ class _BulkIapDialogState extends State<BulkIapDialog> {
                       maxLines: null,
                       textAlignVertical: TextAlignVertical.top,
                       style: const TextStyle(fontFamily: 'Menlo', fontSize: 12),
-                      decoration: const InputDecoration(
-                        hintText: 'Paste CSV here, header row first',
-                        alignLabelWithHint: true,
-                      ),
+                      decoration: const InputDecoration(hintText: 'Paste CSV here, header row first', alignLabelWithHint: true),
                       onChanged: (_) => _parse(),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      SizedBox(
-                        width: 140,
-                        child: _TerritoryField(controller: _territory),
-                      ),
+                      SizedBox(width: 140, child: _TerritoryField(controller: _territory)),
                       const SizedBox(width: 12),
                       Expanded(
                         child: CheckboxListTile(
                           contentPadding: EdgeInsets.zero,
                           value: _allTerritories,
-                          onChanged: (v) =>
-                              setState(() => _allTerritories = v ?? true),
+                          onChanged: (v) => setState(() => _allTerritories = v ?? true),
                           title: const Text('Available in all territories'),
                         ),
                       ),
@@ -506,21 +407,13 @@ class _BulkIapDialogState extends State<BulkIapDialog> {
                   if (p != null) ...[
                     Text(
                       '${p.specs.length} ready${p.errors.isEmpty ? '' : ' · ${p.errors.length} with errors'}',
-                      style: t.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                      style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     if (p.errors.isNotEmpty)
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxHeight: 90),
                         child: SingleChildScrollView(
-                          child: Text(
-                            p.errors.join('\n'),
-                            style: TextStyle(
-                              color: t.colorScheme.error,
-                              fontSize: 12,
-                            ),
-                          ),
+                          child: Text(p.errors.join('\n'), style: TextStyle(color: t.colorScheme.error, fontSize: 12)),
                         ),
                       ),
                   ],
@@ -529,17 +422,13 @@ class _BulkIapDialogState extends State<BulkIapDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: _running
-              ? null
-              : () => Navigator.pop(context, _results.any((r) => r.id != null)),
+          onPressed: _running ? null : () => Navigator.pop(context, _results.any((r) => r.id != null)),
           child: Text(_finished ? 'Close' : 'Cancel'),
         ),
         if (!_running && !_finished)
           FilledButton(
             onPressed: (p == null || p.specs.isEmpty) ? null : _run,
-            child: Text(
-              'Create${p == null || p.specs.isEmpty ? '' : ' ${p.specs.length}'}',
-            ),
+            child: Text('Create${p == null || p.specs.isEmpty ? '' : ' ${p.specs.length}'}'),
           ),
       ],
     );

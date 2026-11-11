@@ -10,13 +10,7 @@ import 'models.dart';
 
 /// One saved client: the three parts of an App Store Connect API key, plus a display name.
 class Credentials {
-  const Credentials({
-    required this.keyId,
-    required this.issuerId,
-    required this.privateKeyPem,
-    this.name = '',
-    this.vendorNumber = '',
-  });
+  const Credentials({required this.keyId, required this.issuerId, required this.privateKeyPem, this.name = '', this.vendorNumber = ''});
 
   final String keyId;
   final String issuerId;
@@ -34,23 +28,28 @@ class Credentials {
   String get label => name.isNotEmpty ? name : 'Key $keyId';
 
   Credentials copyWith({String? name, String? vendorNumber}) => Credentials(
-        keyId: keyId,
-        issuerId: issuerId,
-        privateKeyPem: privateKeyPem,
-        name: name ?? this.name,
-        vendorNumber: vendorNumber ?? this.vendorNumber,
-      );
+    keyId: keyId,
+    issuerId: issuerId,
+    privateKeyPem: privateKeyPem,
+    name: name ?? this.name,
+    vendorNumber: vendorNumber ?? this.vendorNumber,
+  );
 
-  Map<String, dynamic> toJson() =>
-      {'keyId': keyId, 'issuerId': issuerId, 'privateKeyPem': privateKeyPem, 'name': name, 'vendorNumber': vendorNumber};
+  Map<String, dynamic> toJson() => {
+    'keyId': keyId,
+    'issuerId': issuerId,
+    'privateKeyPem': privateKeyPem,
+    'name': name,
+    'vendorNumber': vendorNumber,
+  };
 
   factory Credentials.fromJson(Map<String, dynamic> j) => Credentials(
-        keyId: j['keyId'] as String,
-        issuerId: j['issuerId'] as String,
-        privateKeyPem: j['privateKeyPem'] as String,
-        name: (j['name'] as String?) ?? '',
-        vendorNumber: (j['vendorNumber'] as String?) ?? '',
-      );
+    keyId: j['keyId'] as String,
+    issuerId: j['issuerId'] as String,
+    privateKeyPem: j['privateKeyPem'] as String,
+    name: (j['name'] as String?) ?? '',
+    vendorNumber: (j['vendorNumber'] as String?) ?? '',
+  );
 }
 
 /// Rebuilds a clean PEM from whatever was pasted: any whitespace or line-wrapping mix-up is repaired by re-wrapping the
@@ -97,19 +96,24 @@ Future<T?> nullIfMissing<T>(Future<T> f) async {
 /// [baseUrl] is Apple's host on desktop. In a browser Apple's API sends no CORS headers, so the web build points this
 /// at the bundled proxy (`server/server.js`) instead, which forwards the request untouched.
 class AscClient {
-  AscClient(this.credentials, {required this.baseUrl, http.Client? client, this.maxAttempts = 4, this.retryDelay = const Duration(seconds: 1)})
-      : _http = client ?? http.Client(),
-        _injected = client != null,
-        _shared = false;
+  AscClient(
+    this.credentials, {
+    required this.baseUrl,
+    http.Client? client,
+    this.maxAttempts = 4,
+    this.retryDelay = const Duration(seconds: 1),
+  }) : _http = client ?? http.Client(),
+       _injected = client != null,
+       _shared = false;
 
   AscClient._detached(AscClient from)
-      : credentials = from.credentials,
-        baseUrl = from.baseUrl,
-        maxAttempts = from.maxAttempts,
-        retryDelay = from.retryDelay,
-        _http = from._injected ? from._http : http.Client(),
-        _injected = from._injected,
-        _shared = from._injected;
+    : credentials = from.credentials,
+      baseUrl = from.baseUrl,
+      maxAttempts = from.maxAttempts,
+      retryDelay = from.retryDelay,
+      _http = from._injected ? from._http : http.Client(),
+      _injected = from._injected,
+      _shared = from._injected;
 
   /// A client with the same key that lives on its own: closing this one (when the client is renamed or locked) does
   /// not stop a long job such as a build upload that holds the copy.
@@ -140,10 +144,7 @@ class AscClient {
   String _token() {
     final now = DateTime.now();
     if (_jwt != null && _jwtExpiry!.isAfter(now.add(const Duration(minutes: 1)))) return _jwt!;
-    final jwt = JWT(
-      {'iss': credentials.issuerId, 'aud': 'appstoreconnect-v1'},
-      header: {'kid': credentials.keyId, 'typ': 'JWT'},
-    );
+    final jwt = JWT({'iss': credentials.issuerId, 'aud': 'appstoreconnect-v1'}, header: {'kid': credentials.keyId, 'typ': 'JWT'});
     _jwt = jwt.sign(ECPrivateKey(credentials.privateKeyPem), algorithm: JWTAlgorithm.ES256, expiresIn: const Duration(minutes: 15));
     _jwtExpiry = now.add(const Duration(minutes: 15));
     return _jwt!;
@@ -160,7 +161,7 @@ class AscClient {
 
   Future<http.Response> _send(Uri uri, {String method = 'GET', Object? body, Map<String, String>? headers}) async {
     final read = method == 'GET';
-    for (var attempt = 1;; attempt++) {
+    for (var attempt = 1; ; attempt++) {
       final last = attempt >= maxAttempts;
       final http.Response r;
       try {
@@ -206,10 +207,13 @@ class AscClient {
       final errors = (jsonDecode(utf8.decode(r.bodyBytes)) as Map)['errors'] as List?;
       if (errors != null && errors.isNotEmpty) {
         code = (errors.first as Map)['code']?.toString();
-        message = errors.take(4).map((e) {
-          final m = e as Map;
-          return '${m['title'] ?? 'Error'}${m['detail'] != null ? ': ${m['detail']}' : ''}';
-        }).join('\n');
+        message = errors
+            .take(4)
+            .map((e) {
+              final m = e as Map;
+              return '${m['title'] ?? 'Error'}${m['detail'] != null ? ': ${m['detail']}' : ''}';
+            })
+            .join('\n');
       }
     } catch (_) {}
     if (r.statusCode == 429) {
@@ -253,6 +257,7 @@ class AscClient {
   }
 
   Future<ResourcePage> post(String path, Map<String, dynamic> body) async => (await write('POST', path, body))!;
+
   /// Null when Apple answers 204 No Content (e.g. replacing a relationship such as a screenshot order).
   Future<ResourcePage?> patch(String path, Map<String, dynamic> body) => write('PATCH', path, body);
   Future<void> delete(String path) => write('DELETE', path);

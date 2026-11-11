@@ -22,7 +22,10 @@ void main() {
     final nav = tester.state<NavigatorState>(find.byType(Navigator).first);
     nav.push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: Text('Pushed screen'))));
     await tester.pumpAndSettle();
-    showDialog<void>(context: nav.context, builder: (_) => const AlertDialog(content: Text('A dialog')));
+    showDialog<void>(
+      context: nav.context,
+      builder: (_) => const AlertDialog(content: Text('A dialog')),
+    );
     await tester.pumpAndSettle();
     expect(find.text('A dialog'), findsOneWidget);
 

@@ -9,6 +9,10 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+# One line width for `dart format` across the project.
+formatter:
+  page_width: 140
+
 analyzer:
   exclude:
     - build/**

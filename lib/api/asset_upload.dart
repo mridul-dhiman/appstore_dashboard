@@ -21,12 +21,12 @@ class UploadOp {
   final Map<String, String> headers;
 
   factory UploadOp.fromJson(Map<String, dynamic> j) => UploadOp(
-        method: (j['method'] as String?) ?? 'PUT',
-        url: j['url'] as String,
-        offset: (j['offset'] as num?)?.toInt() ?? 0,
-        length: (j['length'] as num).toInt(),
-        headers: {for (final h in (j['requestHeaders'] as List? ?? const [])) (h as Map)['name'] as String: h['value'] as String},
-      );
+    method: (j['method'] as String?) ?? 'PUT',
+    url: j['url'] as String,
+    offset: (j['offset'] as num?)?.toInt() ?? 0,
+    length: (j['length'] as num).toInt(),
+    headers: {for (final h in (j['requestHeaders'] as List? ?? const [])) (h as Map)['name'] as String: h['value'] as String},
+  );
 }
 
 /// Checks the operations cover the file exactly once, with no gaps or overlaps, before a single byte is sent.
@@ -42,7 +42,6 @@ String? validateOps(List<UploadOp> ops, int fileSize) {
 }
 
 String md5Hex(Uint8List bytes) => md5.convert(bytes).toString();
-
 
 /// Test seam (same idea as the Vidyagram repo's `*FetchOverride`): swap in a mock to avoid real network.
 @visibleForTesting
@@ -70,7 +69,13 @@ class UploadCancel {
 /// PUT every part of [source] to the URLs Apple handed out. The URLs are unauthenticated (no JWT is sent), independent of
 /// each other and expire, so a few go in parallel and each is retried. Each part is read from [source] only when it is
 /// sent, so at most [concurrency] parts are in memory at once.
-Future<void> putSourceParts(List<UploadOp> ops, UploadSource source, void Function(int sentBytes) onSent, {int concurrency = 4, UploadCancel? cancel}) async {
+Future<void> putSourceParts(
+  List<UploadOp> ops,
+  UploadSource source,
+  void Function(int sentBytes) onSent, {
+  int concurrency = 4,
+  UploadCancel? cancel,
+}) async {
   final bad = validateOps(ops, source.length);
   if (bad != null) throw AscException(bad);
   var sent = 0;
@@ -105,8 +110,10 @@ Future<void> _putPart(http.Client c, UploadOp op, Uint8List body) async {
       final res = await http.Response.fromStream(await c.send(req).timeout(const Duration(minutes: 5)));
       if (res.statusCode >= 200 && res.statusCode < 300) return;
       if (res.statusCode >= 400 && res.statusCode < 500 && res.statusCode != 408 && res.statusCode != 429) {
-        throw AscException('Apple refused bytes ${op.offset}–${op.offset + op.length} (HTTP ${res.statusCode}). '
-            '${res.statusCode == 403 ? 'The upload link has probably expired; start the upload again.' : 'Start the upload again.'}');
+        throw AscException(
+          'Apple refused bytes ${op.offset}–${op.offset + op.length} (HTTP ${res.statusCode}). '
+          '${res.statusCode == 403 ? 'The upload link has probably expired; start the upload again.' : 'Start the upload again.'}',
+        );
       }
       last = 'HTTP ${res.statusCode}';
     } on AscException {

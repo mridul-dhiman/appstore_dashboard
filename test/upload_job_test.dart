@@ -25,7 +25,11 @@ class CountingSource extends BytesSource {
 }
 
 http.Response? asc(Recorded r, {String state = 'COMPLETE'}) {
-  if (r.method == 'POST' && r.path == '/v1/buildUploads') return json({'data': {'type': 'buildUploads', 'id': 'U1'}}, 201);
+  if (r.method == 'POST' && r.path == '/v1/buildUploads') {
+    return json({
+      'data': {'type': 'buildUploads', 'id': 'U1'},
+    }, 201);
+  }
   if (r.method == 'POST' && r.path == '/v1/buildUploadFiles') {
     return json({
       'data': {
@@ -40,8 +44,22 @@ http.Response? asc(Recorded r, {String state = 'COMPLETE'}) {
       },
     }, 201);
   }
-  if (r.method == 'PATCH') return json({'data': {'type': 'buildUploadFiles', 'id': 'F1'}});
-  if (r.method == 'GET' && r.path == '/v1/buildUploads/U1') return json({'data': {'type': 'buildUploads', 'id': 'U1', 'attributes': {'state': {'state': state}}}});
+  if (r.method == 'PATCH') {
+    return json({
+      'data': {'type': 'buildUploadFiles', 'id': 'F1'},
+    });
+  }
+  if (r.method == 'GET' && r.path == '/v1/buildUploads/U1') {
+    return json({
+      'data': {
+        'type': 'buildUploads',
+        'id': 'U1',
+        'attributes': {
+          'state': {'state': state},
+        },
+      },
+    });
+  }
   return null;
 }
 
@@ -52,9 +70,9 @@ void main() {
   setUp(() {
     puts = [];
     assetHttpClientFactory = () => MockClient((req) async {
-          puts.add('${req.url} ${req.bodyBytes.length}');
-          return http.Response('', 200);
-        });
+      puts.add('${req.url} ${req.bodyBytes.length}');
+      return http.Response('', 200);
+    });
   });
   tearDown(() => assetHttpClientFactory = http.Client.new);
 
@@ -75,9 +93,9 @@ void main() {
     final gate = Completer<void>();
     final fake = FakeAsc(asc);
     assetHttpClientFactory = () => MockClient((req) async {
-          await gate.future;
-          return http.Response('', 200);
-        });
+      await gate.future;
+      return http.Response('', 200);
+    });
     final job = UploadJob(appId: 'A1', info: info, source: BytesSource('a.ipa', Uint8List(10)));
     final running = job.run(fake.client);
     await Future<void>.delayed(Duration.zero);
@@ -94,8 +112,11 @@ void main() {
     final fake = FakeAsc(asc);
     final jobs = UploadJobs();
     final job = jobs.start(UploadJob(appId: 'A1', info: info, source: BytesSource('a.ipa', Uint8List(10))), fake.client)!;
-    expect(jobs.start(UploadJob(appId: 'A1', info: info, source: BytesSource('b.ipa', Uint8List(10))), fake.client), isNull,
-        reason: 'one upload per app at a time');
+    expect(
+      jobs.start(UploadJob(appId: 'A1', info: info, source: BytesSource('b.ipa', Uint8List(10))), fake.client),
+      isNull,
+      reason: 'one upload per app at a time',
+    );
     final done = Completer<void>();
     job.addListener(() {
       if (!job.running && !done.isCompleted) done.complete();
@@ -108,7 +129,8 @@ void main() {
   test('a file on disk is read in ranges, hashed in the background, and its Info.plist found without loading it whole', () async {
     final dir = Directory.systemTemp.createTempSync('ipa');
     addTearDown(() => dir.deleteSync(recursive: true));
-    final plist = '<plist><dict><key>CFBundleIdentifier</key><string>com.x</string><key>CFBundleShortVersionString</key>'
+    final plist =
+        '<plist><dict><key>CFBundleIdentifier</key><string>com.x</string><key>CFBundleShortVersionString</key>'
         '<string>2.0</string><key>CFBundleVersion</key><string>9</string></dict></plist>';
     final archive = Archive()..addFile(ArchiveFile.string('Payload/X.app/Info.plist', plist));
     final bytes = Uint8List.fromList(ZipEncoder().encode(archive));
@@ -143,9 +165,9 @@ void main() {
     test('a 403 (expired link) fails at once, without retrying', () async {
       var n = 0;
       assetHttpClientFactory = () => MockClient((req) async {
-            n++;
-            return http.Response('', 403);
-          });
+        n++;
+        return http.Response('', 403);
+      });
       await expectLater(putParts(ops, Uint8List(4), (_) {}), throwsA(predicate((e) => e.toString().contains('expired'))));
       expect(n, 1);
     });

@@ -4,8 +4,12 @@ import 'package:appstore_dashboard/api/listing_draft.dart';
 import 'package:appstore_dashboard/api/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Resource loc(String id, String locale, {String? news, String? promo}) =>
-    Resource(id: id, type: 'appStoreVersionLocalizations', relationships: const {}, attributes: {'locale': locale, 'whatsNew': news, 'promotionalText': promo});
+Resource loc(String id, String locale, {String? news, String? promo}) => Resource(
+  id: id,
+  type: 'appStoreVersionLocalizations',
+  relationships: const {},
+  attributes: {'locale': locale, 'whatsNew': news, 'promotionalText': promo},
+);
 
 void main() {
   final fr = loc('L2', 'fr-FR', news: 'Anciennes notes');
@@ -16,7 +20,12 @@ void main() {
 
   test('copies the chosen fields to every target, skipping ones that already match', () {
     final plan = planClone(sourceText: source, targets: [fr, de, same], fields: cloneableFields, versionEditable: true);
-    expect(plan.map((e) => '${e.locale}:${e.field.key}').toList(), ['fr-FR:whatsNew', 'de-DE:whatsNew', 'fr-FR:promotionalText', 'de-DE:promotionalText']);
+    expect(plan.map((e) => '${e.locale}:${e.field.key}').toList(), [
+      'fr-FR:whatsNew',
+      'de-DE:whatsNew',
+      'fr-FR:promotionalText',
+      'de-DE:promotionalText',
+    ]);
     expect(plan.first.before, 'Anciennes notes');
     expect(plan.first.after, 'Bug fixes');
   });
@@ -27,7 +36,12 @@ void main() {
   });
 
   test('an empty source field is never copied over text that exists', () {
-    final plan = planClone(sourceText: (k) => k == 'whatsNew' ? '   ' : 'Promo', targets: [fr], fields: cloneableFields, versionEditable: true);
+    final plan = planClone(
+      sourceText: (k) => k == 'whatsNew' ? '   ' : 'Promo',
+      targets: [fr],
+      fields: cloneableFields,
+      versionEditable: true,
+    );
     expect(plan.map((e) => e.field.key), ['promotionalText']);
   });
 
@@ -41,7 +55,14 @@ void main() {
     // Staging the same text again, or reverting to Apple's value, does not duplicate or leave a ghost change.
     stageClone(draft, planClone(sourceText: source, targets: [fr], fields: [cloneableFields.first], versionEditable: true));
     expect(draft.count, 2);
-    draft.setText(target: 'version', locId: 'L2', locale: 'fr-FR', field: const ListingField('whatsNew', 'x'), before: 'Anciennes notes', after: 'Anciennes notes');
+    draft.setText(
+      target: 'version',
+      locId: 'L2',
+      locale: 'fr-FR',
+      field: const ListingField('whatsNew', 'x'),
+      before: 'Anciennes notes',
+      after: 'Anciennes notes',
+    );
     expect(draft.count, 1);
   });
 }

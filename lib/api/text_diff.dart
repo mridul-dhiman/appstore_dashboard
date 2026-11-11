@@ -10,10 +10,7 @@ List<DiffLine> diffLines(String before, String after, {int maxLines = 400}) {
   final a = before.isEmpty ? <String>[] : before.split('\n');
   final b = after.isEmpty ? <String>[] : after.split('\n');
   if (a.length > maxLines || b.length > maxLines) {
-    return [
-      for (final l in a) DiffLine('-', l),
-      for (final l in b) DiffLine('+', l),
-    ];
+    return [for (final l in a) DiffLine('-', l), for (final l in b) DiffLine('+', l)];
   }
   final dp = List.generate(a.length + 1, (_) => List.filled(b.length + 1, 0));
   for (var i = a.length - 1; i >= 0; i--) {
@@ -44,4 +41,5 @@ List<DiffLine> diffLines(String before, String after, {int maxLines = 400}) {
 }
 
 /// Counts of changed lines, for a one-line summary.
-({int added, int removed}) diffStats(List<DiffLine> d) => (added: d.where((l) => l.op == '+').length, removed: d.where((l) => l.op == '-').length);
+({int added, int removed}) diffStats(List<DiffLine> d) =>
+    (added: d.where((l) => l.op == '+').length, removed: d.where((l) => l.op == '-').length);

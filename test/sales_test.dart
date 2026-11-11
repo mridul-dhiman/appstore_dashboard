@@ -3,7 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   // Synthetic report in Apple's column layout (not a real export).
-  const tsv = 'Provider\tProvider Country\tSKU\tDeveloper\tTitle\tVersion\tProduct Type Identifier\tUnits\tDeveloper Proceeds\tBegin Date\tEnd Date\tCustomer Currency\tCountry Code\tCurrency of Proceeds\n'
+  const tsv =
+      'Provider\tProvider Country\tSKU\tDeveloper\tTitle\tVersion\tProduct Type Identifier\tUnits\tDeveloper Proceeds\tBegin Date\tEnd Date\tCustomer Currency\tCountry Code\tCurrency of Proceeds\n'
       'APPLE\tUS\tcom.x\tDev\tMy App\t1.0\t1F\t12\t0\t11/09/2026\t11/09/2026\tINR\tIN\tINR\n'
       'APPLE\tUS\tcom.x\tDev\tMy App\t1.0\t7\t5\t0\t11/09/2026\t11/09/2026\tINR\tIN\tINR\n'
       'APPLE\tUS\tcom.x.iap\tDev\tPro Plan\t1.0\tIAY\t2\t340.5\t11/09/2026\t11/09/2026\tINR\tIN\tINR\n';

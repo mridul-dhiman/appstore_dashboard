@@ -38,7 +38,15 @@ class FakeAsc {
         if (req.body.isNotEmpty) body = (jsonDecode(req.body) as Map).cast<String, dynamic>();
         final rec = Recorded(req.method, req.url.path + (req.url.hasQuery ? '?${req.url.query}' : ''), body);
         log.add(rec);
-        return responder(rec) ?? http.Response(jsonEncode({'errors': [{'title': 'Unexpected', 'detail': rec.toString()}]}), 500);
+        return responder(rec) ??
+            http.Response(
+              jsonEncode({
+                'errors': [
+                  {'title': 'Unexpected', 'detail': rec.toString()},
+                ],
+              }),
+              500,
+            );
       }),
     );
   }
@@ -48,7 +56,12 @@ class FakeAsc {
   late final AscClient client;
 }
 
-http.Response json(Object body, [int status = 200]) => http.Response(jsonEncode(body), status, headers: {'content-type': 'application/json'});
+http.Response json(Object body, [int status = 200]) =>
+    http.Response(jsonEncode(body), status, headers: {'content-type': 'application/json'});
 http.Response noContent() => http.Response('', 204);
-http.Response apiError(int status, String title, String detail) => json({'errors': [{'status': '$status', 'title': title, 'detail': detail}]}, status);
+http.Response apiError(int status, String title, String detail) => json({
+  'errors': [
+    {'status': '$status', 'title': title, 'detail': detail},
+  ],
+}, status);
 http.Response http200(String body) => http.Response(body, 200);

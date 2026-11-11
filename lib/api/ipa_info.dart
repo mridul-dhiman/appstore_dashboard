@@ -17,10 +17,10 @@ class IpaInfo {
 
 /// `DTPlatformName` → App Store Connect platform. Anything unknown is treated as iOS, the .ipa default.
 String ascPlatformFor(String? dtPlatformName) => switch (dtPlatformName?.toLowerCase()) {
-      'appletvos' => 'TV_OS',
-      'xros' => 'VISION_OS',
-      _ => 'IOS',
-    };
+  'appletvos' => 'TV_OS',
+  'xros' => 'VISION_OS',
+  _ => 'IOS',
+};
 
 class IpaException implements Exception {
   IpaException(this.message);
@@ -47,7 +47,9 @@ IpaInfo readIpaInfoFromArchive(Archive archive) {
   final dict = parsePlist(Uint8List.fromList(entry.content));
   String? s(String k) => dict[k]?.toString();
   final id = s('CFBundleIdentifier'), v = s('CFBundleShortVersionString'), b = s('CFBundleVersion');
-  if (id == null || v == null || b == null) throw IpaException('Info.plist is missing CFBundleIdentifier, CFBundleShortVersionString or CFBundleVersion.');
+  if (id == null || v == null || b == null) {
+    throw IpaException('Info.plist is missing CFBundleIdentifier, CFBundleShortVersionString or CFBundleVersion.');
+  }
   return IpaInfo(
     bundleId: id,
     version: v,
@@ -118,7 +120,11 @@ class _Bplist {
     final hi = marker >> 4, lo = marker & 0x0F;
     switch (hi) {
       case 0x0:
-        return lo == 0x8 ? false : lo == 0x9 ? true : null;
+        return lo == 0x8
+            ? false
+            : lo == 0x9
+            ? true
+            : null;
       case 0x1:
         final size = 1 << lo;
         return size <= 8 ? _uint(pos + 1, size) : 0;

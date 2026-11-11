@@ -8,18 +8,20 @@ const maxReplyLength = 5970;
 /// edited per client in the reply box ("Edit templates") and saved on this Mac.
 const defaultReplyTemplates = {
   'Thanks': 'Hi {name}, thank you for the kind words. It means a lot to the team, and we are glad the app is useful to you.',
-  'Fix coming soon': 'Hi {name}, thank you for letting us know and sorry for the trouble. We are working on a fix and it will be in an upcoming update.',
-  'Contact support': 'Hi {name}, we are sorry this has not worked well for you. Please contact our support team so we can look into it and put it right.',
+  'Fix coming soon':
+      'Hi {name}, thank you for letting us know and sorry for the trouble. We are working on a fix and it will be in an upcoming update.',
+  'Contact support':
+      'Hi {name}, we are sorry this has not worked well for you. Please contact our support team so we can look into it and put it right.',
 };
 
 enum ReviewFilter { all, needsReply, unanswered }
 
 extension ReviewFilterLabel on ReviewFilter {
   String get label => switch (this) {
-        ReviewFilter.all => 'All',
-        ReviewFilter.needsReply => '1-3★ Needs Reply',
-        ReviewFilter.unanswered => 'Unanswered',
-      };
+    ReviewFilter.all => 'All',
+    ReviewFilter.needsReply => '1-3★ Needs Reply',
+    ReviewFilter.unanswered => 'Unanswered',
+  };
 }
 
 /// A customer review with the developer's response, when there is one.
@@ -86,14 +88,16 @@ Future<Resource?> fetchReviewResponse(AscClient c, String reviewId) async {
 }
 
 Map<String, dynamic> replyBody(String reviewId, String text) => {
-      'data': {
-        'type': 'customerReviewResponses',
-        'attributes': {'responseBody': text},
-        'relationships': {
-          'review': {'data': {'type': 'customerReviews', 'id': reviewId}},
-        },
+  'data': {
+    'type': 'customerReviewResponses',
+    'attributes': {'responseBody': text},
+    'relationships': {
+      'review': {
+        'data': {'type': 'customerReviews', 'id': reviewId},
       },
-    };
+    },
+  },
+};
 
 /// Why this text cannot be posted, or null when it can.
 String? replyProblem(String text) {
