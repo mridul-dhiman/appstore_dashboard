@@ -165,7 +165,7 @@ void main() {
       expect(fake.log.where((r) => r.method == 'PATCH').single.path, '/v1/reviewSubmissions/D1');
     });
 
-    test('a draft holding something else gets this version added before submitting', () async {
+    test('an empty draft gets this version added before submitting', () async {
       final fake = FakeAsc((r) {
         if (r.method == 'GET' && r.path.startsWith('/v1/reviewSubmissions?')) return json(list([{'type': 'reviewSubmissions', 'id': 'D1', 'attributes': {'state': 'READY_FOR_REVIEW'}}]));
         if (r.method == 'GET' && r.path.startsWith('/v1/reviewSubmissions/D1/items')) return json(list([]));
@@ -176,6 +176,21 @@ void main() {
       });
       await SubmissionFlow(fake.client, 'A1').submit('V1');
       expect(fake.log.where((r) => r.method == 'POST').single.path, '/v1/reviewSubmissionItems');
+    });
+
+    test('a draft that already holds other items is refused, and nothing is added or submitted', () async {
+      final fake = FakeAsc((r) {
+        if (r.method == 'GET' && r.path.startsWith('/v1/reviewSubmissions?')) return json(list([{'type': 'reviewSubmissions', 'id': 'D1', 'attributes': {'state': 'READY_FOR_REVIEW'}}]));
+        if (r.method == 'GET' && r.path.startsWith('/v1/reviewSubmissions/D1/items')) {
+          return json(list([
+            {'type': 'reviewSubmissionItems', 'id': 'I1', 'relationships': {'appStoreVersion': {'data': {'type': 'appStoreVersions', 'id': 'V1'}}}},
+            {'type': 'reviewSubmissionItems', 'id': 'I2', 'relationships': {'appEvent': {'data': {'type': 'appEvents', 'id': 'E1'}}}},
+          ]));
+        }
+        return null;
+      });
+      await expectLater(SubmissionFlow(fake.client, 'A1').submit('V1'), throwsA(predicate((e) => e.toString().contains('1 other item'))));
+      expect(fake.log.any((r) => r.method != 'GET'), isFalse);
     });
 
     test('an Apple refusal at submit time surfaces as an error and nothing else is sent', () async {

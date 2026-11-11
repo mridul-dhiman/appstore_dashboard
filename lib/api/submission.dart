@@ -111,9 +111,15 @@ class Check {
 
 /// An in-flight (or draft) submission and the version ids it contains.
 class ActiveSubmission {
-  ActiveSubmission(this.resource, this.versionIds);
+  ActiveSubmission(this.resource, this.versionIds, {int? itemCount}) : itemCount = itemCount ?? versionIds.length;
   final Resource resource;
   final List<String> versionIds;
+
+  /// Every item in it: versions, but also in-app events, custom product pages and experiments.
+  final int itemCount;
+
+  /// Items that are not [versionId]. Submitting the draft would send them to review too.
+  int otherItems(String versionId) => itemCount - (versionIds.contains(versionId) ? 1 : 0);
   String get state => resource.attributes['state'] as String? ?? '';
   bool get isDraft => state == 'READY_FOR_REVIEW';
 }
@@ -250,7 +256,7 @@ Future<List<ActiveSubmission>> listActiveSubmissions(AscClient c, String appId, 
   final subs = await c.page('/v1/reviewSubmissions', {'filter[app]': appId, 'filter[state]': states, 'filter[platform]': ?platform, 'limit': '20'});
   return Future.wait(subs.data.map((s) async {
     final items = await c.page('/v1/reviewSubmissions/${s.id}/items', {'include': 'appStoreVersion', 'limit': '50'}).catchError((_) => ResourcePage(data: const []));
-    return ActiveSubmission(s, [for (final i in items.data) if (i.relId('appStoreVersion') != null) i.relId('appStoreVersion')!]);
+    return ActiveSubmission(s, [for (final i in items.data) if (i.relId('appStoreVersion') != null) i.relId('appStoreVersion')!], itemCount: items.data.length);
   }));
 }
 
@@ -284,12 +290,21 @@ class SubmissionFlow {
   }
 
   /// Reuses the app's draft submission if there is one, makes sure it contains [versionId], then submits it.
-  /// Re-checks the version is still submittable first, so a stale screen cannot submit something that changed.
+  /// Apple allows one draft per platform and submits it whole, so a draft that already holds anything else (another
+  /// version, an in-app event, a product page) is refused rather than sending those to review unasked.
   Future<SubmitOutcome> submit(String versionId, {String platform = 'IOS'}) async {
     final drafts = await listActiveSubmissions(client, appId, platform: platform, states: 'READY_FOR_REVIEW');
     final String id;
     final List<String> contained;
     if (drafts.isNotEmpty) {
+      final others = drafts.first.otherItems(versionId);
+      if (others > 0) {
+        throw AscException(
+          'There is already a draft review submission for this app with $others other item${others == 1 ? '' : 's'} in it '
+          '(another version, an in-app event or a product page). Submitting would send those to App Review too. '
+          'Remove them from the draft, or submit it, in App Store Connect first.',
+        );
+      }
       id = drafts.first.resource.id;
       contained = drafts.first.versionIds;
     } else {
