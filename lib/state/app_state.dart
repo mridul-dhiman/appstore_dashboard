@@ -11,10 +11,9 @@ enum Phase { locked, setup, ready }
 /// Holds the saved clients and the active API client. Keys only exist in memory while the app is unlocked; locking
 /// drops them.
 class AppState extends ChangeNotifier {
-  AppState({DeviceLock? lock, Vault? vault, http.Client Function()? httpClient})
+  AppState({DeviceLock? lock, Vault? vault, this.httpClient})
       : _lock = lock ?? DeviceLock(),
-        _vault = vault ?? Vault(),
-        _httpClient = httpClient {
+        _vault = vault ?? Vault() {
     if (kIsWeb) {
       // Nothing is stored in a browser, so there is nothing to unlock.
       phase = Phase.setup;
@@ -26,9 +25,9 @@ class AppState extends ChangeNotifier {
   final Vault _vault;
 
   /// Test seam: where each [AscClient] gets its HTTP client. Null = a real one.
-  final http.Client Function()? _httpClient;
+  final http.Client Function()? httpClient;
 
-  AscClient _newClient(Credentials c) => AscClient(c, baseUrl: baseUrl, client: _httpClient?.call());
+  AscClient _newClient(Credentials c) => AscClient(c, baseUrl: baseUrl, client: httpClient?.call());
 
   Phase phase = Phase.locked;
 
