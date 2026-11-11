@@ -9,9 +9,10 @@ import '../export_button.dart';
 import '../widgets.dart';
 
 class _Day {
-  _Day(this.day, this.rows);
+  _Day(this.day, this.rows, [this.error]);
   final DateTime day;
-  final List<SalesRow>? rows; // null = Apple has no report for that day (yet)
+  final List<SalesRow>? rows; // null = Apple has no report for that day (yet), or it failed to load
+  final String? error; // why the day could not be loaded; the other days still show
 }
 
 class SalesPage extends StatefulWidget {
@@ -49,17 +50,24 @@ class _SalesPageState extends State<SalesPage> {
     for (var i = 0; i < days.length; i += 4) {
       final chunk = days.sublist(i, (i + 4).clamp(0, days.length));
       out.addAll(await Future.wait(chunk.map((d) async {
-        final tsv = await widget.client.report({
-          'filter[frequency]': 'DAILY',
-          'filter[reportType]': 'SALES',
-          'filter[reportSubType]': 'SUMMARY',
-          'filter[vendorNumber]': vendor,
-          'filter[reportDate]': DateFormat('yyyy-MM-dd').format(d),
-          'filter[version]': '1_0',
-        });
-        return _Day(d, tsv == null ? null : parseSalesReport(tsv, d));
+        try {
+          final tsv = await widget.client.report({
+            'filter[frequency]': 'DAILY',
+            'filter[reportType]': 'SALES',
+            'filter[reportSubType]': 'SUMMARY',
+            'filter[vendorNumber]': vendor,
+            'filter[reportDate]': DateFormat('yyyy-MM-dd').format(d),
+            'filter[version]': '1_0',
+          });
+          return _Day(d, tsv == null ? null : parseSalesReport(tsv, d));
+        } on AscException catch (e) {
+          // A wrong vendor number or a missing permission fails every day the same way: that gets the full error.
+          if (e.status == 401 || e.status == 403) rethrow;
+          return _Day(d, null, e.message);
+        }
       })));
     }
+    if (out.every((d) => d.error != null)) throw AscException(out.first.error!);
     out.sort((a, b) => a.day.compareTo(b.day));
     _loaded = out;
     return out;
@@ -133,8 +141,14 @@ class _Report extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context);
     final all = days.expand((d) => d.rows ?? const <SalesRow>[]).toList();
+    final failed = days.where((d) => d.error != null).toList();
+    final failedDays = {for (final d in failed) d.day};
+    final failedNote = failed.isEmpty
+        ? null
+        : '${failed.length} day${failed.length == 1 ? '' : 's'} could not be loaded (${failed.map((d) => DateFormat.MMMd().format(d.day)).join(', ')}). '
+            'The totals leave them out. Refresh to try again.';
     if (all.isEmpty) {
-      return const EmptyView('No sales in this period, or Apple has not published these days yet.', icon: Icons.bar_chart_outlined);
+      return EmptyView(failedNote ?? 'No sales in this period, or Apple has not published these days yet.', icon: Icons.bar_chart_outlined);
     }
     int sum(Iterable<SalesRow> rows) => rows.fold(0, (a, r) => a + r.units);
     final proceeds = <String, double>{};
@@ -150,6 +164,11 @@ class _Report extends StatelessWidget {
     }
 
     return ListView(padding: const EdgeInsets.fromLTRB(40, 0, 40, 40), children: [
+      if (failedNote != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Tooltip(message: failed.first.error!, child: Text(failedNote, style: TextStyle(color: t.colorScheme.error))),
+        ),
       LayoutBuilder(builder: (context, c) {
         final cols = c.maxWidth > 760 ? 4 : 2;
         final w = (c.maxWidth - 12 * (cols - 1)) / cols;
@@ -180,7 +199,7 @@ class _Report extends StatelessWidget {
                 for (final (day, n) in daily)
                   Expanded(
                     child: Tooltip(
-                      message: '${DateFormat.MMMd().format(day)}: ${n == null ? 'no report yet' : fmtNum(n)}',
+                      message: '${DateFormat.MMMd().format(day)}: ${n == null ? (failedDays.contains(day) ? 'could not be loaded' : 'no report yet') : fmtNum(n)}',
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 2),
                         child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [

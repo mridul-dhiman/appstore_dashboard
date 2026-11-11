@@ -26,10 +26,13 @@ typedef Responder = http.Response? Function(Recorded r);
 /// An [AscClient] wired to a mock HTTP client: nothing leaves the process. [responder] answers by method/path; anything it
 /// returns null for gets a 500 so an unexpected request fails the test loudly.
 class FakeAsc {
-  FakeAsc(this.responder) {
+  /// One attempt by default, so a canned error is seen once; retry tests ask for more.
+  FakeAsc(this.responder, {int maxAttempts = 1}) {
     client = AscClient(
       const Credentials(keyId: 'TESTKEY123', issuerId: '00000000-0000-0000-0000-000000000000', privateKeyPem: testKeyPem),
       baseUrl: 'https://asc.test',
+      maxAttempts: maxAttempts,
+      retryDelay: Duration.zero,
       client: MockClient((req) async {
         Map<String, dynamic>? body;
         if (req.body.isNotEmpty) body = (jsonDecode(req.body) as Map).cast<String, dynamic>();
@@ -48,3 +51,4 @@ class FakeAsc {
 http.Response json(Object body, [int status = 200]) => http.Response(jsonEncode(body), status, headers: {'content-type': 'application/json'});
 http.Response noContent() => http.Response('', 204);
 http.Response apiError(int status, String title, String detail) => json({'errors': [{'status': '$status', 'title': title, 'detail': detail}]}, status);
+http.Response http200(String body) => http.Response(body, 200);

@@ -76,6 +76,11 @@ class AscException implements Exception {
   String toString() => message;
 }
 
+/// The network failed before Apple answered. Reads retry it.
+class _Unreachable extends AscException {
+  _Unreachable(super.message);
+}
+
 /// [f]'s value, or null when Apple answers 404 (the thing does not exist). Any other failure is rethrown, so a network
 /// blip or a permissions problem is never mistaken for "there is none".
 Future<T?> nullIfMissing<T>(Future<T> f) async {
@@ -92,13 +97,24 @@ Future<T?> nullIfMissing<T>(Future<T> f) async {
 /// [baseUrl] is Apple's host on desktop. In a browser Apple's API sends no CORS headers, so the web build points this
 /// at the bundled proxy (`server/server.js`) instead, which forwards the request untouched.
 class AscClient {
-  AscClient(this.credentials, {required this.baseUrl, http.Client? client}) : _http = client ?? http.Client();
+  AscClient(this.credentials, {required this.baseUrl, http.Client? client, this.maxAttempts = 4, this.retryDelay = const Duration(seconds: 1)})
+      : _http = client ?? http.Client();
 
   static const appleHost = 'https://api.appstoreconnect.apple.com';
 
   final Credentials credentials;
   final String baseUrl;
   final http.Client _http;
+
+  /// How many times a request may be sent. Reads are retried on rate limiting (429), Apple's temporary server errors
+  /// (500, 502, 503, 504) and dropped connections; writes only on 429, which Apple sends before doing anything, so a
+  /// write is never sent twice.
+  final int maxAttempts;
+
+  /// First wait between attempts; doubles each time. A `Retry-After` header from Apple wins when it is given.
+  final Duration retryDelay;
+
+  static const _retryableReads = {429, 500, 502, 503, 504};
 
   String? _jwt;
   DateTime? _jwtExpiry;
@@ -125,6 +141,25 @@ class AscClient {
   }
 
   Future<http.Response> _send(Uri uri, {String method = 'GET', Object? body, Map<String, String>? headers}) async {
+    final read = method == 'GET';
+    for (var attempt = 1;; attempt++) {
+      final last = attempt >= maxAttempts;
+      final http.Response r;
+      try {
+        r = await _sendOnce(uri, method: method, body: body, headers: headers);
+      } on _Unreachable {
+        if (!read || last) rethrow;
+        await Future<void>.delayed(retryDelay * (1 << (attempt - 1)));
+        continue;
+      }
+      final retry = read ? _retryableReads.contains(r.statusCode) : r.statusCode == 429;
+      if (!retry || last) return r;
+      final after = int.tryParse(r.headers['retry-after'] ?? '');
+      await Future<void>.delayed(after != null ? Duration(seconds: after.clamp(0, 60)) : retryDelay * (1 << (attempt - 1)));
+    }
+  }
+
+  Future<http.Response> _sendOnce(Uri uri, {String method = 'GET', Object? body, Map<String, String>? headers}) async {
     try {
       final req = http.Request(method, uri)
         ..headers['Authorization'] = 'Bearer ${_token()}'
@@ -142,7 +177,7 @@ class AscClient {
       throw AscException('The private key could not be read. Paste the full contents of the .p8 file, including the BEGIN/END lines.');
     } catch (e) {
       if (e is JWTException) throw AscException('Could not sign the request: ${e.message}');
-      throw AscException('Could not reach App Store Connect. Check your connection. ($e)');
+      throw _Unreachable('Could not reach App Store Connect. Check your connection. ($e)');
     }
   }
 
@@ -159,7 +194,9 @@ class AscClient {
         }).join('\n');
       }
     } catch (_) {}
-    if (r.statusCode == 401) {
+    if (r.statusCode == 429) {
+      message = 'App Store Connect is rate-limiting this key (429). Wait a minute and try again.';
+    } else if (r.statusCode == 401) {
       message = 'Apple rejected the key (401). Check the Key ID, Issuer ID and .p8 file belong together and the key is not revoked.';
     } else if (r.statusCode == 403) {
       message = 'This key is not allowed to do that. $message';
