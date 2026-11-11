@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ThemeMode;
-import 'package:flutter/widgets.dart';
 
 import '../api/asc_client.dart';
 import '../services/device_lock.dart';
@@ -10,20 +9,16 @@ enum Phase { locked, setup, ready }
 
 /// Holds the saved clients and the active API client. Keys only exist in memory while the app is unlocked; locking
 /// drops them.
-class AppState extends ChangeNotifier with WidgetsBindingObserver {
+class AppState extends ChangeNotifier {
   AppState({DeviceLock? lock, Vault? vault})
       : _lock = lock ?? DeviceLock(),
         _vault = vault ?? Vault() {
-    WidgetsBinding.instance.addObserver(this);
     if (kIsWeb) {
       // Nothing is stored in a browser, so there is nothing to unlock.
       phase = Phase.setup;
       _load();
     }
   }
-
-  /// How long the app may sit in the background before it asks for the password / Touch ID again.
-  static const relockAfter = Duration(minutes: 1);
 
   final DeviceLock _lock;
   final Vault _vault;
@@ -44,7 +39,6 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   List<Credentials> accounts = const [];
   Credentials? credentials; // the active client
   AscClient? client;
-  DateTime? _leftAt;
 
   bool get supportsDeviceLock => _lock.supported;
   bool get keysPersist => _vault.persistent;
@@ -173,20 +167,7 @@ class AppState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!supportsDeviceLock) return;
-    if (state == AppLifecycleState.resumed) {
-      final left = _leftAt;
-      _leftAt = null;
-      if (left != null && phase != Phase.locked && DateTime.now().difference(left) >= relockAfter) lock();
-    } else {
-      _leftAt ??= DateTime.now();
-    }
-  }
-
-  @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _drop();
     super.dispose();
   }

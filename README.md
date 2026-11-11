@@ -26,8 +26,8 @@ flutter run -d macos
 ```
 
 * Keys are stored in the system keychain.
-* The app asks for **Touch ID or your account password** every time it opens, and again after it has been in the
-  background for 1 minute (`AppState.relockAfter`). "Lock now" is in the client menu.
+* The app asks for **Touch ID or your account password** once, each time it is launched. Switching to another app does
+  not lock it again; "Lock now" (sidebar, or ⌘K → Lock Console) locks it on demand.
 * If the Mac has no password/Touch ID configured, the app refuses to open rather than store keys unprotected.
 * Requests go straight to `api.appstoreconnect.apple.com`.
 
