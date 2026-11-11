@@ -48,10 +48,12 @@ class _ShellState extends State<Shell> {
 
   /// The apps list, loaded once per client and shared with the command palette.
   AppsStore _storeFor(Credentials creds, AscClient client) {
-    if (_owner != creds.id || _store == null) {
+    // Renaming a client or changing its vendor number makes a new AscClient (the old one is closed), so the store must
+    // follow the client object itself, not just the client id. Only a different client closes the open app.
+    if (_owner != creds.id) _app = null;
+    if (_owner != creds.id || _store == null || !identical(_store!.client, client)) {
       _owner = creds.id;
       _store = AppsStore(client);
-      _app = null;
     }
     return _store!;
   }
@@ -173,7 +175,12 @@ class _Sidebar extends StatelessWidget {
                   child: Row(children: [
                     Icon(i == index ? _dests[i].selectedIcon : _dests[i].icon, size: 19, color: i == index ? k.accentInk : k.muted),
                     const SizedBox(width: 11),
-                    Text(_dests[i].label, style: TextStyle(fontSize: 13.5, fontWeight: i == index ? FontWeight.w600 : FontWeight.w500, color: i == index ? k.accentInk : t.colorScheme.onSurface.withValues(alpha: 0.82))),
+                    Expanded(
+                      child: Text(_dests[i].label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 13.5, fontWeight: i == index ? FontWeight.w600 : FontWeight.w500, color: i == index ? k.accentInk : t.colorScheme.onSurface.withValues(alpha: 0.82))),
+                    ),
                   ]),
                 ),
               ),

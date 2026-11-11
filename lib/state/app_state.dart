@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ThemeMode;
+import 'package:http/http.dart' as http;
 
 import '../api/asc_client.dart';
 import '../services/device_lock.dart';
@@ -10,9 +11,10 @@ enum Phase { locked, setup, ready }
 /// Holds the saved clients and the active API client. Keys only exist in memory while the app is unlocked; locking
 /// drops them.
 class AppState extends ChangeNotifier {
-  AppState({DeviceLock? lock, Vault? vault})
+  AppState({DeviceLock? lock, Vault? vault, http.Client Function()? httpClient})
       : _lock = lock ?? DeviceLock(),
-        _vault = vault ?? Vault() {
+        _vault = vault ?? Vault(),
+        _httpClient = httpClient {
     if (kIsWeb) {
       // Nothing is stored in a browser, so there is nothing to unlock.
       phase = Phase.setup;
@@ -22,6 +24,11 @@ class AppState extends ChangeNotifier {
 
   final DeviceLock _lock;
   final Vault _vault;
+
+  /// Test seam: where each [AscClient] gets its HTTP client. Null = a real one.
+  final http.Client Function()? _httpClient;
+
+  AscClient _newClient(Credentials c) => AscClient(c, baseUrl: baseUrl, client: _httpClient?.call());
 
   Phase phase = Phase.locked;
 
@@ -85,7 +92,7 @@ class AppState extends ChangeNotifier {
   void _activate(Credentials c) {
     client?.close();
     credentials = c;
-    client = AscClient(c, baseUrl: baseUrl);
+    client = _newClient(c);
     phase = Phase.ready;
     notifyListeners();
   }
@@ -95,7 +102,7 @@ class AppState extends ChangeNotifier {
   /// Verifies the key against Apple, then saves it as a client and switches to it.
   /// Entering the same issuer + key again replaces the saved one.
   Future<void> connect(Credentials c) async {
-    final probe = AscClient(c, baseUrl: baseUrl);
+    final probe = _newClient(c);
     String? firstApp;
     try {
       final page = await probe.page('/v1/apps', {'limit': '1', 'fields[apps]': 'name'});
