@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../api/models.dart';
 import '../services/window.dart';
 import 'theme.dart';
 
@@ -26,6 +27,25 @@ String prettyEnum(String? s) {
   if (s == null || s.isEmpty) return '—';
   final t = s.replaceAll('_', ' ').toLowerCase();
   return t[0].toUpperCase() + t.substring(1);
+}
+
+/// "Showing the first 100 builds" when Apple had more than was loaded ([page] still has a `next` link). Nothing otherwise.
+class TruncatedNote extends StatelessWidget {
+  const TruncatedNote(this.page, this.noun, {super.key});
+  final ResourcePage page;
+  final String noun;
+
+  @override
+  Widget build(BuildContext context) {
+    if (page.next == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Text(
+        'Showing the first ${page.data.length} $noun. There are more in App Store Connect.',
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12.5),
+      ),
+    );
+  }
 }
 
 /// Lets a page header trigger a reload of the [LoadView] below it.

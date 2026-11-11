@@ -321,6 +321,7 @@ class _BuildsTabState extends State<_BuildsTab> {
             for (final b in p.data) _buildRow(context, p, b),
           ],
         ),
+        TruncatedNote(p, 'builds, newest first'),
       ],
     );
   }
@@ -464,6 +465,7 @@ class _PurchasesTabState extends State<_PurchasesTab> {
                           ),
                       ],
                     ),
+                    TruncatedNote(d.iaps, 'in-app purchases'),
                     const SizedBox(height: 20),
                   ],
                   for (final g in d.groups.data) ...[

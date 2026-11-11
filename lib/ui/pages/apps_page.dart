@@ -26,15 +26,16 @@ class AppSummary {
   bool get notIos => platform != null && platform != 'IOS';
 }
 
-/// EXACTLY ONE request: the apps with their versions included. Each app's latest version is the first one Apple lists.
+/// ONE request for up to 200 apps, with their versions included (a larger account follows Apple's next links, up to
+/// 1,000 apps). Each app's latest version is the first one Apple lists.
 Future<List<AppSummary>> loadApps(AscClient c) async {
-  final page = await c.page('/v1/apps', {
+  final page = await c.all('/v1/apps', {
     'limit': '200',
     'sort': 'name',
     'include': 'appStoreVersions',
     'fields[apps]': 'name,bundleId,sku,primaryLocale,appStoreVersions',
     'fields[appStoreVersions]': 'versionString,appStoreState,appVersionState,platform,createdDate',
-  });
+  }, 5);
   return summarizeApps(page);
 }
 

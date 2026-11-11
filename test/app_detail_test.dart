@@ -176,4 +176,24 @@ void main() {
     // Leave no pending poll timer behind.
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets('a builds list Apple cut short says so', (tester) async {
+    tester.view.physicalSize = const Size(1500, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final fake = FakeAsc((r) {
+      if (r.path.startsWith('/v1/builds') && !r.path.contains('buildBetaDetail')) {
+        return json({
+          'data': [
+            {'type': 'builds', 'id': 'B1', 'attributes': {'version': '1', 'processingState': 'VALID', 'expired': true, 'uploadedDate': '2026-01-01T00:00:00Z'}},
+          ],
+          'links': {'next': 'https://api.appstoreconnect.apple.com/v1/builds?cursor=abc'},
+        });
+      }
+      return r.method == 'GET' ? json({'data': []}) : null;
+    });
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: AppDetailPage(client: fake.client, summary: summary(), initialTab: 3, onBack: () {}))));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Showing the first 1 builds'), findsOneWidget);
+  });
 }

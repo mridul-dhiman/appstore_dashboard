@@ -301,6 +301,7 @@ class _TeamPageState extends State<TeamPage> {
               padding: const EdgeInsets.fromLTRB(40, 0, 40, 40),
               children: [
                 RowsCard(children: [for (final u in _users(d)) _row(u)]),
+                TruncatedNote(d.users, 'people'),
                 if (_invites(d).isNotEmpty) ...[
                   const SizedBox(height: 20),
                   const SectionLabel('Pending invitations'),
