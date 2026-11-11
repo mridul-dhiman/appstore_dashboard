@@ -143,4 +143,22 @@ void main() {
       expect(pendingUploads([up('1.0', '5', 'FAILED', '2026-10-01T09:00:00Z')], {}, now: now), isEmpty);
     });
   });
+
+  test('the app icon comes from the newest build\'s icon token, in one small request', () async {
+    final fake = FakeAsc((r) => json({
+          'data': [
+            {
+              'type': 'builds',
+              'id': 'B1',
+              'attributes': {
+                'iconAssetToken': {'templateUrl': 'https://is1-ssl.mzstatic.com/x/icon.png/{w}x{h}bb.{f}', 'width': 152, 'height': 152},
+              },
+            },
+          ],
+        }));
+    expect(await loadAppIconUrl(fake.client, 'A1'), 'https://is1-ssl.mzstatic.com/x/icon.png/128x128bb.png');
+    expect(fake.log.single.path, contains('fields%5Bbuilds%5D=iconAssetToken'));
+    expect(fake.log.single.path, contains('limit=1'));
+    expect(await loadAppIconUrl(FakeAsc((r) => json({'data': []})).client, 'A1'), isNull);
+  });
 }

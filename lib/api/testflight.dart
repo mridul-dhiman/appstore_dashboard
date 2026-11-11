@@ -244,6 +244,16 @@ List<BuildUpload> pendingUploads(List<BuildUpload> uploads, Set<String> knownBui
   ];
 }
 
+/// The app's icon, from its newest build, sized [px] pixels square. One small request; null when there is no build.
+Future<String?> loadAppIconUrl(AscClient c, String appId, {int px = 128}) async {
+  final p = await c.page('/v1/builds', {'filter[app]': appId, 'sort': '-uploadedDate', 'limit': '1', 'fields[builds]': 'iconAssetToken'});
+  if (p.data.isEmpty) return null;
+  final token = (p.data.first.attributes['iconAssetToken'] as Map?)?.cast<String, dynamic>();
+  final template = token?['templateUrl'] as String?;
+  if (template == null) return null;
+  return template.replaceAll('{w}', '$px').replaceAll('{h}', '$px').replaceAll('{f}', 'png');
+}
+
 /// TestFlight state of a build in plain words, from buildBetaDetails (internal/external build state).
 String betaStateLabel(String? s) => switch (s) {
       null || '' => '',

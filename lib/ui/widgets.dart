@@ -416,10 +416,13 @@ IconData platformIcon(String? platform) => switch (platform) {
 /// App icon stand-in: a squircle with a gradient picked from the app's name and the platform glyph in the corner. The
 /// real icon needs a request per app, which the Apps list deliberately avoids.
 class AppSquircleIcon extends StatelessWidget {
-  const AppSquircleIcon({super.key, required this.name, this.platform, this.size = 48});
+  const AppSquircleIcon({super.key, required this.name, this.platform, this.size = 48, this.imageUrl});
   final String name;
   final String? platform;
   final double size;
+
+  /// The real icon. While it loads, or if it fails, the initials tile shows instead.
+  final String? imageUrl;
 
   static const _gradients = [
     (Color(0xFF5AC8FA), Color(0xFF0A84FF)),
@@ -433,11 +436,33 @@ class AppSquircleIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final seed = name.isEmpty ? 0 : name.codeUnits.fold<int>(0, (a, b) => a + b);
     final g = _gradients[seed % _gradients.length];
+    final shape = RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(size * 0.28));
+    final tile = _tile(g, shape);
+    if (imageUrl == null) return tile;
+    return Container(
+      width: size,
+      height: size,
+      decoration: ShapeDecoration(shape: shape, shadows: const [BoxShadow(color: Color(0x22000000), blurRadius: 4, offset: Offset(0, 1))]),
+      child: ClipPath(
+        clipper: ShapeBorderClipper(shape: shape),
+        child: Image.network(
+          imageUrl!,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          frameBuilder: (context, child, frame, _) => frame == null ? tile : child,
+          errorBuilder: (_, _, _) => tile,
+        ),
+      ),
+    );
+  }
+
+  Widget _tile((Color, Color) g, ShapeBorder shape) {
     return Container(
       width: size,
       height: size,
       decoration: ShapeDecoration(
-        shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.circular(size * 0.28)),
+        shape: shape,
         gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [g.$1, g.$2]),
         shadows: const [BoxShadow(color: Color(0x22000000), blurRadius: 4, offset: Offset(0, 1))],
       ),

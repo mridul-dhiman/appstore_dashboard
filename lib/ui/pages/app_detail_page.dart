@@ -65,6 +65,16 @@ class _AppDetailPageState extends State<AppDetailPage> {
 
   /// The shell's uploads (they outlive this page); a page shown on its own keeps its own.
   late final _fallbackUploads = UploadJobs();
+  String? _iconUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    // The list shows initials to stay at one request; here one more small request gets the real icon.
+    loadAppIconUrl(widget.client, widget.summary.id).then((u) {
+      if (mounted && u != null) setState(() => _iconUrl = u);
+    }, onError: (_) {});
+  }
   UploadJobs get _uploads => widget.uploads ?? _fallbackUploads;
 
   @override
@@ -109,7 +119,7 @@ class _AppDetailPageState extends State<AppDetailPage> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        AppSquircleIcon(name: summary.name, platform: summary.platform, size: 64),
+                        AppSquircleIcon(name: summary.name, platform: summary.platform, size: 64, imageUrl: _iconUrl),
                         const SizedBox(width: 18),
                         Expanded(
                           child: Column(
