@@ -15,6 +15,7 @@ class MemoryVault extends Vault {
   VaultData data;
   int writes = 0;
   Object? failRead;
+  Object? failWrite;
 
   @override
   bool get persistent => true;
@@ -27,6 +28,7 @@ class MemoryVault extends Vault {
 
   @override
   Future<void> write(VaultData d) async {
+    if (failWrite != null) throw failWrite!;
     writes++;
     data = d;
   }

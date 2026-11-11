@@ -85,7 +85,14 @@ class AppState extends ChangeNotifier {
         message = _lock.lastMessage;
         return;
       }
-      await _load();
+      try {
+        await _load();
+      } catch (e) {
+        // A keychain that cannot be read leaves the app locked with the reason, not stuck on a spinner.
+        _drop();
+        phase = Phase.locked;
+        message = 'Could not read your saved keys from the keychain: $e';
+      }
     } finally {
       unlocking = false;
       notifyListeners();
@@ -114,17 +121,20 @@ class AppState extends ChangeNotifier {
       probe.close();
     }
     final named = c.name.isNotEmpty ? c : c.copyWith(name: firstApp ?? '');
+    final next = [...accounts.where((a) => a.id != named.id), named];
+    // Saved first: if the keychain refuses, the key is not shown as connected only to vanish on the next launch.
+    await _vault.write(VaultData(accounts: next, activeId: named.id));
     message = null;
-    accounts = [...accounts.where((a) => a.id != named.id), named];
+    accounts = next;
     _activate(named);
-    await _persist();
   }
 
-  void switchTo(String id) {
+  /// Throws if the choice could not be saved; the switch itself still happens.
+  Future<void> switchTo(String id) async {
     final target = accounts.where((a) => a.id == id);
     if (target.isEmpty || credentials?.id == id) return;
     _activate(target.first);
-    _persist();
+    await _persist();
   }
 
   Future<void> rename(String id, String name) async {

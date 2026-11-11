@@ -219,6 +219,15 @@ class ClientSwitcher extends StatelessWidget {
   }
 
   Future<void> _onSelected(BuildContext context, String value) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await _run(context, value);
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Could not save the change to your keychain: $e')));
+    }
+  }
+
+  Future<void> _run(BuildContext context, String value) async {
     final active = state.credentials!;
     switch (value) {
       case '__add':
@@ -246,7 +255,7 @@ class ClientSwitcher extends StatelessWidget {
       case '__lock':
         state.lock();
       default:
-        state.switchTo(value);
+        await state.switchTo(value);
     }
   }
 
