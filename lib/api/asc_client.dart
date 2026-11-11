@@ -76,6 +76,17 @@ class AscException implements Exception {
   String toString() => message;
 }
 
+/// [f]'s value, or null when Apple answers 404 (the thing does not exist). Any other failure is rethrown, so a network
+/// blip or a permissions problem is never mistaken for "there is none".
+Future<T?> nullIfMissing<T>(Future<T> f) async {
+  try {
+    return await f;
+  } on AscException catch (e) {
+    if (e.status == 404) return null;
+    rethrow;
+  }
+}
+
 /// Talks to the App Store Connect API, signing its own short-lived JWT from the API key.
 ///
 /// [baseUrl] is Apple's host on desktop. In a browser Apple's API sends no CORS headers, so the web build points this

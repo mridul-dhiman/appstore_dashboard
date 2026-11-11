@@ -1,3 +1,4 @@
+import 'package:appstore_dashboard/api/asc_client.dart';
 import 'package:appstore_dashboard/api/models.dart';
 import 'package:appstore_dashboard/api/submission.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -176,6 +177,31 @@ void main() {
       });
       await SubmissionFlow(fake.client, 'A1').submit('V1');
       expect(fake.log.where((r) => r.method == 'POST').single.path, '/v1/reviewSubmissionItems');
+    });
+
+    test('preflight: a failed lookup is an error, not a missing build or missing review details; a 404 is "none"', () async {
+      final version = res('appStoreVersions', 'V1', {'versionString': '2.0', 'appStoreState': 'PREPARE_FOR_SUBMISSION'});
+      FakeAsc server({required int buildStatus}) => FakeAsc((r) {
+            if (r.path.startsWith('/v1/appStoreVersions/V1/build')) return buildStatus == 200 ? json({'data': null}) : apiError(buildStatus, 'Error', 'boom');
+            if (r.path.startsWith('/v1/appStoreVersions/V1/appStoreReviewDetail')) return apiError(404, 'Not found', 'none');
+            if (r.path.startsWith('/v1/appStoreVersions/V1/appStoreVersionLocalizations')) return json(list([]));
+            if (r.path.startsWith('/v1/reviewSubmissions')) return json(list([]));
+            return null;
+          });
+      await expectLater(loadPreflight(server(buildStatus: 503).client, 'A1', version, hasPriorVersion: true), throwsA(isA<AscException>()));
+      final ok = await loadPreflight(server(buildStatus: 200).client, 'A1', version, hasPriorVersion: true);
+      expect(ok.build, isNull);
+      expect(ok.reviewDetail, isNull, reason: '404 means there is none yet');
+    });
+
+    test('an unreadable draft is not treated as empty', () async {
+      final fake = FakeAsc((r) {
+        if (r.method == 'GET' && r.path.startsWith('/v1/reviewSubmissions?')) return json(list([{'type': 'reviewSubmissions', 'id': 'D1', 'attributes': {'state': 'READY_FOR_REVIEW'}}]));
+        if (r.path.startsWith('/v1/reviewSubmissions/D1/items')) return apiError(500, 'Server error', 'later');
+        return null;
+      });
+      await expectLater(SubmissionFlow(fake.client, 'A1').submit('V1'), throwsA(isA<AscException>()));
+      expect(fake.log.any((r) => r.method != 'GET'), isFalse);
     });
 
     test('a draft that already holds other items is refused, and nothing is added or submitted', () async {

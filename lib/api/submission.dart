@@ -229,15 +229,15 @@ String prettyState(String? s) => s == null ? '—' : (s.replaceAll('_', ' ').toL
 
 Future<PreflightData> loadPreflight(AscClient c, String appId, Resource version, {required bool hasPriorVersion}) async {
   final r = await Future.wait<Object?>([
-    c.page('/v1/appStoreVersions/${version.id}/build').then<Resource?>((p) => p.data.isEmpty ? null : p.data.first).catchError((_) => null),
+    nullIfMissing(c.page('/v1/appStoreVersions/${version.id}/build')).then<Resource?>((p) => p == null || p.data.isEmpty ? null : p.data.first),
     c.all('/v1/appStoreVersions/${version.id}/appStoreVersionLocalizations', {'limit': '200'}, 2),
-    c.page('/v1/appStoreVersions/${version.id}/appStoreReviewDetail').then<Resource?>((p) => p.data.isEmpty ? null : p.data.first).catchError((_) => null),
+    nullIfMissing(c.page('/v1/appStoreVersions/${version.id}/appStoreReviewDetail')).then<Resource?>((p) => p == null || p.data.isEmpty ? null : p.data.first),
     listActiveSubmissions(c, appId),
   ]);
   final locs = (r[1] as ResourcePage).data;
   final shots = await Future.wait([
     for (final l in locs)
-      c.page('/v1/appStoreVersionLocalizations/${l.id}/placements', {'filter[placementType]': 'APP_SCREENSHOT', 'limit': '1'}).then((p) => p.total ?? p.data.length).catchError((_) => 0),
+      c.page('/v1/appStoreVersionLocalizations/${l.id}/placements', {'filter[placementType]': 'APP_SCREENSHOT', 'limit': '1'}).then((p) => p.total ?? p.data.length),
   ]);
   return PreflightData(
     version: version,
@@ -255,7 +255,8 @@ const _activeStates = 'READY_FOR_REVIEW,WAITING_FOR_REVIEW,IN_REVIEW,UNRESOLVED_
 Future<List<ActiveSubmission>> listActiveSubmissions(AscClient c, String appId, {String? platform, String states = _activeStates}) async {
   final subs = await c.page('/v1/reviewSubmissions', {'filter[app]': appId, 'filter[state]': states, 'filter[platform]': ?platform, 'limit': '20'});
   return Future.wait(subs.data.map((s) async {
-    final items = await c.page('/v1/reviewSubmissions/${s.id}/items', {'include': 'appStoreVersion', 'limit': '50'}).catchError((_) => ResourcePage(data: const []));
+    // Not swallowed: an unreadable draft must not look empty, or submitting it could send items nobody saw.
+    final items = await c.page('/v1/reviewSubmissions/${s.id}/items', {'include': 'appStoreVersion', 'limit': '50'});
     return ActiveSubmission(s, [for (final i in items.data) if (i.relId('appStoreVersion') != null) i.relId('appStoreVersion')!], itemCount: items.data.length);
   }));
 }
