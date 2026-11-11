@@ -16,11 +16,13 @@ class UploadJob extends ChangeNotifier {
   bool cancelled = false;
   final _cancel = UploadCancel();
 
-  bool get finished => progress?.phase == UploadPhase.done;
+  bool get finished => progress?.phase == UploadPhase.done || progress?.phase == UploadPhase.stillProcessing;
   bool get running => progress != null && !finished && failure == null && !cancelled;
 
   /// Past this point Apple has the file; cancelling only stops watching it process.
   bool get committed => progress != null && (progress!.phase == UploadPhase.processing || finished);
+
+  /// Run the upload. [pollEvery] and [giveUpAfter] are for tests.
 
   void cancel() {
     _cancel.cancel();
@@ -28,7 +30,7 @@ class UploadJob extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> run(AscClient client) async {
+  Future<void> run(AscClient client, {Duration pollEvery = const Duration(seconds: 6), Duration giveUpAfter = const Duration(minutes: 30)}) async {
     progress = UploadProgress(UploadPhase.reserving, totalBytes: source.length);
     notifyListeners();
     // Its own copy of the client: renaming or locking closes the shell's client, and must not cut an upload short.
@@ -40,6 +42,8 @@ class UploadJob extends ChangeNotifier {
         build: info.build,
         source: source,
         cancel: _cancel,
+        pollEvery: pollEvery,
+        giveUpAfter: giveUpAfter,
         onProgress: (p) {
           progress = p;
           notifyListeners();

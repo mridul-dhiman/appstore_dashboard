@@ -42,7 +42,9 @@ Map<String, dynamic> commitBody({required String fileId, required String md5Hex}
 
 // ---- Running it ---------------------------------------------------------------------------------------------------
 
-enum UploadPhase { reserving, uploading, committing, processing, done, failed }
+/// [stillProcessing]: the file is Apple's and accepted, but processing is taking longer than we wait. Not a failure:
+/// the Builds tab keeps following it.
+enum UploadPhase { reserving, uploading, committing, processing, stillProcessing, done, failed }
 
 class UploadProgress {
   UploadProgress(this.phase, {this.sentBytes = 0, this.totalBytes = 0, this.message});
@@ -68,7 +70,7 @@ class BuildUploader {
     required void Function(UploadProgress) onProgress,
     UploadCancel? cancel,
     Duration pollEvery = const Duration(seconds: 6),
-    Duration giveUpAfter = const Duration(minutes: 20),
+    Duration giveUpAfter = const Duration(minutes: 30),
   }) async {
     final total = source.length;
     onProgress(UploadProgress(UploadPhase.reserving, totalBytes: total));
@@ -104,7 +106,8 @@ class BuildUploader {
         throw AscException('Apple rejected the build:\n${_details(state) ?? 'no details given'}');
       }
       if (DateTime.now().isAfter(deadline)) {
-        throw AscException('Still processing after ${giveUpAfter.inMinutes} minutes. Check App Store Connect for the result.');
+        onProgress(UploadProgress(UploadPhase.stillProcessing, sentBytes: total, totalBytes: total));
+        return;
       }
       await Future<void>.delayed(pollEvery);
     }

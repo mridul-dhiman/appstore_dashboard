@@ -139,6 +139,7 @@ class _UploadTabState extends State<UploadTab> {
         UploadPhase.uploading => 'Uploading ${(p.sentBytes / 1048576).toStringAsFixed(1)} / ${(p.totalBytes / 1048576).toStringAsFixed(1)} MB',
         UploadPhase.committing => 'Finishing the upload…',
         UploadPhase.processing => 'Apple is processing the build…',
+        UploadPhase.stillProcessing => 'Uploaded. Apple is taking a while to process it; the Builds tab shows it as Processing and updates by itself.',
         UploadPhase.done => 'Processed. The build is on its way to TestFlight.',
         UploadPhase.failed => 'Failed',
       };

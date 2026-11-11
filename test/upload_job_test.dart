@@ -125,4 +125,13 @@ void main() {
     final junk = File('${dir.path}/junk.ipa')..writeAsStringSync('not a zip');
     await expectLater(readIpaInfoFromFile(junk.path), throwsA(isA<IpaException>()));
   });
+
+  test('slow processing at Apple ends as "still processing", not as a failure', () async {
+    final fake = FakeAsc((r) => asc(r, state: 'PROCESSING'));
+    final job = UploadJob(appId: 'A1', info: info, source: BytesSource('a.ipa', Uint8List(10)));
+    await job.run(fake.client, pollEvery: Duration.zero, giveUpAfter: Duration.zero);
+    expect(job.failure, isNull);
+    expect(job.progress!.phase, UploadPhase.stillProcessing);
+    expect(job.running, isFalse);
+  });
 }
