@@ -79,7 +79,7 @@ void main() {
       tester.getSemantics(find.text('Apps').first),
       matchesSemantics(label: 'Apps', isButton: true, isSelected: true, hasSelectedState: true, hasTapAction: true, isFocusable: true, hasFocusAction: true),
     );
-    expect(tester.getSemantics(find.text('Search apps and actions')), containsSemantics(isButton: true, hint: 'Opens the command palette, Ctrl K'));
+    expect(tester.getSemantics(find.text('Search apps and actions')), isSemantics(isButton: true, hint: 'Opens the command palette, Ctrl K'));
     handle.dispose();
   });
 }
