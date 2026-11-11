@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../api/asc_client.dart';
@@ -44,24 +46,55 @@ class _TeamPageState extends State<TeamPage> {
   final _addedInvites = <Resource>[];
   final _edited = <String, Resource>{};
 
-  /// Reload now, and once more shortly after, when Apple has usually caught up.
+  /// Waits between follow-up reloads while Apple's lists still disagree with what was just done.
+  static const catchUpDelays = [Duration(seconds: 2), Duration(seconds: 5), Duration(seconds: 10)];
+  int _catchUp = 0;
+  Timer? _catchUpTimer;
+
+  /// Reload now; if Apple has not caught up yet, [_load] keeps trying on [catchUpDelays].
   void _refreshSoon() {
+    _catchUp = 0;
+    _catchUpTimer?.cancel();
     _reload.reload();
-    Future<void>.delayed(const Duration(seconds: 3), () {
-      if (mounted) _reload.reload();
-    });
   }
 
-  static bool _sameRoles(Resource a, Resource b) {
+  bool get _overlaysPending => _hidden.isNotEmpty || _addedInvites.isNotEmpty || _edited.isNotEmpty;
+
+  Future<TeamData> _load() async {
+    final d = await loadTeam(widget.client);
+    _apps = d.apps;
+    _reconcile(d);
+    _catchUpTimer?.cancel();
+    if (_overlaysPending && _catchUp < catchUpDelays.length) {
+      _catchUpTimer = Timer(catchUpDelays[_catchUp++], () {
+        if (mounted) _reload.reload();
+      });
+    }
+    return d;
+  }
+
+  /// Drops each local overlay once Apple's own list shows the change, so the page stops second-guessing Apple.
+  void _reconcile(TeamData d) {
+    final users = {for (final u in d.users.data) u.id: u};
+    final invites = d.invites?.data ?? const <Resource>[];
+    final inviteIds = {for (final i in invites) i.id};
+    final inviteEmails = {for (final i in invites) (i.str('email') ?? '').toLowerCase()};
+    _hidden.removeWhere((id) => !users.containsKey(id) && !inviteIds.contains(id));
+    _addedInvites.removeWhere((i) => inviteIds.contains(i.id) || inviteEmails.contains((i.str('email') ?? '').toLowerCase()));
+    _edited.removeWhere((id, e) => users[id] == null || _sameAccess(users[id]!, e));
+  }
+
+  /// Roles and app visibility both match: an edit Apple has applied.
+  static bool _sameAccess(Resource a, Resource b) {
     final x = [...a.list('roles')]..sort(), y = [...b.list('roles')]..sort();
-    return x.join(',') == y.join(',');
+    return x.join(',') == y.join(',') && a.flag('allAppsVisible') == b.flag('allAppsVisible');
   }
 
   List<Resource> _users(TeamData d) {
     return [
       for (final u in d.users.data)
         if (!_hidden.contains(u.id))
-          if (_edited[u.id] case final e? when !_sameRoles(u, e)) e else u,
+          if (_edited[u.id] case final e? when !_sameAccess(u, e)) e else u,
     ];
   }
 
@@ -83,6 +116,7 @@ class _TeamPageState extends State<TeamPage> {
 
   @override
   void dispose() {
+    _catchUpTimer?.cancel();
     _reload.dispose();
     super.dispose();
   }
@@ -292,11 +326,7 @@ class _TeamPageState extends State<TeamPage> {
         Expanded(
           child: LoadView<TeamData>(
             controller: _reload,
-            load: () async {
-              final d = await loadTeam(widget.client);
-              _apps = d.apps;
-              return d;
-            },
+            load: _load,
             builder: (context, d) => ListView(
               padding: const EdgeInsets.fromLTRB(40, 0, 40, 40),
               children: [

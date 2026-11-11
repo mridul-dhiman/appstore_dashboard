@@ -106,4 +106,49 @@ void main() {
     expect(find.text('Dev'), findsNothing);
     expect(find.text('PENDING INVITATIONS'), findsOneWidget);
   });
+
+  testWidgets('after a change the page keeps reloading until Apple shows it, then stops', (tester) async {
+    tester.view.physicalSize = const Size(1400, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    var caughtUp = false;
+    var userLoads = 0;
+    final fake = FakeAsc((r) {
+      final p = r.path.split('?').first;
+      if (r.method == 'GET' && p == '/v1/users') {
+        userLoads++;
+        return json({'data': [res('users', 'U1', {'username': 'me@x.com', 'firstName': 'Me', 'roles': ['ADMIN']})]});
+      }
+      if (r.method == 'GET' && p == '/v1/userInvitations') {
+        // Apple lists the new invitation from the second reload after it was sent.
+        return json({'data': [if (caughtUp) res('userInvitations', 'INV1', {'email': 'new@x.com', 'roles': ['DEVELOPER']})]});
+      }
+      if (r.method == 'GET' && p == '/v1/apps') return json({'data': []});
+      if (r.method == 'POST' && p == '/v1/userInvitations') return json({'data': res('userInvitations', 'INV1', {'email': 'new@x.com'})}, 201);
+      return null;
+    });
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: TeamPage(client: fake.client))));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Invite user'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Email address'), 'new@x.com');
+    await tester.tap(find.text('Developer').last);
+    await tester.pump();
+    await tester.tap(find.text('Send invitation'));
+    await tester.pumpAndSettle();
+    final afterSend = userLoads;
+
+    await tester.pump(const Duration(seconds: 2)); // first catch-up reload: Apple still behind
+    await tester.pumpAndSettle();
+    expect(userLoads, afterSend + 1);
+    caughtUp = true;
+    await tester.pump(const Duration(seconds: 5)); // second: Apple shows it
+    await tester.pumpAndSettle();
+    expect(userLoads, afterSend + 2);
+    await tester.pump(const Duration(seconds: 30)); // nothing left to wait for: no more reloads
+    await tester.pumpAndSettle();
+    expect(userLoads, afterSend + 2);
+    expect(find.text('new@x.com'), findsWidgets);
+  });
 }
