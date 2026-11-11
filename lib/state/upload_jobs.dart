@@ -83,6 +83,13 @@ class UploadJobs extends ChangeNotifier {
     return job;
   }
 
+  /// Registers [job] without running it. For tests.
+  @visibleForTesting
+  void debugAdd(UploadJob job) {
+    _jobs[job.appId] = job;
+    job.addListener(notifyListeners);
+  }
+
   void clear(String appId) {
     final j = _jobs[appId];
     if (j == null || j.running) return;
