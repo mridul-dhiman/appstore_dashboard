@@ -35,11 +35,14 @@ const _uploadTab = 4;
 
 /// One app's workspace: a header with the app's details and quick actions, and a tab for each job.
 class AppDetailPage extends StatefulWidget {
-  const AppDetailPage({super.key, required this.client, required this.summary, required this.onBack, this.initialTab = 0, this.uploads, this.onTabChanged, this.templates});
+  const AppDetailPage({super.key, required this.client, required this.summary, required this.onBack, this.initialTab = 0, this.uploads, this.onTabChanged, this.templates, this.onUnsavedChanged});
   final AscClient client;
 
   /// The shell's build uploads. Null when the page is shown on its own (tests).
   final UploadJobs? uploads;
+
+  /// Told whether the listing has edits that are not sent yet, so leaving the page can ask first.
+  final ValueChanged<bool>? onUnsavedChanged;
 
   /// This client's review reply templates.
   final ReplyTemplates? templates;
@@ -70,6 +73,7 @@ class _AppDetailPageState extends State<AppDetailPage> {
   @override
   void initState() {
     super.initState();
+    _draft.addListener(_draftChanged);
     // The list shows initials to stay at one request; here one more small request gets the real icon.
     loadAppIconUrl(widget.client, widget.summary.id).then((u) {
       if (mounted && u != null) setState(() => _iconUrl = u);
@@ -79,8 +83,16 @@ class _AppDetailPageState extends State<AppDetailPage> {
 
   @override
   void dispose() {
+    _draft.removeListener(_draftChanged);
+    widget.onUnsavedChanged?.call(false);
     _draft.dispose();
     super.dispose();
+  }
+
+  bool _wasUnsaved = false;
+  void _draftChanged() {
+    final now = !_draft.isEmpty;
+    if (now != _wasUnsaved) widget.onUnsavedChanged?.call(_wasUnsaved = now);
   }
 
   Future<void> _openStore() async {

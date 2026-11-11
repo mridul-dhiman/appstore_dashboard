@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -68,15 +69,40 @@ class _ShellState extends State<Shell> {
     return _store!;
   }
 
-  void _select(int i) {
-    setState(() {
-      _index = i;
-      _app = null;
-    });
-    _remember(null);
+  bool _unsaved = false; // the open app has listing edits that are not sent yet
+
+  /// Runs [leave] once it is safe to close the open app page: straight away, or after confirming that unsent listing
+  /// edits may be thrown away.
+  Future<void> _guard(VoidCallback leave) async {
+    if (_app == null || !_unsaved) return leave();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Discard unsent changes?'),
+        content: const Text('The store listing has edits that have not been applied yet. Leaving this page throws them away.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Stay')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Discard')),
+        ],
+      ),
+    );
+    if (ok == true && mounted) {
+      _unsaved = false;
+      leave();
+    }
   }
 
-  void _openApp(AppSummary app, {int tab = 0}) {
+  void _select(int i) => _guard(() {
+        setState(() {
+          _index = i;
+          _app = null;
+        });
+        _remember(null);
+      });
+
+  void _openApp(AppSummary app, {int tab = 0}) => _guard(() => _show(app, tab: tab));
+
+  void _show(AppSummary app, {int tab = 0}) {
     setState(() {
       _index = 0;
       _app = app;
@@ -104,6 +130,71 @@ class _ShellState extends State<Shell> {
     }, onError: (_) {});
   }
 
+  int _refresh = 0; // bumped by ⌘R: the current page is rebuilt from scratch and loads again
+  int _currentTab = 0; // the open app's tab right now, so a refresh keeps it
+
+  void _reloadPage() => _guard(() {
+        if (_app != null) _appTab = _currentTab;
+        if (_index == 0 && _app == null) _store?.refresh(); // the list is cached in the store, not the page
+        setState(() => _refresh++);
+      });
+
+  void _back() {
+    if (_app != null) _select(0);
+  }
+
+  /// One table for the menu bar and the keyboard: ⌘1–4 go to the sidebar places, ⌘R reloads, ⌘K searches, ⌘[ goes back
+  /// from an app. Ctrl works too, for the web build on other systems. (No bare Esc: it would leave the page from inside
+  /// a text field.) Each one asks first when the listing has unsent edits.
+  Map<ShortcutActivator, VoidCallback> get _shortcuts => {
+        for (final mod in [(meta: true, control: false), (meta: false, control: true)]) ...{
+          SingleActivator(LogicalKeyboardKey.keyK, meta: mod.meta, control: mod.control): _palette,
+          SingleActivator(LogicalKeyboardKey.keyR, meta: mod.meta, control: mod.control): _reloadPage,
+          SingleActivator(LogicalKeyboardKey.bracketLeft, meta: mod.meta, control: mod.control): _back,
+          for (var i = 0; i < _dests.length; i++) SingleActivator(LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i), meta: mod.meta, control: mod.control): () => _select(i),
+        },
+      };
+
+  /// The macOS menu bar, replacing Flutter's default one. Its shortcuts are the same as [_shortcuts].
+  List<PlatformMenuItem> _menus(Brightness brightness) => [
+        PlatformMenu(label: 'App Store Dashboard', menus: [
+          const PlatformMenuItemGroup(members: [PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.about)]),
+          if (widget.state.supportsDeviceLock)
+            PlatformMenuItemGroup(members: [
+              PlatformMenuItem(label: 'Lock', shortcut: const SingleActivator(LogicalKeyboardKey.keyL, meta: true, control: true), onSelected: widget.state.lock),
+            ]),
+          const PlatformMenuItemGroup(members: [
+            PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.hide),
+            PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.hideOtherApplications),
+            PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.showAllApplications),
+          ]),
+          const PlatformMenuItemGroup(members: [PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.quit)]),
+        ]),
+        PlatformMenu(label: 'View', menus: [
+          PlatformMenuItemGroup(members: [
+            PlatformMenuItem(label: 'Reload Page', shortcut: const SingleActivator(LogicalKeyboardKey.keyR, meta: true), onSelected: _reloadPage),
+            PlatformMenuItem(label: 'Search…', shortcut: const SingleActivator(LogicalKeyboardKey.keyK, meta: true), onSelected: _palette),
+            PlatformMenuItem(label: brightness == Brightness.dark ? 'Light Appearance' : 'Dark Appearance', onSelected: () => widget.state.toggleTheme(brightness)),
+          ]),
+          const PlatformMenuItemGroup(members: [PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.toggleFullScreen)]),
+        ]),
+        PlatformMenu(label: 'Go', menus: [
+          PlatformMenuItemGroup(members: [
+            for (var i = 0; i < _dests.length; i++)
+              PlatformMenuItem(label: _dests[i].label, shortcut: SingleActivator(LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i), meta: true), onSelected: () => _select(i)),
+          ]),
+          PlatformMenuItemGroup(members: [
+            PlatformMenuItem(label: 'Back to Applications', shortcut: const SingleActivator(LogicalKeyboardKey.bracketLeft, meta: true), onSelected: _app == null ? null : _back),
+          ]),
+        ]),
+        const PlatformMenu(label: 'Window', menus: [
+          PlatformMenuItemGroup(members: [
+            PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.minimizeWindow),
+            PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.zoomWindow),
+          ]),
+        ]),
+      ];
+
   void _palette() {
     final store = _store;
     if (store == null || !mounted) return;
@@ -115,7 +206,10 @@ class _ShellState extends State<Shell> {
 
   Widget _page(AscClient client, Credentials creds, AppsStore store) {
     if (_index == 0 && _app != null) {
-      return AppDetailPage(key: ValueKey('${_app!.id}/$_appTab'), client: client, summary: _app!, initialTab: _appTab, uploads: _uploads, templates: _templates, onTabChanged: (t) => _remember(_app?.id, t), onBack: () => _select(0));
+      return AppDetailPage(key: ValueKey('${_app!.id}/$_appTab/$_refresh'), client: client, summary: _app!, initialTab: _appTab, uploads: _uploads, templates: _templates, onTabChanged: (t) {
+          _currentTab = t;
+          _remember(_app?.id, t);
+        }, onUnsavedChanged: (v) => _unsaved = v, onBack: () => _select(0));
     }
     return switch (_index) {
       0 => AppsPage(store: store, onOpen: _openApp, prefs: widget.state.prefs),
@@ -135,15 +229,12 @@ class _ShellState extends State<Shell> {
         if (client == null || creds == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
         final store = _storeFor(creds, client);
         // Keyed by client so switching clients starts every page from scratch.
-        final body = KeyedSubtree(key: ValueKey('${creds.id}/$_index'), child: _page(client, creds, store));
+        final body = KeyedSubtree(key: ValueKey('${creds.id}/$_index/$_refresh'), child: _page(client, creds, store));
         final wide = MediaQuery.sizeOf(context).width >= 860;
         final brightness = Theme.of(context).brightness;
         final bar = MacTitleBar(onSearch: _palette, themeMode: widget.state.themeMode, onToggleTheme: () => widget.state.toggleTheme(brightness));
-        return CallbackShortcuts(
-          bindings: {
-            const SingleActivator(LogicalKeyboardKey.keyK, meta: true): _palette,
-            const SingleActivator(LogicalKeyboardKey.keyK, control: true): _palette,
-          },
+        final shell = CallbackShortcuts(
+          bindings: _shortcuts,
           child: Focus(
             autofocus: true,
             child: wide
@@ -175,6 +266,9 @@ class _ShellState extends State<Shell> {
                   ),
           ),
         );
+        // The real menu bar exists only in the macOS app; elsewhere the keyboard table above does the same.
+        if (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS) return shell;
+        return PlatformMenuBar(menus: _menus(brightness), child: shell);
       },
     );
   }

@@ -1,5 +1,6 @@
 import 'package:appstore_dashboard/ui/shell.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_asc.dart';
@@ -36,5 +37,37 @@ void main() {
     expect(find.textContaining('already closed'), findsNothing);
     expect(find.textContaining('Could not reach'), findsNothing);
     expect(find.text('Vidyagram'), findsWidgets);
+  });
+
+  testWidgets('keyboard: Cmd-2 goes to Sales, Cmd-R reloads the page, Cmd-[ leaves an open app', (tester) async {
+    final h = await pumpShell(tester);
+    int appLoads() => h.log.where((r) => r.path.startsWith('/v1/apps?')).length;
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit2);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pumpAndSettle();
+    expect(find.text('Sales & Trends'), findsWidgets);
+    expect(find.textContaining('vendor number'), findsWidgets);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pumpAndSettle();
+    final before = appLoads();
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyR);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pumpAndSettle();
+    expect(appLoads(), before + 1, reason: 'Cmd-R loads the list again');
+
+    await tester.tap(find.text('Vidyagram').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Store Listing'), findsWidgets);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.bracketLeft);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pumpAndSettle();
+    expect(find.text('Store Listing'), findsNothing);
   });
 }
