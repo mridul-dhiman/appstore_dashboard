@@ -50,9 +50,17 @@ function proxy(req, res) {
 }
 
 function serveStatic(req, res) {
-  const url = new URL(req.url, 'http://x');
-  let file = path.normalize(path.join(STATIC_DIR, decodeURIComponent(url.pathname)));
-  if (!file.startsWith(STATIC_DIR)) { res.writeHead(403); return res.end(); }
+  let pathname;
+  try {
+    pathname = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  } catch {
+    res.writeHead(400, { 'content-type': 'text/plain' }); // a malformed %-escape must not take the server down
+    return res.end('Bad request');
+  }
+  let file = path.join(STATIC_DIR, path.normalize(pathname));
+  // Inside STATIC_DIR itself, not merely a folder whose name starts the same (build/web vs build/web-old).
+  const rel = path.relative(STATIC_DIR, file);
+  if (rel.startsWith('..') || path.isAbsolute(rel) || pathname.includes('\0')) { res.writeHead(403); return res.end(); }
   if (fs.existsSync(file) && fs.statSync(file).isDirectory()) file = path.join(file, 'index.html');
   if (!fs.existsSync(file)) file = path.join(STATIC_DIR, 'index.html'); // single-page app fallback
   fs.readFile(file, (err, data) => {
@@ -62,9 +70,21 @@ function serveStatic(req, res) {
   });
 }
 
-http.createServer((req, res) => {
-  const isApi = req.url === '/asc' || req.url.startsWith('/asc/');
-  if (isApi && ['GET', 'POST', 'PATCH', 'DELETE'].includes(req.method)) return proxy(req, res);
-  if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); return res.end(); }
-  serveStatic(req, res);
-}).listen(PORT, HOST, () => console.log(`App Store Dashboard on http://${HOST}:${PORT}  (static: ${STATIC_DIR})`));
+function handle(req, res) {
+  try {
+    const isApi = req.url === '/asc' || req.url.startsWith('/asc/');
+    if (isApi && ['GET', 'POST', 'PATCH', 'DELETE'].includes(req.method)) return proxy(req, res);
+    if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); return res.end(); }
+    serveStatic(req, res);
+  } catch (e) {
+    // Last line of defence: one bad request gets a 500, the server keeps running.
+    if (!res.headersSent) res.writeHead(500, { 'content-type': 'text/plain' });
+    res.end('Internal error');
+  }
+}
+
+module.exports = { handle, STATIC_DIR };
+
+if (require.main === module) {
+  http.createServer(handle).listen(PORT, HOST, () => console.log(`App Store Dashboard on http://${HOST}:${PORT}  (static: ${STATIC_DIR})`));
+}

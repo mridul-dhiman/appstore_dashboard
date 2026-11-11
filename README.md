@@ -40,6 +40,7 @@ built site and forwards `/asc/*` to Apple, passing the `Authorization` header th
 flutter build web --release
 node server/server.js                 # http://127.0.0.1:8080
 PORT=9000 HOST=0.0.0.0 node server/server.js
+node --test server/test/server.test.js # proxy tests
 ```
 
 * The JWT is signed in the browser; the private key is never sent to the server, only the short-lived token is.
