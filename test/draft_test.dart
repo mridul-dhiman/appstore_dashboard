@@ -221,6 +221,43 @@ void main() {
       expect(puts, isEmpty);
     });
 
+    test('a set that fails halfway stays in the draft, and Apply again only sends what is left', () async {
+      var images = 0;
+      var failSecond = true;
+      final fake = FakeAsc((r) {
+        if (r.method == 'POST' && r.path == '/v1/appAssetLibraryImages') {
+          images++;
+          if (images == 2 && failSecond) return apiError(500, 'Server error', 'try later');
+        }
+        return asc(r);
+      });
+      final d = ListingDraft(libraryId: 'APP');
+      final set = d.ensureShotSet(key, existingSet);
+      d.toggleDelete(key, 1); // delete B
+      d.addShots(key, [(name: 'one.png', bytes: Uint8List(10)), (name: 'two.png', bytes: Uint8List(20))]);
+
+      final first = await d.apply(fake.client);
+      expect(first.single.ok, isFalse);
+      expect(d.isEmpty, isFalse, reason: 'the failed set is kept, with its pictures');
+      expect(identical(d.shotSet(key), set), isTrue);
+      expect(set.items.map((i) => i.name).toList(), ['A.png', 'C.png', 'one.png', 'two.png'], reason: 'B is gone for good; one.png is placed');
+      expect(set.items[2].isNew, isFalse);
+      expect(set.items[3].isNew, isTrue);
+
+      failSecond = false;
+      fake.log.clear();
+      final second = await d.apply(fake.client);
+      expect(second.single.ok, isTrue, reason: second.single.error);
+      expect(fake.log.map((r) => '${r.method} ${r.path}').toList(), [
+        'POST /v1/appAssetLibraryImages',
+        'PATCH /v1/appAssetLibraryImages/IMG1',
+        'GET /v1/appAssetLibraryImages/IMG1',
+        'POST /v1/appAssetLibraryPlacements',
+        'POST /v1/appAssetLibraryPlacementOrderingRequests',
+      ], reason: 'no second DELETE of B and no re-upload of one.png');
+      expect(d.isEmpty, isTrue);
+    });
+
     test('without a known library, new screenshots fail up front instead of half-applying', () async {
       final fake = FakeAsc(asc);
       final d = ListingDraft();

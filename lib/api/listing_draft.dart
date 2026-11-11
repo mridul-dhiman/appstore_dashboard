@@ -17,7 +17,7 @@ class DraftText {
 }
 
 class ShotItem {
-  ShotItem.existing({required String this.id, required this.name, this.url}) : bytes = null;
+  ShotItem.existing({required String this.id, required this.name, this.url, this.bytes});
   ShotItem.added({required this.name, required Uint8List this.bytes})
       : id = null,
         url = null;
@@ -26,6 +26,7 @@ class ShotItem {
   final String? id;
   final String? url;
   final String name;
+  /// The picture itself, for a new one (and kept for the preview once it has been placed but not yet reloaded).
   final Uint8List? bytes;
   bool deleted = false;
   bool get isNew => id == null;
@@ -36,7 +37,7 @@ class ShotSetDraft {
   ShotSetDraft({required this.exists, required this.group, required this.versionLocId, required this.locale, required this.items})
       : originalOrder = [for (final i in items) if (!i.isNew) i.id!];
 
-  final bool exists; // false = a device group added in this session that has no screenshots on Apple yet
+  bool exists; // false = a device group added in this session that has no screenshots on Apple yet
   final String group; // Apple's placementGroup, e.g. IPHONE_DYNAMIC_ISLAND_LARGE_PROFILE
   final String versionLocId;
   final String locale;
@@ -185,7 +186,8 @@ class ListingDraft extends ChangeNotifier {
   bool get isEmpty => count == 0;
 
   /// Sends every change: text first, then screenshots. Failures are collected, not thrown, so one bad item does not
-  /// hide the rest. Succeeded text edits leave the draft; screenshot sets always leave it (reload to see the real state).
+  /// hide the rest. Whatever succeeded leaves the draft; whatever failed stays, so Apply again picks up where it stopped
+  /// (a screenshot set records each delete and upload as it lands, so nothing is sent twice).
   Future<List<ApplyResult>> apply(AscClient client, {void Function(String step)? onStep}) async {
     final results = <ApplyResult>[];
 
@@ -214,12 +216,12 @@ class ListingDraft extends ChangeNotifier {
       onStep?.call(title);
       try {
         await _applySet(client, s);
+        _sets.removeWhere((_, v) => identical(v, s));
         results.add(ApplyResult(title));
       } on AscException catch (e) {
         results.add(ApplyResult(title, e.message));
       }
     }
-    _sets.clear();
     notifyListeners();
     return results;
   }
@@ -230,20 +232,28 @@ class ListingDraft extends ChangeNotifier {
       throw AscException('The app\'s asset library is unknown, so new screenshots cannot be uploaded.');
     }
     // Removing a placement takes the screenshot off this version; the image itself stays in the app's library.
-    for (final i in s.items.where((i) => i.deleted && !i.isNew)) {
+    // Each step is written back into the draft as soon as Apple accepts it, so a failure later on can be retried.
+    for (final i in s.items.where((i) => i.deleted && !i.isNew).toList()) {
       await client.delete('/v1/appAssetLibraryPlacements/${i.id}');
+      s.items.remove(i);
+      s.originalOrder.remove(i.id);
     }
-    final finalIds = <String>[];
-    for (final i in s.kept) {
-      if (i.isNew) {
-        final imageId = await uploadLibraryImage(client, libraryId!, i.name, i.bytes!);
-        finalIds.add(await createPlacement(client, imageId, s.versionLocId));
-      } else {
-        finalIds.add(i.id!);
-      }
+    for (var n = 0; n < s.items.length; n++) {
+      final i = s.items[n];
+      if (!i.isNew || i.deleted) continue;
+      final imageId = await uploadLibraryImage(client, libraryId!, i.name, i.bytes!);
+      final placementId = await createPlacement(client, imageId, s.versionLocId);
+      s.items[n] = ShotItem.existing(id: placementId, name: i.name, bytes: i.bytes);
+      s.exists = true;
+      _placedThisSession.add(placementId);
     }
-    if (finalIds.length > 1 && (s.needsReorder || s.items.any((i) => i.isNew))) {
+    final finalIds = [for (final i in s.kept) i.id!];
+    final placedNew = finalIds.any(_placedThisSession.contains);
+    if (finalIds.length > 1 && (s.needsReorder || placedNew)) {
       await client.post('/v1/appAssetLibraryPlacementOrderingRequests', placementOrderBody(s.group, s.versionLocId, finalIds));
     }
   }
+
+  /// Placements this draft created. A set holding one still needs its order sent, even on a retry.
+  final _placedThisSession = <String>{};
 }
