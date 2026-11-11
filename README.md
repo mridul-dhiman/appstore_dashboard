@@ -134,4 +134,28 @@ be edited (it replaces the earlier one) or deleted. Replies are public.
   dialog. Text that starts with `=`, `+`, `-` or `@` gets a leading apostrophe in CSV so a spreadsheet cannot run it as a
   formula. Pricing is not included in the in-app purchase export.
 
+* **Reply templates** (Customer Reviews): each client has its own, edited from the reply box with **Edit templates** and
+  saved on this Mac. `{name}` becomes the reviewer's nickname.
+* **Builds**: uploads still processing at Apple are listed (they are not in `/v1/builds` yet) with their state and
+  warnings, the list refreshes itself while anything processes and says when a build is done. The build live on the App
+  Store is marked. **Expire** removes a build from TestFlight; Apple has no way to delete one.
+* **Uploads** stream the .ipa from disk (it is never loaded whole), can be stopped, and keep going if you leave the tab.
+
+## Keyboard and menus
+
+⌘K search · ⌘1–⌘4 sidebar places · ⌘R reload the page · ⌘[ back to Applications · ⌃⌘L lock (macOS menu).
+Ctrl works in place of ⌘ in the web build. Leaving or reloading an app with unapplied listing edits asks first.
+
+The app remembers the theme, grid or list, the app and tab you had open (per client) and the window's size and
+position. These view choices are kept in the app's preferences; keys stay in the keychain.
+
 The window has no native title bar: the app draws its own, and on macOS the traffic-light buttons sit over its left end.
+
+## Development
+
+```
+flutter analyze && flutter test        # every request in the tests is mocked; nothing reaches Apple
+node --test server/test/server.test.js # the web proxy
+```
+
+CI (`.github/workflows/ci.yml`) runs the same plus a format check and the web and macOS builds.
