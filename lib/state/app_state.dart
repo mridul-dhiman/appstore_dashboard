@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../api/asc_client.dart';
 import '../services/device_lock.dart';
+import '../services/prefs.dart';
 import '../services/vault.dart';
 
 enum Phase { locked, setup, ready }
@@ -11,9 +12,11 @@ enum Phase { locked, setup, ready }
 /// Holds the saved clients and the active API client. Keys only exist in memory while the app is unlocked; locking
 /// drops them.
 class AppState extends ChangeNotifier {
-  AppState({DeviceLock? lock, Vault? vault, this.httpClient})
+  AppState({DeviceLock? lock, Vault? vault, this.httpClient, Prefs? prefs})
       : _lock = lock ?? DeviceLock(),
-        _vault = vault ?? Vault() {
+        _vault = vault ?? Vault(),
+        prefs = prefs ?? Prefs.memory() {
+    themeMode = this.prefs.theme;
     if (kIsWeb) {
       // Nothing is stored in a browser, so there is nothing to unlock.
       phase = Phase.setup;
@@ -31,11 +34,15 @@ class AppState extends ChangeNotifier {
 
   Phase phase = Phase.locked;
 
-  /// Follows the system until the person flips the switch in the title bar. Not saved between launches.
+  /// View choices kept between launches.
+  final Prefs prefs;
+
+  /// Follows the system until the person flips the switch in the title bar; the choice is remembered.
   ThemeMode themeMode = ThemeMode.system;
 
   void toggleTheme(Brightness current) {
     themeMode = current == Brightness.dark ? ThemeMode.light : ThemeMode.dark;
+    prefs.setTheme(themeMode);
     notifyListeners();
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../api/asc_client.dart';
 import '../../api/models.dart';
+import '../../services/prefs.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
@@ -97,8 +98,11 @@ List<AppSummary> filterApps(List<AppSummary> apps, AppFilter filter, String quer
 }
 
 class AppsPage extends StatefulWidget {
-  const AppsPage({super.key, required this.store, required this.onOpen});
+  const AppsPage({super.key, required this.store, required this.onOpen, this.prefs});
   final AppsStore store;
+
+  /// Remembers grid or list between launches.
+  final Prefs? prefs;
   final void Function(AppSummary app) onOpen;
 
   @override
@@ -109,7 +113,7 @@ class _AppsPageState extends State<AppsPage> {
   final _reload = ReloadController();
   final _search = TextEditingController();
   AppFilter _filter = AppFilter.all;
-  bool _grid = true;
+  late bool _grid = widget.prefs?.appsGrid ?? true;
   bool _first = true;
 
   @override
@@ -154,7 +158,10 @@ class _AppsPageState extends State<AppsPage> {
               ButtonSegment(value: false, icon: Icon(Icons.view_list_rounded, size: 18), tooltip: 'List'),
             ],
             selected: {_grid},
-            onSelectionChanged: (v) => setState(() => _grid = v.first),
+            onSelectionChanged: (v) {
+              setState(() => _grid = v.first);
+              widget.prefs?.setAppsGrid(_grid);
+            },
           ),
           const SizedBox(width: 6),
         ],

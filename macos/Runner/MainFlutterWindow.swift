@@ -18,6 +18,8 @@ class MainFlutterWindow: NSWindow {
     self.toolbarStyle = .unified
     self.titlebarSeparatorStyle = .none
     self.minSize = NSSize(width: 980, height: 640)
+    // AppKit saves and restores the window's size and position under this name between launches.
+    self.setFrameAutosaveName("MainWindow")
 
     let channel = FlutterMethodChannel(name: "appstore_dashboard/window", binaryMessenger: flutterViewController.engine.binaryMessenger)
     channel.setMethodCallHandler { [weak self] call, result in

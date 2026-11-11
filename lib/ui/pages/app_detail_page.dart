@@ -34,11 +34,14 @@ const _uploadTab = 4;
 
 /// One app's workspace: a header with the app's details and quick actions, and a tab for each job.
 class AppDetailPage extends StatefulWidget {
-  const AppDetailPage({super.key, required this.client, required this.summary, required this.onBack, this.initialTab = 0, this.uploads});
+  const AppDetailPage({super.key, required this.client, required this.summary, required this.onBack, this.initialTab = 0, this.uploads, this.onTabChanged});
   final AscClient client;
 
   /// The shell's build uploads. Null when the page is shown on its own (tests).
   final UploadJobs? uploads;
+
+  /// Told the tab index whenever it changes, so the shell can reopen the same tab next launch.
+  final ValueChanged<int>? onTabChanged;
   final AppSummary summary;
   final VoidCallback onBack;
   final int initialTab;
@@ -85,7 +88,7 @@ class _AppDetailPageState extends State<AppDetailPage> {
       child: Builder(
         builder: (context) {
           final tabs = DefaultTabController.of(context);
-          return Column(
+          return _TabWatcher(controller: tabs, onChanged: widget.onTabChanged, child: Column(
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(40, 22, 40, 0),
@@ -188,7 +191,7 @@ class _AppDetailPageState extends State<AppDetailPage> {
                 ),
               ),
             ],
-          );
+          ));
         },
       ),
     );
@@ -386,6 +389,43 @@ class _BuildsTabState extends State<_BuildsTab> {
       ]),
     );
   }
+}
+
+/// Reports tab changes of [controller] to [onChanged].
+class _TabWatcher extends StatefulWidget {
+  const _TabWatcher({required this.controller, required this.onChanged, required this.child});
+  final TabController controller;
+  final ValueChanged<int>? onChanged;
+  final Widget child;
+
+  @override
+  State<_TabWatcher> createState() => _TabWatcherState();
+}
+
+class _TabWatcherState extends State<_TabWatcher> {
+  int? _last;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_tick);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_tick);
+    super.dispose();
+  }
+
+  void _tick() {
+    final i = widget.controller.index;
+    if (i == _last) return;
+    _last = i;
+    widget.onChanged?.call(i);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _PurchaseData {

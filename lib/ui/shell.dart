@@ -57,22 +57,49 @@ class _ShellState extends State<Shell> {
       if (_store != null) _uploads = UploadJobs();
     }
     if (_owner != creds.id || _store == null || !identical(_store!.client, client)) {
+      final newClient = _owner != creds.id;
       _owner = creds.id;
       _store = AppsStore(client);
+      if (newClient) _restoreLastApp(creds, _store!);
     }
     return _store!;
   }
 
-  void _select(int i) => setState(() {
-        _index = i;
-        _app = null;
-      });
+  void _select(int i) {
+    setState(() {
+      _index = i;
+      _app = null;
+    });
+    _remember(null);
+  }
 
-  void _openApp(AppSummary app, {int tab = 0}) => setState(() {
-        _index = 0;
+  void _openApp(AppSummary app, {int tab = 0}) {
+    setState(() {
+      _index = 0;
+      _app = app;
+      _appTab = tab;
+    });
+    _remember(app.id, tab);
+  }
+
+  void _remember(String? appId, [int tab = 0]) {
+    final id = widget.state.credentials?.id;
+    if (id != null) widget.state.prefs.setLastApp(id, appId, tab);
+  }
+
+  /// On the first load for a client, reopen the app and tab that were open last time.
+  void _restoreLastApp(Credentials creds, AppsStore store) {
+    final last = widget.state.prefs.lastApp(creds.id);
+    if (last == null) return;
+    store.apps.then((apps) {
+      final app = apps.where((a) => a.id == last.appId).firstOrNull;
+      if (app == null || !mounted || _owner != creds.id || _app != null || _index != 0) return;
+      setState(() {
         _app = app;
-        _appTab = tab;
+        _appTab = last.tab;
       });
+    }, onError: (_) {});
+  }
 
   void _palette() {
     final store = _store;
@@ -85,10 +112,10 @@ class _ShellState extends State<Shell> {
 
   Widget _page(AscClient client, Credentials creds, AppsStore store) {
     if (_index == 0 && _app != null) {
-      return AppDetailPage(key: ValueKey('${_app!.id}/$_appTab'), client: client, summary: _app!, initialTab: _appTab, uploads: _uploads, onBack: () => setState(() => _app = null));
+      return AppDetailPage(key: ValueKey('${_app!.id}/$_appTab'), client: client, summary: _app!, initialTab: _appTab, uploads: _uploads, onTabChanged: (t) => _remember(_app?.id, t), onBack: () => _select(0));
     }
     return switch (_index) {
-      0 => AppsPage(store: store, onOpen: _openApp),
+      0 => AppsPage(store: store, onOpen: _openApp, prefs: widget.state.prefs),
       1 => SalesPage(client: client, credentials: creds, state: widget.state),
       2 => SigningPage(client: client),
       _ => TeamPage(client: client),

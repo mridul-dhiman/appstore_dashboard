@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 
+import 'services/prefs.dart';
 import 'state/app_state.dart';
 import 'ui/lock_screen.dart';
 import 'ui/setup_screen.dart';
 import 'ui/shell.dart';
 import 'ui/theme.dart';
 
-void main() => runApp(const DashboardApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await Prefs.load();
+  runApp(DashboardApp(state: AppState(prefs: prefs)));
+}
 
 class DashboardApp extends StatefulWidget {
   const DashboardApp({super.key, this.state});
 
-  /// Injected by tests; the app makes its own.
+  /// Made in [main] with the saved preferences; tests pass their own. The app owns it and disposes it.
   final AppState? state;
 
   @override
@@ -43,7 +48,7 @@ class _DashboardAppState extends State<DashboardApp> {
   @override
   void dispose() {
     _state.removeListener(_onState);
-    if (widget.state == null) _state.dispose();
+    _state.dispose();
     super.dispose();
   }
 
