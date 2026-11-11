@@ -22,4 +22,24 @@ void main() {
     expect(parseSalesReport('', DateTime.utc(2026, 1, 1)), isEmpty);
     expect(parseSalesReport('Title\tUnits\n', DateTime.utc(2026, 1, 1)), isEmpty);
   });
+
+  group('Pacific day boundary', () {
+    test('summer is UTC-7, winter is UTC-8', () {
+      expect(pacificTime(DateTime.utc(2026, 7, 1, 12)), DateTime.utc(2026, 7, 1, 5));
+      expect(pacificTime(DateTime.utc(2026, 1, 15, 12)), DateTime.utc(2026, 1, 15, 4));
+    });
+
+    test('switches at 2:00 local on the second Sunday of March and the first Sunday of November', () {
+      // 2026: DST starts Sun 8 Mar 10:00 UTC, ends Sun 1 Nov 09:00 UTC.
+      expect(pacificTime(DateTime.utc(2026, 3, 8, 9, 59)).hour, 1);
+      expect(pacificTime(DateTime.utc(2026, 3, 8, 10, 0)).hour, 3);
+      expect(pacificTime(DateTime.utc(2026, 11, 1, 8, 59)).hour, 1);
+      expect(pacificTime(DateTime.utc(2026, 11, 1, 9, 0)).hour, 1);
+    });
+
+    test('in summer, 07:30 UTC is already the next Pacific day (the old fixed -8 got this wrong)', () {
+      // 2026-07-02 07:30 UTC = 00:30 PDT on 2 July, so yesterday is 1 July.
+      expect(latestReportDay(DateTime.utc(2026, 7, 2, 7, 30)), DateTime.utc(2026, 7, 1));
+    });
+  });
 }

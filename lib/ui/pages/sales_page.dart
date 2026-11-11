@@ -37,10 +37,7 @@ class _SalesPageState extends State<SalesPage> {
   }
 
   /// Apple cuts report days on Pacific time; yesterday there is the newest day that can exist.
-  DateTime get _latestDay {
-    final pacific = DateTime.now().toUtc().subtract(const Duration(hours: 8));
-    return DateTime.utc(pacific.year, pacific.month, pacific.day).subtract(const Duration(days: 1));
-  }
+  DateTime get _latestDay => latestReportDay(DateTime.now());
 
   Future<List<_Day>> _load() async {
     final vendor = widget.credentials.vendorNumber;

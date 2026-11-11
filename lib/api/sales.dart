@@ -44,3 +44,27 @@ List<SalesRow> parseSalesReport(String tsv, DateTime day) {
   }
   return rows;
 }
+
+/// Wall-clock time in US Pacific for [utc], with daylight saving: UTC−7 from 2:00 on the second Sunday of March to 2:00
+/// on the first Sunday of November, otherwise UTC−8. Apple cuts Sales & Trends days on this clock. (No timezone
+/// database is needed for one fixed rule; it has held since 2007.)
+DateTime pacificTime(DateTime utc) {
+  final u = utc.toUtc();
+  DateTime nthSunday(int year, int month, int n) {
+    final first = DateTime.utc(year, month, 1);
+    final offset = (DateTime.sunday - first.weekday) % 7;
+    return DateTime.utc(year, month, 1 + offset + 7 * (n - 1));
+  }
+
+  // 2:00 PST = 10:00 UTC (March); 2:00 PDT = 9:00 UTC (November).
+  final start = nthSunday(u.year, 3, 2).add(const Duration(hours: 10));
+  final end = nthSunday(u.year, 11, 1).add(const Duration(hours: 9));
+  final dst = !u.isBefore(start) && u.isBefore(end);
+  return u.subtract(Duration(hours: dst ? 7 : 8));
+}
+
+/// The newest day Apple can have a daily report for: yesterday on the Pacific calendar.
+DateTime latestReportDay(DateTime now) {
+  final p = pacificTime(now);
+  return DateTime.utc(p.year, p.month, p.day).subtract(const Duration(days: 1));
+}
