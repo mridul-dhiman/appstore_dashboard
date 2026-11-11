@@ -226,7 +226,7 @@ class _FilterPill extends StatelessWidget {
     return Material(
       color: on ? k.accentSoft : k.surface,
       shape: StadiumBorder(side: BorderSide(color: on ? k.accent.withValues(alpha: 0.5) : k.line)),
-      child: InkWell(
+      child: MergeSemantics(child: Semantics(button: true, selected: on, child: InkWell(
         customBorder: const StadiumBorder(),
         onTap: onTap,
         child: Padding(
@@ -237,7 +237,7 @@ class _FilterPill extends StatelessWidget {
             Text('$count', style: TextStyle(fontSize: 12, color: on ? k.accentInk : k.muted)),
           ]),
         ),
-      ),
+      ))),
     );
   }
 }
@@ -268,7 +268,7 @@ class _AppCard extends StatelessWidget {
     final k = Tokens.of(context);
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
+      child: MergeSemantics(child: Semantics(button: true, hint: 'Opens the app', child: InkWell(
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(18),
@@ -303,7 +303,7 @@ class _AppCard extends StatelessWidget {
             ]),
           ]),
         ),
-      ),
+      ))),
     );
   }
 }
@@ -316,7 +316,7 @@ class _AppRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final k = Tokens.of(context);
-    return InkWell(
+    return MergeSemantics(child: Semantics(button: true, hint: 'Opens the app', child: InkWell(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -337,6 +337,6 @@ class _AppRow extends StatelessWidget {
           Icon(Icons.chevron_right, color: k.muted),
         ]),
       ),
-    );
+    )));
   }
 }

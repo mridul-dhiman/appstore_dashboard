@@ -64,7 +64,7 @@ class _GroupsTabState extends State<GroupsTab> {
             child: Material(
               color: on ? k.accentSoft : Colors.transparent,
               borderRadius: BorderRadius.circular(10),
-              child: InkWell(
+              child: MergeSemantics(child: Semantics(button: true, selected: on, child: InkWell(
                 borderRadius: BorderRadius.circular(10),
                 onTap: () => setState(() => _selected = g.id),
                 child: Padding(
@@ -75,7 +75,7 @@ class _GroupsTabState extends State<GroupsTab> {
                     Expanded(child: Text(g.str('name') ?? 'Group', overflow: TextOverflow.ellipsis, style: TextStyle(fontWeight: FontWeight.w600, color: on ? k.accentInk : null))),
                   ]),
                 ),
-              ),
+              ))),
             ),
           );
         }

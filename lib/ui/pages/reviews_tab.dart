@@ -172,7 +172,7 @@ class _Breakdown extends StatelessWidget {
           Expanded(
             child: Column(children: [
               for (var i = 0; i < 5; i++)
-                InkWell(
+                MergeSemantics(child: Semantics(button: true, hint: 'Shows only ${5 - i}-star reviews', child: InkWell(
                   borderRadius: BorderRadius.circular(6),
                   onTap: () => onStars(5 - i),
                   child: Padding(
@@ -195,7 +195,7 @@ class _Breakdown extends StatelessWidget {
                       SizedBox(width: 40, child: Text('${counts[i]}', textAlign: TextAlign.end, style: TextStyle(color: k.muted, fontSize: 12.5))),
                     ]),
                   ),
-                ),
+                ))),
             ]),
           ),
         ]),
@@ -217,7 +217,7 @@ class _Pill extends StatelessWidget {
     return Material(
       color: on ? k.accentSoft : k.surface,
       shape: StadiumBorder(side: BorderSide(color: on ? k.accent.withValues(alpha: 0.5) : k.line)),
-      child: InkWell(
+      child: MergeSemantics(child: Semantics(button: true, selected: on, child: InkWell(
         customBorder: const StadiumBorder(),
         onTap: onTap,
         child: Padding(
@@ -228,7 +228,7 @@ class _Pill extends StatelessWidget {
             Text('$count', style: TextStyle(fontSize: 12, color: on ? k.accentInk : k.muted)),
           ]),
         ),
-      ),
+      ))),
     );
   }
 }

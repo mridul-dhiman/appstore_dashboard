@@ -507,7 +507,7 @@ class _AccessDialogState extends State<_AccessDialog> {
           borderRadius: BorderRadius.circular(10),
           side: BorderSide(color: on ? k.accent : k.line),
         ),
-        child: InkWell(
+        child: MergeSemantics(child: Semantics(checked: on, child: InkWell(
           borderRadius: BorderRadius.circular(10),
           onTap: onTap,
           child: Padding(
@@ -557,7 +557,7 @@ class _AccessDialogState extends State<_AccessDialog> {
               ],
             ),
           ),
-        ),
+        ))),
       ),
     );
   }

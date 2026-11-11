@@ -503,7 +503,7 @@ class MacTitleBar extends StatelessWidget {
           const Spacer(),
           Tooltip(
             message: 'Search apps and actions',
-            child: InkWell(
+            child: MergeSemantics(child: Semantics(button: true, label: 'Search apps and actions', hint: 'Opens the command palette, $hint', child: InkWell(
               borderRadius: BorderRadius.circular(8),
               onTap: onSearch,
               child: Container(
@@ -522,7 +522,7 @@ class MacTitleBar extends StatelessWidget {
                   ),
                 ]),
               ),
-            ),
+            ))),
           ),
           const Spacer(),
           IconButton(
@@ -563,7 +563,7 @@ class SegmentedTabs extends StatelessWidget {
                     color: i == current ? k.surface : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                     elevation: 0,
-                    child: InkWell(
+                    child: MergeSemantics(child: Semantics(button: true, selected: i == current, child: InkWell(
                       borderRadius: BorderRadius.circular(8),
                       onTap: () => controller.animateTo(i),
                       child: Container(
@@ -573,7 +573,7 @@ class SegmentedTabs extends StatelessWidget {
                         decoration: i == current ? BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: k.line), boxShadow: k.shadow) : null,
                         child: Text(labels[i], style: TextStyle(fontSize: 13, fontWeight: i == current ? FontWeight.w600 : FontWeight.w500, color: i == current ? k.ink : k.muted)),
                       ),
-                    ),
+                    ))),
                   ),
                 ),
             ]),

@@ -296,7 +296,7 @@ class _Sidebar extends StatelessWidget {
             child: Material(
               color: i == index ? k.accentSoft : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
-              child: InkWell(
+              child: MergeSemantics(child: Semantics(button: true, selected: i == index, child: InkWell(
                 borderRadius: BorderRadius.circular(8),
                 onTap: () => onSelect(i),
                 child: Padding(
@@ -312,7 +312,7 @@ class _Sidebar extends StatelessWidget {
                     ),
                   ]),
                 ),
-              ),
+              ))),
             ),
           ),
         const Spacer(),

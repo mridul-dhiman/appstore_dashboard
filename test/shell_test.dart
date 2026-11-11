@@ -70,4 +70,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Store Listing'), findsNothing);
   });
+
+  testWidgets('custom controls are labelled buttons, and the current place is marked selected', (tester) async {
+    final handle = tester.ensureSemantics();
+    await pumpShell(tester);
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+    expect(
+      tester.getSemantics(find.text('Apps').first),
+      matchesSemantics(label: 'Apps', isButton: true, isSelected: true, hasSelectedState: true, hasTapAction: true, isFocusable: true, hasFocusAction: true),
+    );
+    expect(tester.getSemantics(find.text('Search apps and actions')), containsSemantics(isButton: true, hint: 'Opens the command palette, Ctrl K'));
+    handle.dispose();
+  });
 }

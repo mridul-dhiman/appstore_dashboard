@@ -236,7 +236,7 @@ class _PaletteState extends State<_Palette> {
                               return Material(
                                 color: on ? k.accentSoft : Colors.transparent,
                                 borderRadius: BorderRadius.circular(9),
-                                child: InkWell(
+                                child: MergeSemantics(child: Semantics(button: true, selected: on, child: InkWell(
                                   borderRadius: BorderRadius.circular(9),
                                   onTap: () => _choose(i),
                                   onHover: (h) {
@@ -256,7 +256,7 @@ class _PaletteState extends State<_Palette> {
                                       if (on) Icon(Icons.keyboard_return, size: 15, color: k.accentInk),
                                     ]),
                                   ),
-                                ),
+                                ))),
                               );
                             },
                           ),
