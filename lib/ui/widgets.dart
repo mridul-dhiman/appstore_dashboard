@@ -65,13 +65,24 @@ class LoadView<T> extends StatefulWidget {
   State<LoadView<T>> createState() => _LoadViewState<T>();
 }
 
-class _LoadViewState<T> extends State<LoadView<T>> {
-  late Future<T> _future = widget.load();
+class _LoadViewState<T> extends State<LoadView<T>> with AutomaticKeepAliveClientMixin {
+  // Last good result. A reload keeps it on screen (with a thin progress bar) instead of blanking the page.
+  T? _data;
+  bool _hasData = false;
+  Object? _error;
+  bool _loading = true;
+  int _generation = 0;
+
+  /// Inside a tab view, keeps the page (and what it loaded) alive when another tab is shown, so coming back does not
+  /// fetch it all again. Refresh still reloads.
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
     widget.controller?.addListener(_reload);
+    _run();
   }
 
   @override
@@ -89,23 +100,63 @@ class _LoadViewState<T> extends State<LoadView<T>> {
     super.dispose();
   }
 
-  void _reload() {
-    final next = widget.load();
-    setState(() {
-      _future = next;
-    });
+  void _reload() => _run();
+
+  Future<void> _run() async {
+    final gen = ++_generation; // a newer load wins over a slower older one
+    final future = widget.load();
+    if (mounted) setState(() => _loading = true);
+    try {
+      final data = await future;
+      if (!mounted || gen != _generation) return;
+      setState(() {
+        _data = data;
+        _hasData = true;
+        _error = null;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted || gen != _generation) return;
+      setState(() {
+        _error = e;
+        _loading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<T>(
-      future: _future,
-      builder: (context, snap) {
-        if (snap.connectionState != ConnectionState.done) return const Center(child: CircularProgressIndicator());
-        if (snap.hasError) return ErrorView(error: snap.error!, onRetry: _reload);
-        return widget.builder(context, snap.requireData);
-      },
-    );
+    super.build(context);
+    if (!_hasData) {
+      if (_loading) return const Center(child: CircularProgressIndicator());
+      return ErrorView(error: _error!, onRetry: _reload);
+    }
+    final cs = Theme.of(context).colorScheme;
+    final bar = _error != null && !_loading
+        ? Material(
+            color: cs.errorContainer,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(children: [
+                Icon(Icons.cloud_off_outlined, size: 16, color: cs.onErrorContainer),
+                const SizedBox(width: 8),
+                Expanded(child: Text('Could not refresh: $_error', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: cs.onErrorContainer, fontSize: 12.5))),
+                TextButton(onPressed: _reload, child: const Text('Try again')),
+              ]),
+            ),
+          )
+        : null;
+    // Same 2 px either way, so the content does not jump when a reload starts or ends.
+    final progress = SizedBox(height: 2, child: _loading ? const LinearProgressIndicator(minHeight: 2) : null);
+    return LayoutBuilder(builder: (context, c) {
+      final page = widget.builder(context, _data as T);
+      // A page that fills its space keeps filling it; one placed in an unbounded height (a scroll view) keeps its own.
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: c.hasBoundedHeight ? MainAxisSize.max : MainAxisSize.min,
+        children: [progress, ?bar, if (c.hasBoundedHeight) Expanded(child: page) else page],
+      );
+    });
   }
 }
 
