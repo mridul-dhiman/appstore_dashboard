@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'asc_client.dart';
 import 'asset_upload.dart';
@@ -57,38 +56,43 @@ class BuildUploader {
   BuildUploader(this.client);
   final AscClient client;
 
-  /// Uploads [bytes] as a new build and waits for Apple to finish processing it.
-  /// Throws [AscException] on any failure. [onProgress] is called as it moves through the phases.
+  /// Uploads [source] as a new build and waits for Apple to finish processing it.
+  /// Throws [AscException] on any failure, or [UploadCancelled] if [cancel] fires before the file is committed (after
+  /// that the build is Apple's: cancelling only stops waiting). [onProgress] is called as it moves through the phases.
   Future<void> upload({
     required String appId,
     required String version,
     required String build,
-    required String fileName,
-    required Uint8List bytes,
+    required UploadSource source,
     String platform = 'IOS',
     required void Function(UploadProgress) onProgress,
+    UploadCancel? cancel,
     Duration pollEvery = const Duration(seconds: 6),
     Duration giveUpAfter = const Duration(minutes: 20),
   }) async {
-    final total = bytes.length;
+    final total = source.length;
     onProgress(UploadProgress(UploadPhase.reserving, totalBytes: total));
+    final checksum = source.md5Hex(); // in the background while the upload is reserved and sent
 
     final upload = (await client.post('/v1/buildUploads', buildUploadBody(appId: appId, version: version, build: build, platform: platform))).data.first;
-    final file = (await client.post('/v1/buildUploadFiles', buildUploadFileBody(uploadId: upload.id, fileName: fileName, fileSize: total))).data.first;
+    cancel?.check();
+    final file = (await client.post('/v1/buildUploadFiles', buildUploadFileBody(uploadId: upload.id, fileName: source.name, fileSize: total))).data.first;
 
     final ops = [for (final o in (file.attributes['uploadOperations'] as List? ?? const [])) UploadOp.fromJson((o as Map).cast<String, dynamic>())];
     final bad = validateOps(ops, total);
     if (bad != null) throw AscException(bad);
 
     onProgress(UploadProgress(UploadPhase.uploading, totalBytes: total));
-    await putParts(ops, bytes, (sent) => onProgress(UploadProgress(UploadPhase.uploading, sentBytes: sent, totalBytes: total)));
+    await putSourceParts(ops, source, (sent) => onProgress(UploadProgress(UploadPhase.uploading, sentBytes: sent, totalBytes: total)), cancel: cancel);
+    cancel?.check();
 
     onProgress(UploadProgress(UploadPhase.committing, sentBytes: total, totalBytes: total));
-    await client.patch('/v1/buildUploadFiles/${file.id}', commitBody(fileId: file.id, md5Hex: md5Hex(bytes)));
+    await client.patch('/v1/buildUploadFiles/${file.id}', commitBody(fileId: file.id, md5Hex: await checksum));
 
     onProgress(UploadProgress(UploadPhase.processing, sentBytes: total, totalBytes: total));
     final deadline = DateTime.now().add(giveUpAfter);
     while (true) {
+      if (cancel?.cancelled ?? false) return; // committed: Apple carries on; we just stop watching
       final cur = (await client.page('/v1/buildUploads/${upload.id}')).data.first;
       final state = cur.attributes['state'] as Map?;
       final name = state?['state'] as String?;

@@ -9,6 +9,7 @@ import '../../api/listing_draft.dart';
 import '../../api/models.dart';
 import '../../api/reviews.dart';
 import '../../api/testflight.dart';
+import '../../state/upload_jobs.dart';
 import '../theme.dart';
 import '../export_button.dart';
 import '../widgets.dart';
@@ -33,8 +34,11 @@ const _uploadTab = 4;
 
 /// One app's workspace: a header with the app's details and quick actions, and a tab for each job.
 class AppDetailPage extends StatefulWidget {
-  const AppDetailPage({super.key, required this.client, required this.summary, required this.onBack, this.initialTab = 0});
+  const AppDetailPage({super.key, required this.client, required this.summary, required this.onBack, this.initialTab = 0, this.uploads});
   final AscClient client;
+
+  /// The shell's build uploads. Null when the page is shown on its own (tests).
+  final UploadJobs? uploads;
   final AppSummary summary;
   final VoidCallback onBack;
   final int initialTab;
@@ -51,6 +55,10 @@ class _AppDetailPageState extends State<AppDetailPage> {
   /// they are unsent).
   late final _draft = ListingDraft(libraryId: widget.summary.app.id);
   ReviewsData? _reviews;
+
+  /// The shell's uploads (they outlive this page); a page shown on its own keeps its own.
+  late final _fallbackUploads = UploadJobs();
+  UploadJobs get _uploads => widget.uploads ?? _fallbackUploads;
 
   @override
   void dispose() {
@@ -173,7 +181,7 @@ class _AppDetailPageState extends State<AppDetailPage> {
                     GroupsTab(client: client, appId: id),
                     ReviewsTab(client: client, appId: id, onLoaded: (d) => _reviews = d),
                     _BuildsTab(client: client, appId: id),
-                    UploadTab(client: client, appId: id, bundleId: summary.bundleId),
+                    UploadTab(client: client, appId: id, bundleId: summary.bundleId, uploads: _uploads),
                     _PurchasesTab(client: client, appId: id, appName: summary.name),
                     SubmitTab(client: client, appId: id, draft: _draft),
                   ],

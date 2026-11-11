@@ -7,14 +7,19 @@ import '../../api/asc_client.dart';
 import '../../api/build_uploader.dart';
 import '../../api/ipa_info.dart';
 import '../../api/models.dart';
+import '../../services/file_source.dart';
+import '../../state/upload_jobs.dart';
 import '../widgets.dart';
 
 /// Upload an .ipa to App Store Connect (it lands in TestFlight once processed), and see earlier uploads.
 class UploadTab extends StatefulWidget {
-  const UploadTab({super.key, required this.client, required this.appId, required this.bundleId});
+  const UploadTab({super.key, required this.client, required this.appId, required this.bundleId, required this.uploads});
   final AscClient client;
   final String appId;
   final String bundleId;
+
+  /// Where the running upload lives, so it survives leaving this tab.
+  final UploadJobs uploads;
 
   @override
   State<UploadTab> createState() => _UploadTabState();
@@ -22,51 +27,83 @@ class UploadTab extends StatefulWidget {
 
 class _UploadTabState extends State<UploadTab> {
   final _history = ReloadController();
-  String? _fileName;
-  Uint8List? _bytes;
+  UploadSource? _source;
   IpaInfo? _info;
   String? _pickError;
+  bool _reading = false;
+  UploadJob? _watched;
 
-  UploadProgress? _progress;
-  String? _failure;
-  bool get _running => _progress != null && _progress!.phase != UploadPhase.done && _failure == null;
+  UploadJob? get _job => widget.uploads.forApp(widget.appId);
+  bool get _running => _job?.running ?? false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.uploads.addListener(_changed);
+    _changed();
+  }
 
   @override
   void dispose() {
+    widget.uploads.removeListener(_changed);
     _history.dispose();
     super.dispose();
+  }
+
+  void _changed() {
+    final j = _job;
+    // Reload the history once, when an upload stops running.
+    if (_watched != null && _watched == j && !j!.running) {
+      _watched = null;
+      _history.reload();
+    }
+    if (j != null && j.running) _watched = j;
+    if (mounted) setState(() {});
   }
 
   Future<void> _pick() async {
     setState(() => _pickError = null);
     final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: const ['ipa']);
     if (f == null) return;
+    setState(() => _reading = true);
     try {
-      final bytes = await f.readAsBytes();
-      final info = readIpaInfo(bytes);
+      final UploadSource source;
+      final IpaInfo info;
+      if (fileSourcesSupported && f.path != null) {
+        // Read from disk in ranges, off the UI thread: the .ipa is never loaded whole.
+        source = FileSource(f.path!, name: f.name);
+        info = await readIpaInfoFromFile(f.path!);
+      } else {
+        final bytes = await f.readAsBytes();
+        source = BytesSource(f.name, bytes);
+        info = readIpaInfo(bytes);
+      }
       setState(() {
-        _fileName = f.name;
-        _bytes = bytes;
+        _source = source;
         _info = info;
-        _progress = null;
-        _failure = null;
+        widget.uploads.clear(widget.appId);
       });
     } on IpaException catch (e) {
       setState(() {
-        _bytes = null;
+        _source = null;
         _info = null;
         _pickError = e.message;
       });
+    } catch (e) {
+      setState(() => _pickError = 'Could not read the file: $e');
+    } finally {
+      if (mounted) setState(() => _reading = false);
     }
   }
 
   Future<void> _upload() async {
     final info = _info!;
+    final source = _source!;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Upload ${info.version} (${info.build})?'),
-        content: Text('This sends ${(_bytes!.length / 1048576).toStringAsFixed(1)} MB to App Store Connect now. Once it is processed the build appears in TestFlight, '
+        content: Text('This sends ${(source.length / 1048576).toStringAsFixed(1)} MB to App Store Connect now. Once it is processed the build appears in TestFlight, '
             'and a build can never be deleted, only left to expire.\n\nA build number that already exists for this version will be refused.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
@@ -74,29 +111,27 @@ class _UploadTabState extends State<UploadTab> {
         ],
       ),
     );
-    if (ok != true) return;
-    setState(() {
-      _failure = null;
-      _progress = UploadProgress(UploadPhase.reserving, totalBytes: _bytes!.length);
-    });
-    try {
-      await BuildUploader(widget.client).upload(
-        appId: widget.appId,
-        version: info.version,
-        build: info.build,
-        fileName: _fileName!,
-        bytes: _bytes!,
-        onProgress: (p) {
-          if (mounted) setState(() => _progress = p);
-        },
-      );
-      _history.reload();
-    } on AscException catch (e) {
-      if (mounted) setState(() => _failure = e.message);
-      _history.reload();
-    } catch (e) {
-      if (mounted) setState(() => _failure = '$e');
-    }
+    if (ok != true || !mounted) return;
+    widget.uploads.start(UploadJob(appId: widget.appId, info: info, source: source), widget.client);
+  }
+
+  Future<void> _cancel() async {
+    final job = _job;
+    if (job == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Stop this upload?'),
+        content: Text(job.committed
+            ? 'Apple already has the file and keeps processing it. This only stops watching here; the build still appears in the Builds tab.'
+            : 'The upload stops before the file is finished. Nothing reaches TestFlight.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep going')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Stop')),
+        ],
+      ),
+    );
+    if (ok == true) job.cancel();
   }
 
   String _phaseLabel(UploadProgress p) => switch (p.phase) {
@@ -111,7 +146,11 @@ class _UploadTabState extends State<UploadTab> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context);
-    final info = _info;
+    final job = _job;
+    // While an upload runs (or just finished) show what it is uploading, even after leaving and coming back.
+    final info = job?.info ?? _info;
+    final progress = job?.progress;
+    final failure = job?.failure;
     final mismatch = info != null && info.bundleId != widget.bundleId;
     return ListView(padding: const EdgeInsets.all(40), children: [
       Card(
@@ -132,9 +171,10 @@ class _UploadTabState extends State<UploadTab> {
               )
             else ...[
               Row(children: [
-                OutlinedButton.icon(onPressed: _running ? null : _pick, icon: const Icon(Icons.upload_file), label: const Text('Choose .ipa')),
+                OutlinedButton.icon(onPressed: _running || _reading ? null : _pick, icon: const Icon(Icons.upload_file), label: const Text('Choose .ipa')),
                 const SizedBox(width: 12),
-                if (_fileName != null) Flexible(child: Text(_fileName!, overflow: TextOverflow.ellipsis)),
+                if (_reading) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                if ((job?.source ?? _source) != null) Flexible(child: Text((job?.source ?? _source)!.name, overflow: TextOverflow.ellipsis)),
               ]),
               if (_pickError != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_pickError!, style: TextStyle(color: t.colorScheme.error))),
               if (info != null) ...[
@@ -150,22 +190,35 @@ class _UploadTabState extends State<UploadTab> {
                 else
                   Text('Bundle ID ${info.bundleId} matches this app.', style: TextStyle(color: t.colorScheme.onSurfaceVariant)),
                 const SizedBox(height: 14),
-                FilledButton.icon(
-                  onPressed: (_running || mismatch || _progress?.phase == UploadPhase.done) ? null : _upload,
-                  icon: const Icon(Icons.cloud_upload_outlined),
-                  label: Text('Upload ${info.version} (${info.build})'),
-                ),
+                Row(children: [
+                  FilledButton.icon(
+                    onPressed: (_running || mismatch || job?.finished == true || _source == null) ? null : _upload,
+                    icon: const Icon(Icons.cloud_upload_outlined),
+                    label: Text('Upload ${info.version} (${info.build})'),
+                  ),
+                  if (_running) ...[
+                    const SizedBox(width: 10),
+                    TextButton(onPressed: _cancel, child: const Text('Stop')),
+                  ],
+                ]),
               ],
-              if (_progress != null) ...[
+              if (progress != null) ...[
                 const SizedBox(height: 18),
                 if (_running)
                   LinearProgressIndicator(
-                    value: _progress!.phase == UploadPhase.uploading && _progress!.totalBytes > 0 ? _progress!.sentBytes / _progress!.totalBytes : null,
+                    value: progress.phase == UploadPhase.uploading && progress.totalBytes > 0 ? progress.sentBytes / progress.totalBytes : null,
                   ),
                 const SizedBox(height: 8),
-                Text(_failure != null ? 'Upload failed' : _phaseLabel(_progress!), style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: _failure != null ? t.colorScheme.error : null)),
-                if (_failure != null) SelectableText(_failure!, style: TextStyle(color: t.colorScheme.error)),
-                if (_progress!.message != null) SelectableText(_progress!.message!),
+                Text(
+                  failure != null
+                      ? 'Upload failed'
+                      : job!.cancelled
+                          ? (job.committed ? 'Stopped watching. Apple is still processing it; see the Builds tab.' : 'Upload stopped. Nothing was sent to TestFlight.')
+                          : _phaseLabel(progress),
+                  style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: failure != null ? t.colorScheme.error : null),
+                ),
+                if (failure != null) SelectableText(failure, style: TextStyle(color: t.colorScheme.error)),
+                if (progress.message != null) SelectableText(progress.message!),
               ],
             ],
           ]),

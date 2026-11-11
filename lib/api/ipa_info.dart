@@ -27,6 +27,11 @@ IpaInfo readIpaInfo(Uint8List ipaBytes) {
   } catch (_) {
     throw IpaException('That file is not a valid .ipa (it could not be opened as a zip).');
   }
+  return readIpaInfoFromArchive(archive);
+}
+
+/// The upload fields from an already opened .ipa archive.
+IpaInfo readIpaInfoFromArchive(Archive archive) {
   final entry = archive.files.where((f) => f.isFile && RegExp(r'^Payload/[^/]+\.app/Info\.plist$').hasMatch(f.name)).firstOrNull;
   if (entry == null) throw IpaException('No Payload/<app>.app/Info.plist found. Is this an .ipa from an archive/export?');
   final dict = parsePlist(Uint8List.fromList(entry.content));

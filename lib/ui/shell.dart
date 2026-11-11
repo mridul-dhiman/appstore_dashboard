@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../api/asc_client.dart';
 import '../state/app_state.dart';
+import '../state/upload_jobs.dart';
 import 'command_palette.dart';
 import 'pages/app_detail_page.dart';
 import 'pages/apps_page.dart';
@@ -45,12 +46,16 @@ class _ShellState extends State<Shell> {
   int _appTab = 0;
   String? _owner; // client id the open app and the apps list belong to
   AppsStore? _store;
+  UploadJobs _uploads = UploadJobs(); // per client; outlives the app page so an upload keeps its progress
 
   /// The apps list, loaded once per client and shared with the command palette.
   AppsStore _storeFor(Credentials creds, AscClient client) {
     // Renaming a client or changing its vendor number makes a new AscClient (the old one is closed), so the store must
     // follow the client object itself, not just the client id. Only a different client closes the open app.
-    if (_owner != creds.id) _app = null;
+    if (_owner != creds.id) {
+      _app = null;
+      if (_store != null) _uploads = UploadJobs();
+    }
     if (_owner != creds.id || _store == null || !identical(_store!.client, client)) {
       _owner = creds.id;
       _store = AppsStore(client);
@@ -80,7 +85,7 @@ class _ShellState extends State<Shell> {
 
   Widget _page(AscClient client, Credentials creds, AppsStore store) {
     if (_index == 0 && _app != null) {
-      return AppDetailPage(key: ValueKey('${_app!.id}/$_appTab'), client: client, summary: _app!, initialTab: _appTab, onBack: () => setState(() => _app = null));
+      return AppDetailPage(key: ValueKey('${_app!.id}/$_appTab'), client: client, summary: _app!, initialTab: _appTab, uploads: _uploads, onBack: () => setState(() => _app = null));
     }
     return switch (_index) {
       0 => AppsPage(store: store, onOpen: _openApp),

@@ -98,7 +98,25 @@ Future<T?> nullIfMissing<T>(Future<T> f) async {
 /// at the bundled proxy (`server/server.js`) instead, which forwards the request untouched.
 class AscClient {
   AscClient(this.credentials, {required this.baseUrl, http.Client? client, this.maxAttempts = 4, this.retryDelay = const Duration(seconds: 1)})
-      : _http = client ?? http.Client();
+      : _http = client ?? http.Client(),
+        _injected = client != null,
+        _shared = false;
+
+  AscClient._detached(AscClient from)
+      : credentials = from.credentials,
+        baseUrl = from.baseUrl,
+        maxAttempts = from.maxAttempts,
+        retryDelay = from.retryDelay,
+        _http = from._injected ? from._http : http.Client(),
+        _injected = from._injected,
+        _shared = from._injected;
+
+  /// A client with the same key that lives on its own: closing this one (when the client is renamed or locked) does
+  /// not stop a long job such as a build upload that holds the copy.
+  AscClient detached() => AscClient._detached(this);
+
+  final bool _injected;
+  final bool _shared; // the HTTP client belongs to another AscClient; do not close it
 
   static const appleHost = 'https://api.appstoreconnect.apple.com';
 
@@ -249,5 +267,7 @@ class AscClient {
     return utf8.decode(gz ? GZipDecoder().decodeBytes(bytes) : bytes);
   }
 
-  void close() => _http.close();
+  void close() {
+    if (!_shared) _http.close();
+  }
 }
