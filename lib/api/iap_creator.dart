@@ -169,37 +169,70 @@ class IapCreator {
     return _territories ??= (await client.all('/v1/territories', {'limit': '200', 'fields[territories]': 'currency'}, 5)).data.map((t) => t.id).toList();
   }
 
+  /// The existing in-app purchase with [productId] in this app, or null.
+  Future<Resource?> findExisting(String productId) async {
+    final p = await client.page('/v1/apps/$appId/inAppPurchasesV2', {'filter[productId]': productId, 'limit': '1'});
+    return p.data.isEmpty ? null : p.data.first;
+  }
+
   /// Creates one IAP: create → localization → price → availability. Stops at the first failing step and records it, so a
   /// bulk run carries on with the next item and the person can see exactly what was left unfinished.
+  ///
+  /// In-app purchases can never be deleted, so nothing is created twice: if the product ID already exists (for example
+  /// from an earlier run that failed halfway) it is reused, and only the steps it is still missing are done.
   Future<IapResult> create(IapSpec spec) async {
     final r = IapResult(spec);
-    String step = 'create';
+    String step = 'lookup';
     try {
-      final created = await client.post('/v2/inAppPurchases', iapCreateBody(appId, spec));
-      r.id = created.data.first.id;
-      r.done.add('created');
+      final existing = await findExisting(spec.productId);
+      if (existing != null) {
+        if (existing.str('inAppPurchaseType') != spec.type) {
+          throw AscException('Product ID ${spec.productId} already exists as ${iapTypes[existing.str('inAppPurchaseType')] ?? existing.str('inAppPurchaseType')}, '
+              'not ${iapTypes[spec.type]}. Product IDs can not be reused for another type.');
+        }
+        r.id = existing.id;
+        r.done.add('existing');
+      } else {
+        step = 'create';
+        final created = await client.post('/v2/inAppPurchases', iapCreateBody(appId, spec));
+        r.id = created.data.first.id;
+        r.done.add('created');
+      }
 
       step = 'localization';
-      await client.post('/v1/inAppPurchaseLocalizations', iapLocalizationBody(r.id!, spec));
-      r.done.add('localization');
+      final locs = existing == null ? const <Resource>[] : (await client.page('/v2/inAppPurchases/${r.id}/inAppPurchaseLocalizations', {'limit': '50'})).data;
+      if (locs.any((l) => l.str('locale') == spec.locale)) {
+        r.done.add('localization (already there)');
+      } else {
+        await client.post('/v1/inAppPurchaseLocalizations', iapLocalizationBody(r.id!, spec));
+        r.done.add('localization');
+      }
 
       if (spec.price != null) {
         step = 'price';
-        final points = await client.all(
-          '/v2/inAppPurchases/${r.id}/pricePoints',
-          {'filter[territory]': options.baseTerritory, 'limit': '200', 'fields[inAppPurchasePricePoints]': 'customerPrice'},
-          12,
-        );
-        final best = pickPricePoint(points.data, spec.price!);
-        if (best == null) throw AscException('No price points returned for ${options.baseTerritory}.');
-        await client.post('/v1/inAppPurchasePriceSchedules', iapPriceScheduleBody(r.id!, options.baseTerritory, best.id));
-        r.done.add('price ${best.str('customerPrice')}');
+        if (existing != null && await _has('/v2/inAppPurchases/${r.id}/iapPriceSchedule')) {
+          r.done.add('price (already set)');
+        } else {
+          final points = await client.all(
+            '/v2/inAppPurchases/${r.id}/pricePoints',
+            {'filter[territory]': options.baseTerritory, 'limit': '200', 'fields[inAppPurchasePricePoints]': 'customerPrice'},
+            12,
+          );
+          final best = pickPricePoint(points.data, spec.price!);
+          if (best == null) throw AscException('No price points returned for ${options.baseTerritory}.');
+          await client.post('/v1/inAppPurchasePriceSchedules', iapPriceScheduleBody(r.id!, options.baseTerritory, best.id));
+          r.done.add('price ${best.str('customerPrice')}');
+        }
       }
 
       if (options.allTerritories) {
         step = 'availability';
-        await client.post('/v1/inAppPurchaseAvailabilities', iapAvailabilityBody(r.id!, await _allTerritories()));
-        r.done.add('availability');
+        if (existing != null && await _has('/v2/inAppPurchases/${r.id}/inAppPurchaseAvailability')) {
+          r.done.add('availability (already set)');
+        } else {
+          await client.post('/v1/inAppPurchaseAvailabilities', iapAvailabilityBody(r.id!, await _allTerritories()));
+          r.done.add('availability');
+        }
       }
     } on AscException catch (e) {
       r.error = 'Failed at $step: ${e.message}';
@@ -207,6 +240,12 @@ class IapCreator {
       r.error = 'Failed at $step: $e';
     }
     return r;
+  }
+
+  /// Whether a to-one relationship such as the price schedule is set. Apple answers 404 or an empty `data` when not.
+  Future<bool> _has(String path) async {
+    final p = await nullIfMissing(client.page(path));
+    return p != null && p.data.isNotEmpty;
   }
 }
 
