@@ -63,6 +63,7 @@ node --test server/test/server.test.js # proxy tests
   prompt: `local_auth` has no web support. A passkey (WebAuthn) lock is the way to add one.
 * Put the server behind HTTPS and access control before exposing it beyond your own machine.
 * For `flutter run -d chrome`, point at a running proxy: `--dart-define=ASC_PROXY=http://127.0.0.1:8080/asc`.
+  Start that proxy with `ALLOWED_ORIGINS=<the flutter run page origin>`: it refuses requests from any other site.
 
 ## Sales & Trends
 

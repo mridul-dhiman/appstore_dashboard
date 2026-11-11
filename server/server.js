@@ -8,8 +8,9 @@
 //   flutter build web --release && node server/server.js          # http://localhost:8080
 //   PORT=9000 STATIC_DIR=build/web node server/server.js
 //
-// Zero dependencies. Put it behind HTTPS and some access control before exposing it beyond your own machine: anyone
-// who can reach /asc can use it to relay requests to Apple (they still need a valid signed JWT to get anything back).
+// Zero dependencies. It forwards only Apple API paths, refuses requests that come from other sites (Origin check) and
+// bodies over 1 MB. Still put it behind HTTPS and some access control before exposing it beyond your own machine:
+// anyone who can reach /asc directly can relay requests to Apple (they still need a valid signed JWT to get anything).
 
 const http = require('http');
 const https = require('https');
@@ -28,8 +29,35 @@ const TYPES = {
   '.woff2': 'font/woff2', '.map': 'application/json', '.txt': 'text/plain; charset=utf-8',
 };
 
+// Apple's JSON:API bodies are small; screenshots and builds go straight to Apple's upload URLs, never through here.
+const MAX_BODY = 1024 * 1024;
+
+function reject(res, status, detail) {
+  res.writeHead(status, { 'content-type': 'application/json' });
+  res.end(JSON.stringify({ errors: [{ status: String(status), title: 'Proxy refused', detail }] }));
+}
+
+// Only this app's own page may use the relay: a browser sends Origin on cross-site requests, and it must match the host
+// the page was served from. Clients that send no Origin (curl) still need a valid signed JWT to get anything from Apple.
+// Extra page origins allowed to use the relay, e.g. ALLOWED_ORIGINS=http://localhost:5000 for `flutter run -d chrome`.
+const ALLOWED_ORIGINS = new Set((process.env.ALLOWED_ORIGINS || '').split(',').map((o) => o.trim()).filter(Boolean));
+
+function sameOrigin(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true;
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  try {
+    return new URL(origin).host === req.headers.host;
+  } catch {
+    return false;
+  }
+}
+
 function proxy(req, res) {
   const upstreamPath = req.url.replace(/^\/asc/, '') || '/';
+  if (!/^\/v[0-9]+\//.test(upstreamPath)) return reject(res, 404, 'Only /asc/v1/… and /asc/v2/… API paths are forwarded.');
+  if (!sameOrigin(req)) return reject(res, 403, 'Requests from other sites are not forwarded.');
+  if (Number(req.headers['content-length'] || 0) > MAX_BODY) return reject(res, 413, 'Request body too large.');
   const headers = { accept: req.headers.accept || '*/*', 'user-agent': 'appstore-dashboard-proxy' };
   if (req.headers.authorization) headers.authorization = req.headers.authorization;
   if (req.headers['content-type']) headers['content-type'] = req.headers['content-type'];
@@ -46,7 +74,17 @@ function proxy(req, res) {
     if (!res.headersSent) res.writeHead(502, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ errors: [{ status: '502', title: 'Proxy error', detail: String(e.message) }] }));
   });
-  req.pipe(up); // forwards the JSON body of POST/PATCH; GET/DELETE have none
+  // Forwards the JSON body of POST/PATCH (GET/DELETE have none), cutting off a body that grows past the limit even
+  // when no content-length was sent.
+  let seen = 0;
+  req.on('data', (chunk) => {
+    seen += chunk.length;
+    if (seen > MAX_BODY) {
+      up.destroy(new Error('request body too large'));
+      req.destroy();
+    }
+  });
+  req.pipe(up);
 }
 
 function serveStatic(req, res) {
