@@ -8,11 +8,11 @@ import '../../api/listing.dart';
 import '../../api/listing_clone.dart';
 import '../../api/listing_draft.dart';
 import '../../api/models.dart';
+import '../../api/queries.dart';
 import '../../api/screenshots.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'changelist_dialog.dart';
-import '../../api/queries.dart';
 
 part 'listing_screenshots.dart';
 

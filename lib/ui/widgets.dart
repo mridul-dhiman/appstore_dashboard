@@ -82,7 +82,7 @@ class _LoadViewState<T> extends State<LoadView<T>> with AutomaticKeepAliveClient
   void initState() {
     super.initState();
     widget.controller?.addListener(_reload);
-    _run();
+    unawaited(_run());
   }
 
   @override

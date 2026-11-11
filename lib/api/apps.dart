@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'asc_client.dart';
 import 'models.dart';
 
@@ -52,10 +54,12 @@ class AppsStore {
   Future<List<AppSummary>> get apps {
     return _future ??= () {
       final f = loadApps(client);
-      f.catchError((_) {
-        _future = null; // let the next ask retry instead of replaying the failure
-        return <AppSummary>[];
-      });
+      unawaited(
+        f.catchError((_) {
+          _future = null; // let the next ask retry instead of replaying the failure
+          return <AppSummary>[];
+        }),
+      );
       return f;
     }();
   }

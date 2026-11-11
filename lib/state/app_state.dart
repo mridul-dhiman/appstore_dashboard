@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:http/http.dart' as http;
@@ -20,7 +22,12 @@ class AppState extends ChangeNotifier {
     if (kIsWeb) {
       // Nothing is stored in a browser, so there is nothing to unlock.
       phase = Phase.setup;
-      _load();
+      unawaited(
+        _load().catchError((Object e) {
+          message = 'Could not load the saved clients: $e';
+          notifyListeners();
+        }),
+      );
     }
   }
 
@@ -42,7 +49,7 @@ class AppState extends ChangeNotifier {
 
   void toggleTheme(Brightness current) {
     themeMode = current == Brightness.dark ? ThemeMode.light : ThemeMode.dark;
-    prefs.setTheme(themeMode);
+    unawaited(prefs.setTheme(themeMode));
     notifyListeners();
   }
 

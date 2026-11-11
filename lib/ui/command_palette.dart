@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -85,13 +87,15 @@ class _PaletteState extends State<_Palette> {
   @override
   void initState() {
     super.initState();
-    widget.actions.store.apps
-        .then((a) {
-          if (mounted) setState(() => _apps = a);
-        })
-        .catchError((Object e) {
-          if (mounted) setState(() => _error = e);
-        });
+    unawaited(
+      widget.actions.store.apps
+          .then((a) {
+            if (mounted) setState(() => _apps = a);
+          })
+          .catchError((Object e) {
+            if (mounted) setState(() => _error = e);
+          }),
+    );
   }
 
   @override

@@ -1,9 +1,8 @@
-import 'package:appstore_dashboard/api/screenshots.dart';
-import 'package:appstore_dashboard/api/models.dart';
-
 import 'dart:typed_data';
 
 import 'package:appstore_dashboard/api/listing.dart';
+import 'package:appstore_dashboard/api/models.dart';
+import 'package:appstore_dashboard/api/screenshots.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

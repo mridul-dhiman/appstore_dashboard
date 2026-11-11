@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../api/asc_client.dart';
@@ -78,7 +80,7 @@ class UploadJobs extends ChangeNotifier {
     if (_jobs[job.appId]?.running ?? false) return null;
     _jobs[job.appId] = job;
     job.addListener(notifyListeners);
-    job.run(client);
+    unawaited(job.run(client));
     notifyListeners();
     return job;
   }

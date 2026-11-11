@@ -1,10 +1,10 @@
 import 'package:appstore_dashboard/api/asc_client.dart';
 import 'package:appstore_dashboard/api/models.dart';
 import 'package:appstore_dashboard/api/reviews.dart';
-import 'package:appstore_dashboard/ui/pages/reviews_tab.dart';
-import 'package:flutter/material.dart';
 import 'package:appstore_dashboard/services/prefs.dart';
 import 'package:appstore_dashboard/state/reply_templates.dart';
+import 'package:appstore_dashboard/ui/pages/reviews_tab.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_asc.dart';

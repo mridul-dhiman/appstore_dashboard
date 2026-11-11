@@ -33,7 +33,7 @@ class _BuildsTabState extends State<_BuildsTab> {
   @override
   void initState() {
     super.initState();
-    _load();
+    unawaited(_load());
   }
 
   @override

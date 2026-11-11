@@ -1,10 +1,9 @@
 import 'package:appstore_dashboard/api/iap_creator.dart';
 import 'package:appstore_dashboard/api/models.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 
 import 'support/fake_asc.dart';
-
-import 'package:http/http.dart' as http;
 
 Resource point(String id, String price) =>
     Resource(id: id, type: 'inAppPurchasePricePoints', attributes: {'customerPrice': price}, relationships: const {});

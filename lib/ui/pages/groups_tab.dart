@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../api/asc_client.dart';
 import '../../api/models.dart';
+import '../../api/queries.dart';
 import '../../api/team.dart' show looksLikeEmail;
 import '../../api/testflight.dart';
-
-import 'package:flutter/services.dart';
-
 import '../qr_view.dart';
 import '../theme.dart';
 import '../widgets.dart';
-import '../../api/queries.dart';
 
-part 'groups_dialogs.dart';
 part 'group_detail.dart';
+part 'groups_dialogs.dart';
 
 class _GroupsData {
   _GroupsData(this.groups, this.builds);

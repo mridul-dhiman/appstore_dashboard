@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../api/asc_client.dart';
 import '../../api/reviews.dart';
-import '../theme.dart';
 import '../../state/reply_templates.dart';
+import '../theme.dart';
 import '../widgets.dart';
+
 part 'reply_templates_dialog.dart';
 
 /// Customer reviews of one app: rating breakdown, filters, and replying as the developer.

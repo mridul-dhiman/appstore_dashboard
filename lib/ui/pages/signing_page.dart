@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../api/asc_client.dart';
 import '../../api/models.dart';
-import '../widgets.dart';
 import '../../api/queries.dart';
+import '../widgets.dart';
 
 /// Certificates, identifiers, profiles and devices: the Developer-portal side of the same API key.
 class SigningPage extends StatefulWidget {

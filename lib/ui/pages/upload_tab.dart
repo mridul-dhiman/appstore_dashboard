@@ -6,10 +6,10 @@ import '../../api/asc_client.dart';
 import '../../api/build_uploader.dart';
 import '../../api/ipa_info.dart';
 import '../../api/models.dart';
+import '../../api/queries.dart';
 import '../../services/file_source.dart';
 import '../../state/upload_jobs.dart';
 import '../widgets.dart';
-import '../../api/queries.dart';
 
 /// Upload an .ipa to App Store Connect (it lands in TestFlight once processed), and see earlier uploads.
 class UploadTab extends StatefulWidget {

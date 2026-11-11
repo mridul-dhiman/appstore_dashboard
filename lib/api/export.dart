@@ -2,9 +2,9 @@ import 'dart:convert';
 
 import 'package:intl/intl.dart';
 
+import 'models.dart';
 import 'reviews.dart';
 import 'sales.dart';
-import 'models.dart';
 
 /// A table to hand to a spreadsheet or another tool.
 class ExportTable {

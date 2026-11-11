@@ -7,12 +7,13 @@ import '../../api/asc_client.dart';
 import '../../api/export.dart';
 import '../../api/listing_draft.dart';
 import '../../api/models.dart';
+import '../../api/queries.dart';
 import '../../api/reviews.dart';
 import '../../api/testflight.dart';
 import '../../state/reply_templates.dart';
 import '../../state/upload_jobs.dart';
-import '../theme.dart';
 import '../export_button.dart';
+import '../theme.dart';
 import '../widgets.dart';
 import 'apps_page.dart';
 import 'groups_tab.dart';
@@ -21,7 +22,7 @@ import 'listing_tab.dart';
 import 'reviews_tab.dart';
 import 'submit_tab.dart';
 import 'upload_tab.dart';
-import '../../api/queries.dart';
+
 part 'builds_tab.dart';
 part 'purchases_tab.dart';
 
@@ -88,9 +89,11 @@ class _AppDetailPageState extends State<AppDetailPage> {
     super.initState();
     _draft.addListener(_draftChanged);
     // The list shows initials to stay at one request; here one more small request gets the real icon.
-    loadAppIconUrl(widget.client, widget.summary.id).then((u) {
-      if (mounted && u != null) setState(() => _iconUrl = u);
-    }, onError: (_) {});
+    unawaited(
+      loadAppIconUrl(widget.client, widget.summary.id).then((u) {
+        if (mounted && u != null) setState(() => _iconUrl = u);
+      }, onError: (_) {}),
+    );
   }
 
   UploadJobs get _uploads => widget.uploads ?? _fallbackUploads;

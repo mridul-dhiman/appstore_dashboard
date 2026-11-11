@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -113,21 +115,23 @@ class _ShellState extends State<Shell> {
 
   void _remember(String? appId, [int tab = 0]) {
     final id = widget.state.credentials?.id;
-    if (id != null) widget.state.prefs.setLastApp(id, appId, tab);
+    if (id != null) unawaited(widget.state.prefs.setLastApp(id, appId, tab));
   }
 
   /// On the first load for a client, reopen the app and tab that were open last time.
   void _restoreLastApp(Credentials creds, AppsStore store) {
     final last = widget.state.prefs.lastApp(creds.id);
     if (last == null) return;
-    store.apps.then((apps) {
-      final app = apps.where((a) => a.id == last.appId).firstOrNull;
-      if (app == null || !mounted || _owner != creds.id || _app != null || _index != 0) return;
-      setState(() {
-        _app = app;
-        _appTab = last.tab;
-      });
-    }, onError: (_) {});
+    unawaited(
+      store.apps.then((apps) {
+        final app = apps.where((a) => a.id == last.appId).firstOrNull;
+        if (app == null || !mounted || _owner != creds.id || _app != null || _index != 0) return;
+        setState(() {
+          _app = app;
+          _appTab = last.tab;
+        });
+      }, onError: (_) {}),
+    );
   }
 
   int _refresh = 0; // bumped by ⌘R: the current page is rebuilt from scratch and loads again
@@ -135,7 +139,7 @@ class _ShellState extends State<Shell> {
 
   void _reloadPage() => _guard(() {
     if (_app != null) _appTab = _currentTab;
-    if (_index == 0 && _app == null) _store?.refresh(); // the list is cached in the store, not the page
+    if (_index == 0 && _app == null) unawaited(_store?.refresh()); // the list is cached in the store, not the page
     setState(() => _refresh++);
   });
 
@@ -242,9 +246,11 @@ class _ShellState extends State<Shell> {
   void _palette() {
     final store = _store;
     if (store == null || !mounted) return;
-    showCommandPalette(
-      context,
-      PaletteActions(store: store, openApp: _openApp, go: _select, lock: widget.state.supportsDeviceLock ? widget.state.lock : null),
+    unawaited(
+      showCommandPalette(
+        context,
+        PaletteActions(store: store, openApp: _openApp, go: _select, lock: widget.state.supportsDeviceLock ? widget.state.lock : null),
+      ),
     );
   }
 

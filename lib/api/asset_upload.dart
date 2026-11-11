@@ -1,9 +1,8 @@
 import 'dart:async';
 
 import 'package:crypto/crypto.dart';
-import 'package:http/http.dart' as http;
-
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import 'asc_client.dart';
 import 'upload_source.dart';

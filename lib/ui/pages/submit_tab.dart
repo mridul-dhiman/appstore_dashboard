@@ -1,12 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../api/asc_client.dart';
 import '../../api/listing.dart';
 import '../../api/listing_draft.dart';
 import '../../api/models.dart';
+import '../../api/queries.dart';
 import '../../api/submission.dart';
 import '../widgets.dart';
-import '../../api/queries.dart';
 
 part 'submit_dialogs.dart';
 
@@ -195,15 +197,15 @@ class _BodyState extends State<_Body> {
   void _fix(CheckFix key, PreflightData d) {
     switch (key) {
       case CheckFix.version:
-        _newVersion();
+        unawaited(_newVersion());
       case CheckFix.build:
-        _pickBuild();
+        unawaited(_pickBuild());
       case CheckFix.compliance:
-        if (d.build != null) _compliance(d.build!);
+        if (d.build != null) unawaited(_compliance(d.build!));
       case CheckFix.review:
-        _reviewDetail(d);
+        unawaited(_reviewDetail(d));
       case CheckFix.release:
-        _release();
+        unawaited(_release());
       case CheckFix.listing:
         DefaultTabController.maybeOf(context)?.animateTo(0);
     }

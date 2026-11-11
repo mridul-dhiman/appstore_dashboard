@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../api/apps.dart';
@@ -77,7 +79,7 @@ class _AppsPageState extends State<AppsPage> {
               selected: {_grid},
               onSelectionChanged: (v) {
                 setState(() => _grid = v.first);
-                widget.prefs?.setAppsGrid(_grid);
+                unawaited(widget.prefs?.setAppsGrid(_grid));
               },
             ),
             const SizedBox(width: 6),

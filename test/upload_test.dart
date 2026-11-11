@@ -1,10 +1,9 @@
-import 'package:archive/archive.dart';
-
 import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:appstore_dashboard/api/build_uploader.dart';
 import 'package:appstore_dashboard/api/ipa_info.dart';
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // A real binary plist (bplist00) produced by plutil from known values, so the reader is checked against Apple's format.
