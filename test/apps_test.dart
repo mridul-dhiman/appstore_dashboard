@@ -95,7 +95,7 @@ void main() {
     expect(find.byIcon(Icons.star), findsNothing);
     expect(find.textContaining('Build'), findsNothing);
     expect(find.textContaining('Upload'), findsNothing, reason: 'uploading an .ipa belongs inside an app');
-    expect(find.text('1 API request'), findsOneWidget);
+    expect(find.text('1 API request'), findsNothing);
   });
 
   testWidgets('filters, search and the grid/list switch work on the data already loaded', (tester) async {

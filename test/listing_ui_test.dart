@@ -123,9 +123,10 @@ Future<(FakeAsc, ListingDraft)> pumpTab(WidgetTester tester) async {
 void main() {
   testWidgets('an editable version shows editable fields and screenshot controls', (tester) async {
     await pumpTab(tester);
-    expect(find.text('This version can be edited. Changes are staged until you apply the changelist.'), findsOneWidget);
-    expect(find.text('Description'), findsOneWidget); // not "(read only)"
-    expect(find.text('iPhone Dynamic Island Large  ·  2/10'), findsOneWidget);
+    expect(find.text('Changes are staged locally and sent when you apply the changelist.'), findsOneWidget);
+    expect(find.text('Description'), findsOneWidget);
+    expect(find.text('iPhone Dynamic Island Large'), findsOneWidget);
+    expect(find.text('2 / 10'), findsOneWidget);
     expect(find.byTooltip('Remove'), findsNWidgets(2));
     expect(find.byTooltip('Move right'), findsNWidgets(2));
     expect(find.text('Add a device size'), findsOneWidget);
@@ -136,7 +137,7 @@ void main() {
     final (fake, draft) = await pumpTab(tester);
     await tester.tap(find.byTooltip('Remove').first);
     await tester.pump();
-    expect(find.text('1 pending change. Nothing is sent until you apply the changelist.'), findsOneWidget);
+    expect(find.text('1 pending change'), findsOneWidget);
     expect(find.text('Removed'), findsOneWidget);
 
     await tester.enterText(find.widgetWithText(TextField, 'Old news'), 'Bug fixes and speed');

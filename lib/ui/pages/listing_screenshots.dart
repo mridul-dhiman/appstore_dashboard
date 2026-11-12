@@ -89,31 +89,46 @@ class _ShotsEditor extends StatelessWidget {
                 ),
               for (final s in sets) ...[
                 Padding(
-                  padding: const EdgeInsets.only(top: 10, bottom: 6),
+                  padding: const EdgeInsets.only(top: 16, bottom: 8),
                   child: Row(
                     children: [
-                      Text('${placementGroupLabel(s.group)}  ·  ${s.liveCount}/$maxScreenshotsPerSet', style: t.textTheme.titleSmall),
-                      const SizedBox(width: 12),
-                      if (editable)
-                        TextButton.icon(
-                          onPressed: s.liveCount >= maxScreenshotsPerSet ? null : () => _add(context, s.group, specs),
-                          icon: const Icon(Icons.add_photo_alternate_outlined, size: 18),
-                          label: const Text('Add'),
+                      Text(placementGroupLabel(s.group), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: t.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      if (!s.exists) const StateChip('PENDING', label: 'New group'),
+                        child: Text(
+                          '${s.liveCount} / $maxScreenshotsPerSet',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.colorScheme.onSurfaceVariant),
+                        ),
+                      ),
+                      if (!s.exists) ...[
+                        const SizedBox(width: 8),
+                        const StateChip('PENDING', label: 'New group'),
+                      ],
                       if (specs != null && specs.sizesByGroup.containsKey(s.group))
                         Padding(
                           padding: const EdgeInsets.only(left: 8),
                           child: Text(
                             specs.sizesLabel(s.group),
-                            style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant),
+                            style: TextStyle(fontSize: 12, color: t.colorScheme.onSurfaceVariant),
                           ),
+                        ),
+                      const Spacer(),
+                      if (editable)
+                        FilledButton.tonalIcon(
+                          onPressed: s.liveCount >= maxScreenshotsPerSet ? null : () => _add(context, s.group, specs),
+                          icon: const Icon(Icons.add_photo_alternate_outlined, size: 16),
+                          label: const Text('Add'),
                         ),
                     ],
                   ),
                 ),
                 SizedBox(
-                  height: 262,
+                  height: 292,
                   child: ListView(
                     scrollDirection: Axis.horizontal,
                     children: [
@@ -177,17 +192,17 @@ class _ShotTile extends StatelessWidget {
       child: Icon(Icons.image_outlined, color: cs.onSurfaceVariant),
     );
     final Widget image = item.bytes != null
-        ? Image.memory(item.bytes!, height: 210, fit: BoxFit.fitHeight, errorBuilder: (_, _, _) => placeholder)
+        ? Image.memory(item.bytes!, height: 240, fit: BoxFit.fitHeight, errorBuilder: (_, _, _) => placeholder)
         : item.url == null
         ? placeholder
-        : Image.network(item.url!, height: 210, fit: BoxFit.fitHeight, errorBuilder: (_, _, _) => placeholder);
+        : Image.network(item.url!, height: 240, fit: BoxFit.fitHeight, errorBuilder: (_, _, _) => placeholder);
     return Padding(
       padding: const EdgeInsets.only(right: 10),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
-            height: 210,
+            height: 240,
             child: Stack(
               children: [
                 ClipRRect(
