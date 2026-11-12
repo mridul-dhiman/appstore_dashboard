@@ -55,3 +55,57 @@ Future<ResourcePage> loadBundleIds(AscClient c) => c.all('/v1/bundleIds', {'limi
 Future<ResourcePage> loadProfiles(AscClient c) =>
     c.all('/v1/profiles', {'limit': '200', 'fields[profiles]': 'name,profileType,profileState,expirationDate,createdDate'});
 Future<ResourcePage> loadDevices(AscClient c) => c.all('/v1/devices', {'limit': '200', 'sort': 'name'});
+
+// Bundle ID capabilities.
+Future<ResourcePage> loadBundleIdCapabilities(AscClient c, String bundleIdResourceId) =>
+    c.all('/v1/bundleIds/$bundleIdResourceId/bundleIdCapabilities', {'limit': '200'});
+
+const capabilityLabels = {
+  'ICLOUD': 'iCloud',
+  'IN_APP_PURCHASE': 'In-App Purchase',
+  'GAME_CENTER': 'Game Center',
+  'PUSH_NOTIFICATIONS': 'Push Notifications',
+  'WALLET': 'Wallet',
+  'APPLE_PAY': 'Apple Pay',
+  'MAPS': 'Maps',
+  'ASSOCIATED_DOMAINS': 'Associated Domains',
+  'PERSONAL_VPN': 'Personal VPN',
+  'APP_GROUPS': 'App Groups',
+  'HEALTHKIT': 'HealthKit',
+  'HOMEKIT': 'HomeKit',
+  'INTER_APP_AUDIO': 'Inter-App Audio',
+  'CLASSKIT': 'ClassKit',
+  'AUTOFILL_CREDENTIAL_PROVIDER': 'AutoFill Credential Provider',
+  'ACCESS_WIFI_INFORMATION': 'Access WiFi Information',
+  'NETWORK_EXTENSIONS': 'Network Extensions',
+  'HOT_SPOT': 'Hotspot',
+  'MULTIPATH': 'Multipath',
+  'NFC_TAG_READING': 'NFC Tag Reading',
+  'SIRIKIT': 'SiriKit',
+  'USERNOTIFICATIONS_COMMUNICATION': 'Communication Notifications',
+  'COREMEDIA_HLS_LOW_LATENCY': 'Low Latency HLS',
+  'SYSTEM_EXTENSION_INSTALL': 'System Extension',
+  'MARZIPAN': 'Mac Catalyst',
+  'SIGN_IN_WITH_APPLE': 'Sign in with Apple',
+  'DATA_PROTECTION': 'Data Protection',
+  'FONT_INSTALLATION': 'Fonts',
+};
+
+String prettyCapability(String type) => capabilityLabels[type] ?? type.replaceAll('_', ' ').toLowerCase();
+
+Map<String, dynamic> enableCapabilityBody(String bundleIdResourceId, String capabilityType) => {
+  'data': {
+    'type': 'bundleIdCapabilities',
+    'attributes': {'capabilityType': capabilityType, 'settings': <dynamic>[]},
+    'relationships': {
+      'bundleId': {
+        'data': {'type': 'bundleIds', 'id': bundleIdResourceId},
+      },
+    },
+  },
+};
+
+Future<Resource> enableCapability(AscClient c, String bundleIdResourceId, String capabilityType) async =>
+    (await c.post('/v1/bundleIdCapabilities', enableCapabilityBody(bundleIdResourceId, capabilityType))).data.first;
+
+Future<void> disableCapability(AscClient c, String capabilityId) => c.delete('/v1/bundleIdCapabilities/$capabilityId');

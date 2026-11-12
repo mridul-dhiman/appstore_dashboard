@@ -299,6 +299,52 @@ bool canSubmit(List<Check> checks) => checks.every((c) => c.level != CheckLevel.
 
 String prettyState(String? s) => s == null ? '—' : (s.replaceAll('_', ' ').toLowerCase());
 
+// ---- Phased release -------------------------------------------------------------------------------------------------
+
+const phasedDayPercent = {1: 1, 2: 2, 3: 5, 4: 10, 5: 20, 6: 50, 7: 100};
+
+String phasedReleaseLabel(Resource r) {
+  final state = r.str('phasedReleaseState') ?? '';
+  final day = r.integer('currentDayNumber') ?? 0;
+  final pct = phasedDayPercent[day] ?? 0;
+  return switch (state) {
+    'INACTIVE' => 'Phased release: not started',
+    'ACTIVE' => 'Day $day of 7 ($pct% of users)',
+    'PAUSED' => 'Paused on day $day ($pct%)',
+    'COMPLETE' => 'Released to all users',
+    _ => prettyState(state),
+  };
+}
+
+Map<String, dynamic> phasedReleaseCreateBody(String versionId) => {
+  'data': {
+    'type': 'appStoreVersionPhasedReleases',
+    'attributes': {'phasedReleaseState': 'INACTIVE'},
+    'relationships': {
+      'appStoreVersion': {
+        'data': {'type': 'appStoreVersions', 'id': versionId},
+      },
+    },
+  },
+};
+
+Map<String, dynamic> phasedReleaseUpdateBody(String id, String state) => {
+  'data': {'type': 'appStoreVersionPhasedReleases', 'id': id, 'attributes': {'phasedReleaseState': state}},
+};
+
+Future<Resource?> loadPhasedRelease(AscClient c, String versionId) async {
+  final p = await nullIfMissing(c.page('/v1/appStoreVersions/$versionId/appStoreVersionPhasedRelease'));
+  return p?.data.isEmpty ?? true ? null : p!.data.first;
+}
+
+Future<Resource> createPhasedRelease(AscClient c, String versionId) async =>
+    (await c.post('/v1/appStoreVersionPhasedReleases', phasedReleaseCreateBody(versionId))).data.first;
+
+Future<void> updatePhasedRelease(AscClient c, String id, String state) =>
+    c.patch('/v1/appStoreVersionPhasedReleases/$id', phasedReleaseUpdateBody(id, state));
+
+Future<void> deletePhasedRelease(AscClient c, String id) => c.delete('/v1/appStoreVersionPhasedReleases/$id');
+
 // ---- Loading and acting ---------------------------------------------------------------------------------------------
 
 Future<PreflightData> loadPreflight(AscClient c, String appId, Resource version, {required bool hasPriorVersion}) async {

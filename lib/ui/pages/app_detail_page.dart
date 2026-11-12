@@ -19,6 +19,7 @@ import 'apps_page.dart';
 import 'groups_tab.dart';
 import 'iap_dialogs.dart';
 import 'listing_tab.dart';
+import 'pricing_tab.dart';
 import 'reviews_tab.dart';
 import 'submit_tab.dart';
 import 'upload_tab.dart';
@@ -33,6 +34,7 @@ const _tabLabels = [
   'Builds',
   'Upload .IPA',
   'In-App Purchases',
+  'Pricing',
   'App Review Preflight',
 ];
 const _uploadTab = 4;
@@ -229,6 +231,7 @@ class _AppDetailPageState extends State<AppDetailPage> {
                       _BuildsTab(client: client, appId: id),
                       UploadTab(client: client, appId: id, bundleId: summary.bundleId, uploads: _uploads),
                       _PurchasesTab(client: client, appId: id, appName: summary.name),
+                      PricingTab(client: client, appId: id),
                       SubmitTab(client: client, appId: id, draft: _draft),
                     ],
                   ),

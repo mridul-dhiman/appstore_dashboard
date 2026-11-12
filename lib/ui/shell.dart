@@ -9,6 +9,7 @@ import '../state/app_state.dart';
 import '../state/reply_templates.dart';
 import '../state/upload_jobs.dart';
 import 'command_palette.dart';
+import 'pages/analytics_page.dart';
 import 'pages/app_detail_page.dart';
 import 'pages/apps_page.dart';
 import 'pages/sales_page.dart';
@@ -25,10 +26,11 @@ class _Dest {
   final IconData selectedIcon;
 }
 
-/// The four places in the sidebar. TestFlight, reviews and uploads live inside each app, not here.
+/// The five places in the sidebar. TestFlight, reviews and uploads live inside each app, not here.
 const _dests = [
   _Dest('Apps', Icons.apps_outlined, Icons.apps),
   _Dest('Sales & Trends', Icons.bar_chart_outlined, Icons.bar_chart),
+  _Dest('Analytics', Icons.analytics_outlined, Icons.analytics),
   _Dest('Signing', Icons.verified_user_outlined, Icons.verified_user),
   _Dest('Users and Access', Icons.group_outlined, Icons.group),
 ];
@@ -274,7 +276,8 @@ class _ShellState extends State<Shell> {
     return switch (_index) {
       0 => AppsPage(store: store, onOpen: _openApp, prefs: widget.state.prefs),
       1 => SalesPage(client: client, credentials: creds, state: widget.state),
-      2 => SigningPage(client: client),
+      2 => AnalyticsPage(client: client, store: store),
+      3 => SigningPage(client: client),
       _ => TeamPage(client: client),
     };
   }

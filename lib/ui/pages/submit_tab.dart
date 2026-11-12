@@ -92,6 +92,7 @@ class _BodyState extends State<_Body> {
     _version = widget.versions.isEmpty
         ? Resource(id: '', type: 'appStoreVersions', attributes: const {}, relationships: const {})
         : widget.versions.firstWhere((v) => isVersionEditable(_state(v)), orElse: () => widget.versions.first);
+    if (_version.id.isNotEmpty) unawaited(_loadPhased());
   }
 
   @override
@@ -194,6 +195,41 @@ class _BodyState extends State<_Body> {
     }
   }
 
+  // ---- Phased release ----
+
+  Resource? _phasedRelease;
+
+  Future<void> _loadPhased() async {
+    try {
+      _phasedRelease = await loadPhasedRelease(widget.client, _version.id);
+    } catch (_) {}
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _createPhased() async {
+    await _run(() async {
+      _phasedRelease = await createPhasedRelease(widget.client, _version.id);
+    });
+  }
+
+  Future<void> _updatePhased(String state) async {
+    final pr = _phasedRelease;
+    if (pr == null) return;
+    await _run(() async {
+      await updatePhasedRelease(widget.client, pr.id, state);
+      _phasedRelease = await loadPhasedRelease(widget.client, _version.id);
+    });
+  }
+
+  Future<void> _deletePhased() async {
+    final pr = _phasedRelease;
+    if (pr == null) return;
+    await _run(() async {
+      await deletePhasedRelease(widget.client, pr.id);
+      _phasedRelease = null;
+    });
+  }
+
   void _fix(CheckFix key, PreflightData d) {
     switch (key) {
       case CheckFix.version:
@@ -265,6 +301,79 @@ class _BodyState extends State<_Body> {
         _pre.reload();
       }
     }
+  }
+
+  Widget _phasedReleaseCard() {
+    final pr = _phasedRelease;
+    final state = pr?.str('phasedReleaseState') ?? '';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.timelapse, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Phased Release',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                ),
+                if (pr == null)
+                  OutlinedButton(onPressed: _busy ? null : _createPhased, child: const Text('Enable'))
+                else ...[
+                  StateChip(state, label: phasedReleaseLabel(pr)),
+                ],
+              ],
+            ),
+            if (pr == null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Roll out the update gradually over 7 days (1% → 2% → 5% → 10% → 20% → 50% → 100%).',
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
+                ),
+              ),
+            if (pr != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Wrap(
+                  spacing: 8,
+                  children: [
+                    if (state == 'INACTIVE' || state == 'PAUSED')
+                      FilledButton.tonalIcon(
+                        onPressed: _busy ? null : () => _updatePhased('ACTIVE'),
+                        icon: const Icon(Icons.play_arrow, size: 18),
+                        label: Text(state == 'PAUSED' ? 'Resume' : 'Start'),
+                      ),
+                    if (state == 'ACTIVE')
+                      OutlinedButton.icon(
+                        onPressed: _busy ? null : () => _updatePhased('PAUSE'),
+                        icon: const Icon(Icons.pause, size: 18),
+                        label: const Text('Pause'),
+                      ),
+                    if (state == 'ACTIVE' || state == 'PAUSED')
+                      OutlinedButton.icon(
+                        onPressed: _busy ? null : () => _updatePhased('COMPLETE'),
+                        icon: const Icon(Icons.check, size: 18),
+                        label: const Text('Release to all'),
+                      ),
+                    if (state == 'INACTIVE')
+                      OutlinedButton(
+                        onPressed: _busy ? null : _deletePhased,
+                        style: OutlinedButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+                        child: const Text('Remove'),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   List<Check> _draftChecks() => widget.draft.isEmpty
@@ -409,6 +518,8 @@ class _BodyState extends State<_Body> {
                       const SizedBox(height: 16),
                     ],
                     RowsCard(children: [for (final c in checks) _checkRow(c, d)]),
+                    const SizedBox(height: 16),
+                    _phasedReleaseCard(),
                     const SizedBox(height: 16),
                     Row(
                       children: [

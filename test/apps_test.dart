@@ -139,7 +139,7 @@ void main() {
     expect(fake.log, hasLength(2));
   });
 
-  test('the sidebar has exactly four destinations and no TestFlight', () {
-    expect(shellDestinationLabels, ['Apps', 'Sales & Trends', 'Signing', 'Users and Access']);
+  test('the sidebar has exactly five destinations and no TestFlight', () {
+    expect(shellDestinationLabels, ['Apps', 'Sales & Trends', 'Analytics', 'Signing', 'Users and Access']);
   });
 }
