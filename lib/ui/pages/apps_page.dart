@@ -45,7 +45,6 @@ class _AppsPageState extends State<AppsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final k = Tokens.of(context);
     return Column(
       children: [
         PageHeader(
@@ -53,23 +52,6 @@ class _AppsPageState extends State<AppsPage> {
           subtitle: 'Everything this key can see',
           reload: _reload,
           actions: [
-            Container(
-              height: 26,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              margin: const EdgeInsets.only(right: 10),
-              decoration: BoxDecoration(color: k.accentSoft, borderRadius: BorderRadius.circular(20)),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.bolt, size: 14, color: k.accentInk),
-                  const SizedBox(width: 4),
-                  Text(
-                    '1 API request',
-                    style: TextStyle(color: k.accentInk, fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
             SegmentedButton<bool>(
               showSelectedIcon: false,
               segments: const [
