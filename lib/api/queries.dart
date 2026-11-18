@@ -52,13 +52,85 @@ Future<ResourcePage> loadCertificates(AscClient c) => c.all('/v1/certificates', 
   'fields[certificates]': 'name,displayName,certificateType,expirationDate,serialNumber,platform',
 });
 Future<ResourcePage> loadBundleIds(AscClient c) => c.all('/v1/bundleIds', {'limit': '200', 'sort': 'name'});
-Future<ResourcePage> loadProfiles(AscClient c) =>
-    c.all('/v1/profiles', {'limit': '200', 'fields[profiles]': 'name,profileType,profileState,expirationDate,createdDate'});
+Future<ResourcePage> loadProfiles(AscClient c) => c.all('/v1/profiles', {'limit': '200'});
 Future<ResourcePage> loadDevices(AscClient c) => c.all('/v1/devices', {'limit': '200', 'sort': 'name'});
+
+const devicePlatforms = ['IOS', 'MAC_OS'];
+
+Future<Resource> registerDevice(AscClient c, {required String name, required String udid, required String platform}) async {
+  final page = await c.post('/v1/devices', {
+    'data': {
+      'type': 'devices',
+      'attributes': {'name': name, 'udid': udid, 'platform': platform},
+    },
+  });
+  return page.data.first;
+}
+
+// Profile regeneration: delete and recreate with all current devices.
+Future<ResourcePage> loadProfileDetail(AscClient c, String profileId) =>
+    c.page('/v1/profiles/$profileId', {'include': 'bundleId,certificates,devices'});
+
+/// A profile type Apple can create, and what it needs: which certificate types sign it, which bundle and device
+/// platform it is for, and whether it lists devices at all (store and Developer ID profiles do not).
+class ProfileKind {
+  const ProfileKind(this.type, this.label, this.platform, this.certTypes, {this.needsDevices = false});
+  final String type;
+  final String label;
+  final String platform;
+  final Set<String> certTypes;
+  final bool needsDevices;
+
+  bool fitsBundle(String? bundlePlatform) => bundlePlatform == platform || bundlePlatform == 'UNIVERSAL';
+}
+
+const profileKinds = [
+  ProfileKind('IOS_APP_DEVELOPMENT', 'iOS App Development', 'IOS', {'DEVELOPMENT', 'IOS_DEVELOPMENT'}, needsDevices: true),
+  ProfileKind('IOS_APP_ADHOC', 'iOS Ad Hoc', 'IOS', {'DISTRIBUTION', 'IOS_DISTRIBUTION'}, needsDevices: true),
+  ProfileKind('IOS_APP_STORE', 'iOS App Store', 'IOS', {'DISTRIBUTION', 'IOS_DISTRIBUTION'}),
+  ProfileKind('MAC_APP_DEVELOPMENT', 'macOS App Development', 'MAC_OS', {'DEVELOPMENT', 'MAC_APP_DEVELOPMENT'}, needsDevices: true),
+  ProfileKind('MAC_APP_STORE', 'Mac App Store', 'MAC_OS', {'DISTRIBUTION', 'MAC_APP_DISTRIBUTION'}),
+  ProfileKind('MAC_APP_DIRECT', 'Developer ID', 'MAC_OS', {'DEVELOPER_ID_APPLICATION', 'DEVELOPER_ID_APPLICATION_G2'}),
+];
+
+Future<void> deleteProfile(AscClient c, String profileId) => c.delete('/v1/profiles/$profileId');
+
+Future<Resource> createProfile(
+  AscClient c, {
+  required String name,
+  required String profileType,
+  required String bundleIdResourceId,
+  required List<String> certificateIds,
+  required List<String> deviceIds,
+}) async {
+  final page = await c.post('/v1/profiles', {
+    'data': {
+      'type': 'profiles',
+      'attributes': {'name': name, 'profileType': profileType},
+      'relationships': {
+        'bundleId': {
+          'data': {'type': 'bundleIds', 'id': bundleIdResourceId},
+        },
+        'certificates': {
+          'data': [
+            for (final id in certificateIds) {'type': 'certificates', 'id': id},
+          ],
+        },
+        if (deviceIds.isNotEmpty)
+          'devices': {
+            'data': [
+              for (final id in deviceIds) {'type': 'devices', 'id': id},
+            ],
+          },
+      },
+    },
+  });
+  return page.data.first;
+}
 
 // Bundle ID capabilities.
 Future<ResourcePage> loadBundleIdCapabilities(AscClient c, String bundleIdResourceId) =>
-    c.all('/v1/bundleIds/$bundleIdResourceId/bundleIdCapabilities', {'limit': '200'});
+    c.all('/v1/bundleIds/$bundleIdResourceId/bundleIdCapabilities');
 
 const capabilityLabels = {
   'ICLOUD': 'iCloud',
