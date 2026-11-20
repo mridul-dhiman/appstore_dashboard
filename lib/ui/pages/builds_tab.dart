@@ -155,9 +155,74 @@ class _BuildsTabState extends State<_BuildsTab> {
           ],
         ),
         const SizedBox(height: 6),
-        RowsCard(children: [for (final u in pending) _uploadRow(u), for (final b in p.data) _buildRow(context, p, b)]),
+        for (final (i, g) in _groups(p, pending).indexed) _versionGroup(p, g, expandedByDefault: i == 0),
         TruncatedNote(p, 'builds, newest first'),
       ],
+    );
+  }
+
+  /// Builds and in-flight uploads under their app version, newest version first (builds already arrive newest first).
+  List<({String version, List<BuildUpload> uploads, List<Resource> builds})> _groups(ResourcePage p, List<BuildUpload> pending) {
+    final order = <String>[];
+    final uploads = <String, List<BuildUpload>>{};
+    final builds = <String, List<Resource>>{};
+    for (final u in pending) {
+      if (!uploads.containsKey(u.shortVersion) && !builds.containsKey(u.shortVersion)) order.add(u.shortVersion);
+      (uploads[u.shortVersion] ??= []).add(u);
+    }
+    for (final b in p.data) {
+      final v = p.inc('preReleaseVersions', b.relId('preReleaseVersion'))?.str('version') ?? '—';
+      if (!uploads.containsKey(v) && !builds.containsKey(v)) order.add(v);
+      (builds[v] ??= []).add(b);
+    }
+    return [for (final v in order) (version: v, uploads: uploads[v] ?? const [], builds: builds[v] ?? const [])];
+  }
+
+  final _toggled = <String>{};
+
+  Widget _versionGroup(
+    ResourcePage p,
+    ({String version, List<BuildUpload> uploads, List<Resource> builds}) g, {
+    required bool expandedByDefault,
+  }) {
+    final k = Tokens.of(context);
+    final live = g.builds.any((b) => (_data?.live.contains(b.id) ?? false) && b.flag('expired') != true);
+    final open = (expandedByDefault || live) != _toggled.contains(g.version);
+    final count = g.uploads.length + g.builds.length;
+    final allExpired = g.uploads.isEmpty && g.builds.every((b) => b.flag('expired') == true);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () => setState(() => _toggled.contains(g.version) ? _toggled.remove(g.version) : _toggled.add(g.version)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(open ? Icons.expand_more : Icons.chevron_right, size: 20, color: k.muted),
+                  const SizedBox(width: 6),
+                  Text('Version ${g.version}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                  const SizedBox(width: 10),
+                  Text(
+                    '$count build${count == 1 ? '' : 's'}${allExpired ? ' · all expired' : ''}',
+                    style: TextStyle(color: k.muted, fontSize: 12.5),
+                  ),
+                  if (g.uploads.any((u) => u.processing)) ...[
+                    const SizedBox(width: 10),
+                    const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.8)),
+                  ],
+                  const Spacer(),
+                  if (live && !open) const StateChip('READY_FOR_SALE', label: 'Live on App Store'),
+                ],
+              ),
+            ),
+          ),
+          if (open) RowsCard(children: [for (final u in g.uploads) _uploadRow(u), for (final b in g.builds) _buildRow(context, p, b)]),
+        ],
+      ),
     );
   }
 
@@ -180,7 +245,7 @@ class _BuildsTabState extends State<_BuildsTab> {
                 child: Padding(padding: EdgeInsets.all(3), child: CircularProgressIndicator(strokeWidth: 2.2)),
               )
             : Icon(u.failed ? Icons.error_outline : Icons.hourglass_empty, color: u.failed ? Theme.of(context).colorScheme.error : null),
-        title: Text(u.label, style: const TextStyle(fontWeight: FontWeight.w600)),
+        title: Text('Build ${u.buildNumber}', style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
           lines.join('\n'),
           maxLines: 4,
@@ -209,7 +274,7 @@ class _BuildsTabState extends State<_BuildsTab> {
     final label = '${p.inc('preReleaseVersions', b.relId('preReleaseVersion'))?.str('version') ?? '—'} (${b.str('version')})';
     return ListTile(
       leading: const Icon(Icons.inventory_2_outlined),
-      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Text('Build ${b.str('version') ?? '—'}', style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(
         'Uploaded ${fmtDateTime(b.date('uploadedDate'))} · ${expired ? 'expired' : 'expires ${fmtDate(b.date('expirationDate'))}'} · iOS ${b.str('minOsVersion') ?? '—'}+'
         '${!expired && (internal.isNotEmpty || external.isNotEmpty) ? '\nTestFlight: ${[if (internal.isNotEmpty) 'internal $internal', if (external.isNotEmpty) 'external $external'].join(' · ')}' : ''}',

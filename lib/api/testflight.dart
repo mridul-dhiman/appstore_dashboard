@@ -264,6 +264,9 @@ Future<Set<String>> loadLiveBuildIds(AscClient c, String appId) async {
   final p = await c.page('/v1/apps/$appId/appStoreVersions', {
     'filter[appStoreState]': 'READY_FOR_SALE',
     'fields[appStoreVersions]': 'build,platform',
+    // Without the include Apple leaves the build relationship's data out, and no build is ever marked live.
+    'include': 'build',
+    'fields[builds]': 'version',
     'limit': '20',
   });
   final seen = <String>{};

@@ -224,9 +224,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.text('2.0.0 (2)'), findsOneWidget);
+    expect(find.text('Version 2.0.0'), findsOneWidget, reason: 'the upload and the build share one version group');
+    expect(find.text('2 builds'), findsOneWidget);
+    expect(find.text('Build 2'), findsOneWidget);
     expect(find.text('Processing'), findsOneWidget);
-    expect(find.text('2.0.0 (1)'), findsOneWidget, reason: 'the finished build is still listed, and not shown twice');
+    expect(find.text('Build 1'), findsOneWidget, reason: 'the finished build is still listed, and not shown twice');
     expect(find.textContaining('refreshes by itself'), findsOneWidget);
     expect(find.textContaining('TestFlight: internal In testing · external Ready for beta review'), findsOneWidget);
 
@@ -378,16 +380,29 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.text('Live on App Store'), findsOneWidget, reason: 'only the newest release is live, not every READY_FOR_SALE one');
+    expect(
+      fake.log.where((r) => r.path.contains('READY_FOR_SALE')).single.path,
+      contains('include=build'),
+      reason: 'without it Apple sends no build linkage (seen on the real account)',
+    );
 
     done = true;
     await tester.pump(const Duration(seconds: 21)); // the processing poll
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.textContaining('2.0.0 (2) finished processing'), findsOneWidget);
 
+    expect(find.text('Version 1.8.0'), findsOneWidget);
+    expect(find.text('Build 9'), findsNothing, reason: 'older versions start collapsed; the newest and the live one are open');
+
     await tester.tap(find.widgetWithText(OutlinedButton, 'Expire').at(1)); // the live 1.9.0 (1)
     await tester.pumpAndSettle();
     expect(find.textContaining('live on the App Store now'), findsOneWidget);
     await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Version 1.8.0'));
+    await tester.pump();
+    expect(find.text('Build 9'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 }
