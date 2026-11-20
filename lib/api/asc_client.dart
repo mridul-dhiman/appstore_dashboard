@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:http/http.dart' as http;
 
 import 'models.dart';
@@ -187,7 +188,12 @@ class AscClient {
         req.headers['Content-Type'] = 'application/json';
         req.body = jsonEncode(body);
       }
-      return await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 60)));
+      final r = await http.Response.fromStream(await _http.send(req).timeout(const Duration(seconds: 60)));
+      if (kDebugMode && !_injected) {
+        debugPrint('[asc] $method ${uri.path}${uri.hasQuery ? '?${uri.query}' : ''} -> ${r.statusCode}');
+        if (r.statusCode >= 300) debugPrint('[asc]   response ${utf8.decode(r.bodyBytes)}');
+      }
+      return r;
     } on AscException {
       rethrow;
     } on FormatException catch (_) {

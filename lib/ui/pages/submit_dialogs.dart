@@ -92,13 +92,14 @@ class _NewVersionDialogState extends State<_NewVersionDialog> {
 }
 
 class _BuildPickerDialog extends StatelessWidget {
-  const _BuildPickerDialog({required this.loadBuilds});
+  const _BuildPickerDialog({required this.loadBuilds, this.currentId});
   final Future<List<Resource>> Function() loadBuilds;
+  final String? currentId;
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Choose a build'),
+      title: Text(currentId == null ? 'Choose a build' : 'Change the build'),
       content: SizedBox(
         width: 460,
         height: 360,
@@ -112,7 +113,8 @@ class _BuildPickerDialog extends StatelessWidget {
                       ListTile(
                         title: Text('Build ${b.str('version')}'),
                         subtitle: Text('Uploaded ${fmtDateTime(b.date('uploadedDate'))} · expires ${fmtDate(b.date('expirationDate'))}'),
-                        onTap: () => Navigator.pop(context, b.id),
+                        trailing: b.id == currentId ? const StateChip('READY_FOR_SALE', label: 'Current') : null,
+                        onTap: b.id == currentId ? null : () => Navigator.pop(context, b.id),
                       ),
                   ],
                 ),
@@ -292,10 +294,11 @@ class _ReleaseDialogState extends State<_ReleaseDialog> {
 
 /// The last gate. The version number has to be typed, so submitting is never an accident.
 class _ConfirmSubmitDialog extends StatefulWidget {
-  const _ConfirmSubmitDialog({required this.versionString, required this.buildNumber, required this.release});
+  const _ConfirmSubmitDialog({required this.versionString, required this.buildNumber, required this.release, this.resubmit = false});
   final String versionString;
   final String buildNumber;
   final String release;
+  final bool resubmit;
 
   @override
   State<_ConfirmSubmitDialog> createState() => _ConfirmSubmitDialogState();
@@ -314,7 +317,7 @@ class _ConfirmSubmitDialogState extends State<_ConfirmSubmitDialog> {
   Widget build(BuildContext context) {
     final match = _typed.text.trim() == widget.versionString;
     return AlertDialog(
-      title: Text('Submit ${widget.versionString} to App Review?'),
+      title: Text('${widget.resubmit ? 'Resubmit' : 'Submit'} ${widget.versionString} to App Review?'),
       content: SizedBox(
         width: 440,
         child: Column(
@@ -323,6 +326,10 @@ class _ConfirmSubmitDialogState extends State<_ConfirmSubmitDialog> {
           children: [
             Text('Build ${widget.buildNumber} · ${widget.release}'),
             const SizedBox(height: 10),
+            if (widget.resubmit) ...[
+              const Text('The rejected items are marked as resolved and the same submission goes back to App Review.'),
+              const SizedBox(height: 6),
+            ],
             const Text('Apple starts reviewing straight away. You can cancel while it is still waiting, but not once review has begun.'),
             const SizedBox(height: 16),
             TextField(
@@ -336,7 +343,96 @@ class _ConfirmSubmitDialogState extends State<_ConfirmSubmitDialog> {
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Not yet')),
-        FilledButton(onPressed: match ? () => Navigator.pop(context, true) : null, child: const Text('Submit for review')),
+        FilledButton(
+          onPressed: match ? () => Navigator.pop(context, true) : null,
+          child: Text(widget.resubmit ? 'Resubmit for review' : 'Submit for review'),
+        ),
+      ],
+    );
+  }
+}
+
+/// A reply to App Review, added to the version's App Review notes. Pops (text, resubmit).
+class _ReplyDialog extends StatefulWidget {
+  const _ReplyDialog({required this.existingNotes, required this.canResubmit});
+  final String? existingNotes;
+  final bool canResubmit;
+
+  @override
+  State<_ReplyDialog> createState() => _ReplyDialogState();
+}
+
+class _ReplyDialogState extends State<_ReplyDialog> {
+  final _text = TextEditingController();
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    final total = notesWithReply(widget.existingNotes, _text.text, DateTime.now()).length;
+    final over = total > reviewNotesMax;
+    final ok = _text.text.trim().isNotEmpty && !over;
+    final existing = widget.existingNotes?.trim() ?? '';
+    return AlertDialog(
+      title: const Text('Reply to App Review'),
+      content: SizedBox(
+        width: 560,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Apple\'s API cannot post to the Resolution Center, so the reply is added to this version\'s App Review notes, '
+                'which the reviewer reads with the resubmission. To answer inside the Resolution Center thread, use App Store Connect.',
+                style: t.textTheme.bodySmall?.copyWith(color: t.colorScheme.onSurfaceVariant),
+              ),
+              if (existing.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Text('Current notes', style: t.textTheme.labelMedium),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.infinity,
+                  constraints: const BoxConstraints(maxHeight: 140),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: t.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(8)),
+                  child: SingleChildScrollView(child: SelectableText(existing, style: t.textTheme.bodySmall)),
+                ),
+              ],
+              const SizedBox(height: 14),
+              TextField(
+                controller: _text,
+                autofocus: true,
+                minLines: 5,
+                maxLines: 12,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: 'Your reply',
+                  alignLabelWithHint: true,
+                  helperText: 'Notes total: $total / $reviewNotesMax characters',
+                  errorText: over ? 'Apple allows $reviewNotesMax characters in the notes. Shorten the reply.' : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        OutlinedButton(
+          onPressed: ok ? () => Navigator.pop(context, (text: _text.text, resubmit: false)) : null,
+          child: const Text('Save reply'),
+        ),
+        if (widget.canResubmit)
+          FilledButton(
+            onPressed: ok ? () => Navigator.pop(context, (text: _text.text, resubmit: true)) : null,
+            child: const Text('Save and resubmit…'),
+          ),
       ],
     );
   }

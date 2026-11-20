@@ -120,6 +120,27 @@ Map<String, dynamic> submitBody(String submissionId) => {
   },
 };
 
+/// Marks a rejected item as dealt with; Apple will not take `submitted: true` on an unresolved submission until it is.
+Map<String, dynamic> resolveItemBody(String itemId) => {
+  'data': {
+    'type': 'reviewSubmissionItems',
+    'id': itemId,
+    'attributes': {'resolved': true},
+  },
+};
+
+/// App Review notes are capped at 4000 characters by Apple.
+const reviewNotesMax = 4000;
+
+/// The App Review notes with [reply] added under a dated heading, below whatever was there before.
+String notesWithReply(String? existing, String reply, DateTime at) {
+  final d = at.toLocal();
+  final stamp = '${d.year}-${'${d.month}'.padLeft(2, '0')}-${'${d.day}'.padLeft(2, '0')}';
+  final block = 'Reply to App Review ($stamp):\n${reply.trim()}';
+  final before = existing?.trim() ?? '';
+  return before.isEmpty ? block : '$before\n\n$block';
+}
+
 Map<String, dynamic> cancelSubmissionBody(String submissionId) => {
   'data': {
     'type': 'reviewSubmissions',
@@ -133,7 +154,7 @@ Map<String, dynamic> cancelSubmissionBody(String submissionId) => {
 enum CheckLevel { pass, warn, fail }
 
 /// Which action on the Submit tab can repair a failed check.
-enum CheckFix { build, compliance, review, release, listing, version }
+enum CheckFix { build, compliance, review, release, listing, version, reply }
 
 class Check {
   const Check(this.level, this.title, [this.detail, this.fix]);
@@ -146,9 +167,17 @@ class Check {
 
 /// An in-flight (or draft) submission and the version ids it contains.
 class ActiveSubmission {
-  ActiveSubmission(this.resource, this.versionIds, {int? itemCount}) : itemCount = itemCount ?? versionIds.length;
+  ActiveSubmission(this.resource, this.versionIds, {int? itemCount, this.items = const []}) : itemCount = itemCount ?? versionIds.length;
   final Resource resource;
   final List<String> versionIds;
+  final List<Resource> items;
+
+  /// Rejected by App Review and waiting for a fix and a resubmission.
+  bool get isUnresolved => state == 'UNRESOLVED_ISSUES';
+  List<Resource> get rejectedItems => [
+    for (final i in items)
+      if (i.str('state') == 'REJECTED') i,
+  ];
 
   /// Every item in it: versions, but also in-app events, custom product pages and experiments.
   final int itemCount;
@@ -185,10 +214,31 @@ List<Check> evaluatePreflight(PreflightData d) {
   final state = d.version.str('appStoreState') ?? d.version.str('appVersionState');
   final label = '${d.version.str('versionString')}';
 
-  final inFlight = d.submissions.where((s) => !s.isDraft && s.versionIds.contains(d.version.id));
+  final inFlight = d.submissions.where((s) => !s.isDraft && !s.isUnresolved && s.versionIds.contains(d.version.id));
   if (inFlight.isNotEmpty) {
     out.add(
       Check(CheckLevel.fail, 'Already submitted', 'Version $label is in a review submission (${prettyState(inFlight.first.state)}).'),
+    );
+  }
+  final rejected = d.submissions.where((s) => s.isUnresolved && s.versionIds.contains(d.version.id));
+  if (rejected.isNotEmpty) {
+    out.add(
+      Check(
+        CheckLevel.warn,
+        'Rejected by App Review',
+        'Fix what App Review asked for (a new build, listing text, or a reply in the review notes), then resubmit the same submission.',
+        CheckFix.reply,
+      ),
+    );
+  }
+  final blocking = d.submissions.where((s) => s.isUnresolved && !s.versionIds.contains(d.version.id));
+  if (blocking.isNotEmpty && rejected.isEmpty) {
+    out.add(
+      const Check(
+        CheckLevel.fail,
+        'Another submission has unresolved issues',
+        'Apple accepts no new submission for this platform until the rejected one is resubmitted or removed in App Store Connect.',
+      ),
     );
   }
   if (isVersionEditable(state)) {
@@ -329,7 +379,11 @@ Map<String, dynamic> phasedReleaseCreateBody(String versionId) => {
 };
 
 Map<String, dynamic> phasedReleaseUpdateBody(String id, String state) => {
-  'data': {'type': 'appStoreVersionPhasedReleases', 'id': id, 'attributes': {'phasedReleaseState': state}},
+  'data': {
+    'type': 'appStoreVersionPhasedReleases',
+    'id': id,
+    'attributes': {'phasedReleaseState': state},
+  },
 };
 
 Future<Resource?> loadPhasedRelease(AscClient c, String versionId) async {
@@ -387,22 +441,30 @@ Future<List<ActiveSubmission>> listActiveSubmissions(AscClient c, String appId, 
     subs.data.map((s) async {
       // Not swallowed: an unreadable draft must not look empty, or submitting it could send items nobody saw.
       final items = await c.page('/v1/reviewSubmissions/${s.id}/items', {'include': 'appStoreVersion', 'limit': '50'});
-      return ActiveSubmission(s, [
-        for (final i in items.data)
-          if (i.relId('appStoreVersion') != null) i.relId('appStoreVersion')!,
-      ], itemCount: items.data.length);
+      return ActiveSubmission(
+        s,
+        [
+          for (final i in items.data)
+            if (i.relId('appStoreVersion') != null) i.relId('appStoreVersion')!,
+        ],
+        itemCount: items.data.length,
+        items: items.data,
+      );
     }),
   );
 }
 
 class SubmitOutcome {
-  SubmitOutcome(this.submissionId, this.state);
+  SubmitOutcome(this.submissionId, this.state, {this.resubmitted = false});
   final String submissionId;
   final String? state;
+
+  /// A rejected submission was sent back, rather than a new one created.
+  final bool resubmitted;
 }
 
 class SubmissionFlow {
-  SubmissionFlow(this.client, this.appId);
+  SubmissionFlow(this.client, this.appId, {this.settleDelay = const Duration(milliseconds: 1500)});
   final AscClient client;
   final String appId;
 
@@ -442,8 +504,23 @@ class SubmissionFlow {
   /// Reuses the app's draft submission if there is one, makes sure it contains [versionId], then submits it.
   /// Apple allows one draft per platform and submits it whole, so a draft that already holds anything else (another
   /// version, an in-app event, a product page) is refused rather than sending those to review unasked.
+  ///
+  /// A version App Review rejected is resubmitted in its own (unresolved) submission: Apple accepts no new submission
+  /// on the platform while one has unresolved issues.
   Future<SubmitOutcome> submit(String versionId, {String platform = 'IOS'}) async {
-    final drafts = await listActiveSubmissions(client, appId, platform: platform, states: 'READY_FOR_REVIEW');
+    final open = await listActiveSubmissions(client, appId, platform: platform, states: 'READY_FOR_REVIEW,UNRESOLVED_ISSUES');
+    final unresolved = open.where((s) => s.isUnresolved).toList();
+    if (unresolved.isNotEmpty) {
+      final mine = unresolved.where((s) => s.versionIds.contains(versionId)).firstOrNull;
+      if (mine == null) {
+        throw AscException(
+          'Another review submission for this app has unresolved issues from App Review. Apple accepts no new submission '
+          'until that one is resubmitted or its items are removed in App Store Connect.',
+        );
+      }
+      return _resubmit(mine);
+    }
+    final drafts = open.where((s) => s.isDraft).toList();
     final String id;
     final List<String> contained;
     if (drafts.isNotEmpty) {
@@ -463,8 +540,46 @@ class SubmissionFlow {
     }
     if (!contained.contains(versionId)) await client.post('/v1/reviewSubmissionItems', submissionItemBody(id, versionId));
     await client.patch('/v1/reviewSubmissions/$id', submitBody(id));
-    final state = (await client.page('/v1/reviewSubmissions/$id')).data.first.attributes['state'] as String?;
-    return SubmitOutcome(id, state);
+    return SubmitOutcome(id, await _settledState(id));
+  }
+
+  /// Pause between reads while Apple catches up after a submit.
+  final Duration settleDelay;
+
+  /// The submission's state once Apple has caught up: right after `submitted: true` it can still read back as the draft
+  /// or rejected state for a few seconds. Null if it has not moved by the last try, so nothing stale is reported.
+  Future<String?> _settledState(String id) async {
+    for (var i = 0; i < 6; i++) {
+      if (i > 0) await Future<void>.delayed(settleDelay);
+      final state = (await client.page('/v1/reviewSubmissions/$id')).data.first.attributes['state'] as String?;
+      if (state != 'READY_FOR_REVIEW' && state != 'UNRESOLVED_ISSUES') return state;
+    }
+    return null;
+  }
+
+  Future<SubmitOutcome> _resubmit(ActiveSubmission s) async {
+    final id = s.resource.id;
+    for (final item in s.rejectedItems) {
+      await client.patch('/v1/reviewSubmissionItems/${item.id}', resolveItemBody(item.id));
+    }
+    await client.patch('/v1/reviewSubmissions/$id', submitBody(id));
+    return SubmitOutcome(id, await _settledState(id), resubmitted: true);
+  }
+
+  /// Adds [reply] to the version's App Review notes, the one place an API key can leave App Review a message.
+  Future<void> replyInNotes(String versionId, Resource? reviewDetail, String reply) async {
+    final notes = notesWithReply(reviewDetail?.str('notes'), reply, DateTime.now());
+    if (notes.length > reviewNotesMax) {
+      throw AscException(
+        'The notes would be ${notes.length} characters; Apple allows $reviewNotesMax. Shorten the reply or the existing notes.',
+      );
+    }
+    await saveReviewDetail(
+      versionId,
+      existingId: reviewDetail?.id,
+      fields: {'notes': notes},
+      demoAccountRequired: reviewDetail?.flag('demoAccountRequired') ?? false,
+    );
   }
 
   Future<void> cancel(String submissionId) => client.patch('/v1/reviewSubmissions/$submissionId', cancelSubmissionBody(submissionId));

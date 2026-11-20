@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../api/asc_client.dart';
 import '../../api/listing.dart';
@@ -95,6 +96,14 @@ class _BodyState extends State<_Body> {
     if (_version.id.isNotEmpty) unawaited(_loadPhased());
   }
 
+  /// The version list reloads after a change (submit, release type); show the selected version's new state.
+  @override
+  void didUpdateWidget(_Body old) {
+    super.didUpdateWidget(old);
+    final fresh = widget.versions.where((v) => v.id == _version.id).firstOrNull;
+    if (fresh != null && !identical(fresh, _version)) _version = fresh;
+  }
+
   @override
   void dispose() {
     _pre.dispose();
@@ -145,13 +154,31 @@ class _BodyState extends State<_Body> {
     if (ok) widget.onVersionsChanged();
   }
 
-  Future<void> _pickBuild() async {
+  Future<void> _pickBuild({String? currentId}) async {
     final id = await showDialog<String>(
       context: context,
-      builder: (_) => _BuildPickerDialog(loadBuilds: _validBuilds),
+      builder: (_) => _BuildPickerDialog(loadBuilds: _validBuilds, currentId: currentId),
     );
     if (id != null) await _run(() => _flow.attachBuild(_version.id, id));
   }
+
+  /// The version's rejected submission, if App Review sent it back.
+  ActiveSubmission? _rejection(PreflightData d) =>
+      d.submissions.where((s) => s.isUnresolved && s.versionIds.contains(_version.id)).firstOrNull;
+
+  Future<void> _reply(PreflightData d) async {
+    final r = await showDialog<({String text, bool resubmit})>(
+      context: context,
+      builder: (_) => _ReplyDialog(existingNotes: d.reviewDetail?.str('notes'), canResubmit: _rejection(d) != null),
+    );
+    if (r == null) return;
+    final ok = await _run(() => _flow.replyInNotes(_version.id, d.reviewDetail, r.text));
+    if (!ok || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Reply added to the App Review notes.')));
+    if (r.resubmit) await _submit();
+  }
+
+  Uri get _ascVersionPage => Uri.parse('https://appstoreconnect.apple.com/apps/${widget.appId}/distribution');
 
   Future<void> _compliance(Resource build) async {
     final uses = await showDialog<bool>(
@@ -235,7 +262,9 @@ class _BodyState extends State<_Body> {
       case CheckFix.version:
         unawaited(_newVersion());
       case CheckFix.build:
-        unawaited(_pickBuild());
+        unawaited(_pickBuild(currentId: d.build?.id));
+      case CheckFix.reply:
+        unawaited(_reply(d));
       case CheckFix.compliance:
         if (d.build != null) unawaited(_compliance(d.build!));
       case CheckFix.review:
@@ -270,12 +299,14 @@ class _BodyState extends State<_Body> {
     }
     final versionString = _version.str('versionString') ?? '';
     final build = fresh.build;
+    final resubmit = _rejection(fresh) != null;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => _ConfirmSubmitDialog(
         versionString: versionString,
         buildNumber: build?.str('version') ?? '?',
         release: releaseTypes[_version.str('releaseType')] ?? 'Not set',
+        resubmit: resubmit,
       ),
     );
     if (confirmed != true) return;
@@ -287,8 +318,12 @@ class _BodyState extends State<_Body> {
         context: context,
         builder: (ctx) => AlertDialog(
           icon: const Icon(Icons.check_circle, color: Color(0xFF1F8F45), size: 36),
-          title: const Text('Submitted for review'),
-          content: Text('Version $versionString is now ${prettyState(out.state)}. You can cancel it from this tab while it is waiting.'),
+          title: Text(out.resubmitted ? 'Resubmitted for review' : 'Submitted for review'),
+          content: Text(
+            out.state == null
+                ? 'Apple accepted version $versionString. Its status in App Store Connect can take a minute to update; refresh this tab to see it.'
+                : 'Version $versionString is now ${prettyState(out.state)}. You can cancel it from this tab while it is waiting.',
+          ),
           actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
         ),
       );
@@ -317,10 +352,7 @@ class _BodyState extends State<_Body> {
                 const Icon(Icons.timelapse, size: 20),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    'Phased Release',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
+                  child: Text('Phased Release', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                 ),
                 if (pr == null)
                   OutlinedButton(onPressed: _busy ? null : _createPhased, child: const Text('Enable'))
@@ -405,6 +437,120 @@ class _BodyState extends State<_Body> {
     }
   }
 
+  /// The build attached to the version, and changing it, as on the version page in App Store Connect.
+  Widget _buildCard(PreflightData d) {
+    final t = Theme.of(context);
+    final b = d.build;
+    final inQueue = d.submissions.any(
+      (s) => s.versionIds.contains(_version.id) && const {'WAITING_FOR_REVIEW', 'IN_REVIEW'}.contains(s.state),
+    );
+    final canChange = isVersionEditable(_state(_version)) && !inQueue;
+    final hint = inQueue
+        ? 'The version is with App Review. Cancel the submission to change its build.'
+        : !isVersionEditable(_state(_version))
+        ? 'This version is ${prettyState(_state(_version))}; its build can no longer change. Create a new version.'
+        : null;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.inventory_2_outlined, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        b == null ? 'No build attached' : 'Build ${b.str('version')}',
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      ),
+                      if (b != null)
+                        Text(
+                          'Uploaded ${fmtDateTime(b.date('uploadedDate'))} · '
+                          '${b.flag('expired') == true ? 'expired' : 'expires ${fmtDate(b.date('expirationDate'))}'}',
+                          style: TextStyle(color: t.colorScheme.onSurfaceVariant, fontSize: 13),
+                        ),
+                    ],
+                  ),
+                ),
+                if (b != null) ...[StateChip(b.flag('expired') == true ? 'EXPIRED' : b.str('processingState')), const SizedBox(width: 10)],
+                OutlinedButton.icon(
+                  onPressed: _busy || !canChange ? null : () => _pickBuild(currentId: b?.id),
+                  icon: Icon(b == null ? Icons.add : Icons.swap_horiz, size: 18),
+                  label: Text(b == null ? 'Add build' : 'Change build'),
+                ),
+              ],
+            ),
+            if (hint != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(hint, style: TextStyle(color: t.colorScheme.onSurfaceVariant, fontSize: 12.5)),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _rejectedCard(PreflightData d, ActiveSubmission s) {
+    final t = Theme.of(context);
+    final rejected = s.rejectedItems.length;
+    return Card(
+      color: t.colorScheme.errorContainer.withValues(alpha: 0.35),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.report_outlined, color: t.colorScheme.error),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text('Rejected by App Review', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                ),
+                StateChip(s.state),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${rejected == 0 ? 'The submission' : '$rejected item${rejected == 1 ? '' : 's'}'} came back with unresolved issues. '
+              'Read App Review\'s message in the Resolution Center (Apple\'s API does not expose it), fix what they asked for, '
+              'for example by changing the build above, then reply and resubmit.',
+              style: TextStyle(color: t.colorScheme.onSurfaceVariant, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => launchUrl(_ascVersionPage, mode: LaunchMode.externalApplication),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: const Text('Open in App Store Connect'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _reply(d),
+                  icon: const Icon(Icons.reply, size: 18),
+                  label: const Text('Reply in review notes…'),
+                ),
+                FilledButton.icon(
+                  onPressed: _busy ? null : _submit,
+                  icon: const Icon(Icons.send_outlined, size: 18),
+                  label: const Text('Resubmit for review'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _checkRow(Check c, PreflightData d) {
     final t = Theme.of(context);
     final (icon, color) = switch (c.level) {
@@ -419,6 +565,7 @@ class _BodyState extends State<_Body> {
       CheckFix.review => 'Edit…',
       CheckFix.release => 'Choose…',
       CheckFix.listing => 'Open Listing',
+      CheckFix.reply => 'Reply…',
       null => null,
     };
     return ListTile(
@@ -488,12 +635,12 @@ class _BodyState extends State<_Body> {
                 final checks = [...evaluatePreflight(d), ..._draftChecks()];
                 final ready = canSubmit(checks);
                 final blocked = checks.where((c) => c.level == CheckLevel.fail).length;
-                final cancelable = d.submissions
-                    .where((s) => const {'WAITING_FOR_REVIEW', 'IN_REVIEW', 'UNRESOLVED_ISSUES'}.contains(s.state))
-                    .toList();
+                final cancelable = d.submissions.where((s) => const {'WAITING_FOR_REVIEW', 'IN_REVIEW'}.contains(s.state)).toList();
+                final rejection = _rejection(d);
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (rejection != null) ...[_rejectedCard(d, rejection), const SizedBox(height: 16)],
                     if (cancelable.isNotEmpty) ...[
                       Card(
                         child: Column(
@@ -517,6 +664,8 @@ class _BodyState extends State<_Body> {
                       ),
                       const SizedBox(height: 16),
                     ],
+                    _buildCard(d),
+                    const SizedBox(height: 16),
                     RowsCard(children: [for (final c in checks) _checkRow(c, d)]),
                     const SizedBox(height: 16),
                     _phasedReleaseCard(),
@@ -528,7 +677,7 @@ class _BodyState extends State<_Body> {
                           icon: _busy
                               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                               : const Icon(Icons.send_outlined),
-                          label: Text('Submit ${_version.str('versionString')} for review'),
+                          label: Text('${rejection != null ? 'Resubmit' : 'Submit'} ${_version.str('versionString')} for review'),
                         ),
                         const SizedBox(width: 14),
                         Flexible(
