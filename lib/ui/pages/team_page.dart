@@ -106,10 +106,15 @@ class _TeamPageState extends State<TeamPage> {
     ];
   }
 
+  /// Team list filters: a role (null = everyone) and a name/email search.
+  String? _role;
+  final _search = TextEditingController();
+
   @override
   void dispose() {
     _catchUpTimer?.cancel();
     _reload.dispose();
+    _search.dispose();
     super.dispose();
   }
 
@@ -207,6 +212,7 @@ class _TeamPageState extends State<TeamPage> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(color: muted, fontSize: 13),
                 ),
+                if (invited && u.date('expirationDate') != null) _expiresIn(u.date('expirationDate')!),
               ],
             ),
           ),
@@ -221,7 +227,10 @@ class _TeamPageState extends State<TeamPage> {
               spacing: 6,
               runSpacing: 4,
               alignment: WrapAlignment.end,
-              children: [for (final r in roles) StateChip(null, label: prettyEnum(r))],
+              children: [
+                for (final r in roles)
+                  r == 'ACCOUNT_HOLDER' ? const StateChip('PENDING', label: 'Account holder') : StateChip(null, label: prettyEnum(r)),
+              ],
             ),
           ),
           const SizedBox(width: 16),
@@ -244,6 +253,127 @@ class _TeamPageState extends State<TeamPage> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// "expires in 3 days", amber when two days or fewer are left.
+  Widget _expiresIn(DateTime d) {
+    final k = Tokens.of(context);
+    final days = d.difference(DateTime.now()).inDays;
+    final text = days == 0 ? 'expires today' : 'expires in $days day${days == 1 ? '' : 's'}';
+    final expired = d.isBefore(DateTime.now());
+    return Text(
+      expired ? 'expired, revoke and invite again' : text,
+      style: TextStyle(
+        color: expired ? k.bad : (days <= 2 ? k.warn : k.muted),
+        fontSize: 12,
+        fontWeight: days <= 2 ? FontWeight.w600 : null,
+      ),
+    );
+  }
+
+  Widget _summary(List<Resource> users, List<Resource> invites) {
+    final k = Tokens.of(context);
+    final admins = users.where((u) => u.list('roles').contains('ADMIN')).length;
+    final now = DateTime.now();
+    // Only invites still open: an expired one cannot be accepted and is shown red on its row.
+    final expiries = [
+      for (final i in invites)
+        if (i.date('expirationDate') case final d? when d.isAfter(now)) d,
+    ]..sort();
+    final soonest = expiries.isEmpty ? null : expiries.first.difference(now).inDays;
+    final tiles = [
+      Stat(label: 'Team members', value: '${users.length}'),
+      Stat(label: 'Admins', value: '$admins'),
+      Stat(label: 'Pending invites', value: '${invites.length}', tone: invites.isEmpty ? null : k.warn),
+      if (soonest != null)
+        Stat(label: 'Next invite expires', value: soonest <= 0 ? 'Today' : 'In $soonest d', tone: soonest <= 2 ? k.warn : null),
+    ];
+    return LayoutBuilder(
+      builder: (context, c) {
+        final cols = c.maxWidth > 760 ? tiles.length : 2;
+        final w = (c.maxWidth - 12 * (cols - 1)) / cols;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [for (final t in tiles) SizedBox(width: w, child: t)],
+        );
+      },
+    );
+  }
+
+  /// The team in a card with its own header: a count, a role filter and a search, as in the design.
+  Widget _team(List<Resource> users) {
+    final k = Tokens.of(context);
+    final roles = <String, int>{};
+    for (final u in users) {
+      for (final r in u.list('roles')) {
+        roles[r] = (roles[r] ?? 0) + 1;
+      }
+    }
+    final order = roles.keys.toList()..sort((a, b) => roles[b]!.compareTo(roles[a]!));
+    final q = _search.text.trim().toLowerCase();
+    final shown = [
+      for (final u in users)
+        if ((_role == null || u.list('roles').contains(_role)) &&
+            (q.isEmpty || _display(u).toLowerCase().contains(q) || (u.str('username') ?? '').toLowerCase().contains(q)))
+          u,
+    ];
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  'Team',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: k.ink),
+                ),
+                StateChip(null, label: '${users.length} people'),
+                const SizedBox(width: 6),
+                FilterChip(
+                  label: Text('All (${users.length})'),
+                  selected: _role == null,
+                  showCheckmark: false,
+                  onSelected: (_) => setState(() => _role = null),
+                ),
+                for (final r in order)
+                  FilterChip(
+                    label: Text('${prettyEnum(r)} (${roles[r]})'),
+                    selected: _role == r,
+                    showCheckmark: false,
+                    onSelected: (on) => setState(() => _role = on ? r : null),
+                  ),
+                SizedBox(
+                  width: 220,
+                  height: 34,
+                  child: TextField(
+                    controller: _search,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(hintText: 'Search team', prefixIcon: Icon(Icons.search, size: 18), isDense: true),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (shown.isEmpty) ...[
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: Text('Nobody matches.', style: TextStyle(color: k.muted)),
+              ),
+            ),
+          ],
+          for (final u in shown) ...[const Divider(), _row(u)],
         ],
       ),
     );
@@ -275,7 +405,9 @@ class _TeamPageState extends State<TeamPage> {
             builder: (context, d) => ListView(
               padding: const EdgeInsets.fromLTRB(40, 0, 40, 40),
               children: [
-                RowsCard(children: [for (final u in _users(d)) _row(u)]),
+                _summary(_users(d), _invites(d)),
+                const SizedBox(height: 16),
+                _team(_users(d)),
                 TruncatedNote(d.users, 'people'),
                 if (_invites(d).isNotEmpty) ...[
                   const SizedBox(height: 20),
