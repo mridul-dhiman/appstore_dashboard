@@ -241,7 +241,7 @@ Tone toneFor(String? state) {
   if (s.isEmpty) return Tone.neutral;
   if (RegExp(r'REJECT|INVALID|FAIL|EXPIRED|REVOKED|REMOVED|DEVELOPER_REMOVED|DISABLED|MISSING').hasMatch(s)) return Tone.bad;
   if (RegExp(r'REVIEW|WAITING|PROCESSING|PENDING|PREPARE|METADATA|UPLOAD|SUBMIT|INVITED').hasMatch(s)) return Tone.warn;
-  if (RegExp(r'READY|VALID|ACCEPT|APPROVED|ACTIVE|ENABLED|LIVE|DISTRIBUTION|INSTALLED').hasMatch(s)) return Tone.good;
+  if (RegExp(r'READY|VALID|ACCEPT|APPROVED|ACTIVE|ENABLED|LIVE|DISTRIBUTION|INSTALLED|COMPLETE').hasMatch(s)) return Tone.good;
   return Tone.neutral;
 }
 

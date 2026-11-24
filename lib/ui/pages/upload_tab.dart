@@ -9,6 +9,7 @@ import '../../api/models.dart';
 import '../../api/queries.dart';
 import '../../services/file_source.dart';
 import '../../state/upload_jobs.dart';
+import '../theme.dart';
 import '../widgets.dart';
 
 /// Upload an .ipa to App Store Connect (it lands in TestFlight once processed), and see earlier uploads.
@@ -158,162 +159,255 @@ class _UploadTabState extends State<UploadTab> {
     final progress = job?.progress;
     final failure = job?.failure;
     final mismatch = info != null && info.bundleId != widget.bundleId;
+    final k = Tokens.of(context);
+    final upload = Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Upload a build', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 6),
+            Text(
+              'Pick the .ipa from your archive export. The version and build number are read from the file.',
+              style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 14),
+            if (kIsWeb)
+              Text(
+                'Uploading builds needs the desktop app: Apple\'s upload servers cannot be reached from a browser page. The upload history below still works here.',
+                style: TextStyle(color: t.colorScheme.error),
+              )
+            else ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+                decoration: BoxDecoration(
+                  color: k.inset,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: k.line, width: 1.5),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: k.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: k.line),
+                      ),
+                      child: Icon(Icons.cloud_upload_outlined, color: k.accent),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: _running || _reading ? null : _pick,
+                      icon: _reading
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.upload_file),
+                      label: const Text('Choose .ipa'),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      (job?.source ?? _source)?.name ?? 'An .ipa exported from an Xcode archive',
+                      textAlign: TextAlign.center,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: k.muted, fontSize: 12.5),
+                    ),
+                  ],
+                ),
+              ),
+              if (_pickError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(_pickError!, style: TextStyle(color: t.colorScheme.error)),
+                ),
+              if (info != null) ...[
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    SizedBox(
+                      width: 200,
+                      child: Stat(label: 'Version', value: info.version, icon: Icons.sell_outlined),
+                    ),
+                    SizedBox(
+                      width: 200,
+                      child: Stat(label: 'Build', value: info.build, icon: Icons.tag),
+                    ),
+                    SizedBox(
+                      width: 200,
+                      child: Stat(label: 'Minimum iOS', value: info.minOs ?? '—', icon: Icons.phone_iphone),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                if (mismatch)
+                  Text(
+                    'This .ipa is for ${info.bundleId}, but this app is ${widget.bundleId}. Apple will reject it.',
+                    style: TextStyle(color: t.colorScheme.error, fontWeight: FontWeight.w600),
+                  )
+                else
+                  Text('Bundle ID ${info.bundleId} matches this app.', style: TextStyle(color: t.colorScheme.onSurfaceVariant)),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    FilledButton.icon(
+                      onPressed: (_running || mismatch || job?.finished == true || _source == null) ? null : _upload,
+                      icon: const Icon(Icons.cloud_upload_outlined),
+                      label: Text('Upload ${info.version} (${info.build})'),
+                    ),
+                    if (_running) ...[const SizedBox(width: 10), TextButton(onPressed: _cancel, child: const Text('Stop'))],
+                  ],
+                ),
+              ],
+              if (progress != null) ...[
+                const SizedBox(height: 18),
+                if (_running)
+                  LinearProgressIndicator(
+                    value: progress.phase == UploadPhase.uploading && progress.totalBytes > 0
+                        ? progress.sentBytes / progress.totalBytes
+                        : null,
+                  ),
+                const SizedBox(height: 8),
+                Text(
+                  failure != null
+                      ? 'Upload failed'
+                      : job!.cancelled
+                      ? (job.committed
+                            ? 'Stopped watching. Apple is still processing it; see the Builds tab.'
+                            : 'Upload stopped. Nothing was sent to TestFlight.')
+                      : _phaseLabel(progress),
+                  style: t.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700, color: failure != null ? t.colorScheme.error : null),
+                ),
+                if (failure != null) SelectableText(failure, style: TextStyle(color: t.colorScheme.error)),
+                if (progress.message != null) SelectableText(progress.message!),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+    final history = Card(
+      clipBehavior: Clip.antiAlias,
+      child: LoadView<ResourcePage>(
+        controller: _history,
+        load: () => loadBuildUploadHistory(widget.client, widget.appId),
+        builder: (context, p) {
+          final rows = [...p.data]..sort((a, b) => (b.date('createdDate') ?? DateTime(0)).compareTo(a.date('createdDate') ?? DateTime(0)));
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 14, 8, 12),
+                child: Row(
+                  children: [
+                    Text(
+                      'Upload history',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: k.ink),
+                    ),
+                    const SizedBox(width: 8),
+                    if (rows.isNotEmpty) StateChip(null, label: '${rows.length} total'),
+                    const Spacer(),
+                    IconButton(tooltip: 'Refresh', onPressed: _history.reload, icon: const Icon(Icons.refresh, size: 18)),
+                  ],
+                ),
+              ),
+              if (rows.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: EmptyView(
+                    'No uploads made through the API yet.\nBuilds sent from Xcode or Transporter are in the Builds tab.',
+                    icon: Icons.cloud_upload_outlined,
+                  ),
+                ),
+              for (final u in rows) ...[const Divider(), _historyRow(u)],
+            ],
+          );
+        },
+      ),
+    );
+    final wide = MediaQuery.sizeOf(context).width >= 1180;
     return ListView(
       padding: const EdgeInsets.all(40),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Upload a build', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 6),
-                Text(
-                  'Pick the .ipa from your archive export. The version and build number are read from the file.',
-                  style: t.textTheme.bodyMedium?.copyWith(color: t.colorScheme.onSurfaceVariant),
-                ),
-                const SizedBox(height: 14),
-                if (kIsWeb)
-                  Text(
-                    'Uploading builds needs the desktop app: Apple\'s upload servers cannot be reached from a browser page. The upload history below still works here.',
-                    style: TextStyle(color: t.colorScheme.error),
-                  )
-                else ...[
-                  Row(
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _running || _reading ? null : _pick,
-                        icon: const Icon(Icons.upload_file),
-                        label: const Text('Choose .ipa'),
-                      ),
-                      const SizedBox(width: 12),
-                      if (_reading) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                      if ((job?.source ?? _source) != null)
-                        Flexible(child: Text((job?.source ?? _source)!.name, overflow: TextOverflow.ellipsis)),
-                    ],
-                  ),
-                  if (_pickError != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Text(_pickError!, style: TextStyle(color: t.colorScheme.error)),
-                    ),
-                  if (info != null) ...[
-                    const SizedBox(height: 16),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        SizedBox(
-                          width: 200,
-                          child: Stat(label: 'Version', value: info.version, icon: Icons.sell_outlined),
-                        ),
-                        SizedBox(
-                          width: 200,
-                          child: Stat(label: 'Build', value: info.build, icon: Icons.tag),
-                        ),
-                        SizedBox(
-                          width: 200,
-                          child: Stat(label: 'Minimum iOS', value: info.minOs ?? '—', icon: Icons.phone_iphone),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    if (mismatch)
-                      Text(
-                        'This .ipa is for ${info.bundleId}, but this app is ${widget.bundleId}. Apple will reject it.',
-                        style: TextStyle(color: t.colorScheme.error, fontWeight: FontWeight.w600),
-                      )
-                    else
-                      Text('Bundle ID ${info.bundleId} matches this app.', style: TextStyle(color: t.colorScheme.onSurfaceVariant)),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        FilledButton.icon(
-                          onPressed: (_running || mismatch || job?.finished == true || _source == null) ? null : _upload,
-                          icon: const Icon(Icons.cloud_upload_outlined),
-                          label: Text('Upload ${info.version} (${info.build})'),
-                        ),
-                        if (_running) ...[const SizedBox(width: 10), TextButton(onPressed: _cancel, child: const Text('Stop'))],
-                      ],
-                    ),
-                  ],
-                  if (progress != null) ...[
-                    const SizedBox(height: 18),
-                    if (_running)
-                      LinearProgressIndicator(
-                        value: progress.phase == UploadPhase.uploading && progress.totalBytes > 0
-                            ? progress.sentBytes / progress.totalBytes
-                            : null,
-                      ),
-                    const SizedBox(height: 8),
-                    Text(
-                      failure != null
-                          ? 'Upload failed'
-                          : job!.cancelled
-                          ? (job.committed
-                                ? 'Stopped watching. Apple is still processing it; see the Builds tab.'
-                                : 'Upload stopped. Nothing was sent to TestFlight.')
-                          : _phaseLabel(progress),
-                      style: t.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: failure != null ? t.colorScheme.error : null,
-                      ),
-                    ),
-                    if (failure != null) SelectableText(failure, style: TextStyle(color: t.colorScheme.error)),
-                    if (progress.message != null) SelectableText(progress.message!),
-                  ],
-                ],
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-              child: Text('Upload history', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
-            ),
-            IconButton(tooltip: 'Refresh', onPressed: _history.reload, icon: const Icon(Icons.refresh)),
-          ],
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 360,
-          child: LoadView<ResourcePage>(
-            controller: _history,
-            load: () => loadBuildUploadHistory(widget.client, widget.appId),
-            builder: (context, p) {
-              if (p.data.isEmpty) {
-                return const EmptyView(
-                  'No uploads made through the API yet.\nBuilds sent from Xcode or Transporter are in the Builds tab.',
-                  icon: Icons.cloud_upload_outlined,
-                );
-              }
-              final rows = [...p.data]
-                ..sort((a, b) => (b.date('createdDate') ?? DateTime(0)).compareTo(a.date('createdDate') ?? DateTime(0)));
-              return ListView(
-                children: [
-                  RowsCard(
-                    children: [
-                      for (final u in rows)
-                        ListTile(
-                          leading: const Icon(Icons.cloud_done_outlined),
-                          title: Text(
-                            '${u.str('cfBundleShortVersionString')} (${u.str('cfBundleVersion')})',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text('${prettyPlatform(u.str('platform'))} · created ${fmtDateTime(u.date('createdDate'))}'),
-                          trailing: StateChip((u.attributes['state'] as Map?)?['state'] as String?),
-                        ),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
+        if (wide)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: upload),
+              const SizedBox(width: 16),
+              SizedBox(width: 400, child: history),
+            ],
+          )
+        else ...[
+          upload,
+          const SizedBox(height: 16),
+          history,
+        ],
       ],
+    );
+  }
+
+  Widget _historyRow(Resource u) {
+    final k = Tokens.of(context);
+    final state = (u.attributes['state'] as Map?)?.cast<String, dynamic>();
+    List<String> messages(String key) => [
+      for (final e in (state?[key] as List?) ?? const []) ((e as Map)['description'] ?? e['code'] ?? '').toString(),
+    ];
+    final errors = messages('errors');
+    final warnings = messages('warnings');
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: u.str('cfBundleShortVersionString') ?? '—',
+                      style: TextStyle(fontWeight: FontWeight.w700, color: k.ink),
+                    ),
+                    TextSpan(
+                      text: '  (${u.str('cfBundleVersion') ?? '—'})',
+                      style: TextStyle(color: k.muted),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              StateChip(state?['state'] as String?),
+            ],
+          ),
+          const SizedBox(height: 3),
+          Text(
+            '${prettyPlatform(u.str('platform'))} · ${fmtDateTime(u.date('createdDate'))}',
+            style: TextStyle(color: k.muted, fontSize: 12.5),
+          ),
+          if (errors.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: k.badSoft, borderRadius: BorderRadius.circular(8)),
+              child: Text(
+                errors.first,
+                style: TextStyle(color: k.bad, fontSize: 12.5, fontWeight: FontWeight.w600),
+              ),
+            ),
+          if (warnings.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Tooltip(
+                message: warnings.join('\n\n'),
+                child: StateChip('WAITING', label: '${warnings.length} warning${warnings.length == 1 ? '' : 's'}'),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
