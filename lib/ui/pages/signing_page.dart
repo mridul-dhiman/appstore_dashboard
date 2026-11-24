@@ -35,19 +35,16 @@ class _SigningPageState extends State<SigningPage> {
       child: Column(
         children: [
           PageHeader(title: 'Signing', subtitle: 'Certificates, identifiers, profiles and devices', reload: _reload),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Padding(
-              padding: EdgeInsets.only(left: 16),
-              child: TabBar(
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                tabs: [
-                  Tab(text: 'Certificates'),
-                  Tab(text: 'Identifiers'),
-                  Tab(text: 'Profiles'),
-                  Tab(text: 'Devices'),
-                ],
+          _Summary(client: c, controller: _reload),
+          Builder(
+            builder: (context) => Padding(
+              padding: const EdgeInsets.fromLTRB(24, 4, 24, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: SegmentedTabs(
+                  controller: DefaultTabController.of(context),
+                  labels: const ['Certificates', 'Identifiers', 'Profiles', 'Devices'],
+                ),
               ),
             ),
           ),
@@ -58,15 +55,7 @@ class _SigningPageState extends State<SigningPage> {
                   controller: _reload,
                   load: () => loadCertificates(c),
                   empty: 'No certificates.',
-                  tile: (r, _) => ListTile(
-                    leading: const Icon(Icons.badge_outlined),
-                    title: Text(
-                      '${prettyEnum(r.str('certificateType'))} · ${r.str('displayName') ?? ''}',
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text('${r.str('name') ?? ''} · serial ${r.str('serialNumber') ?? ''}'),
-                    trailing: _Expiry(r.date('expirationDate')),
-                  ),
+                  tile: (r, _) => _CertificateRow(r),
                 ),
                 _IdentifiersTab(client: c, controller: _reload),
                 _ProfilesTab(client: c, controller: _reload),
@@ -812,6 +801,115 @@ class _RegisterDeviceDialogState extends State<_RegisterDeviceDialog> {
 }
 
 // ---- Shared widgets --------------------------------------------------------------------------------------------------
+
+/// Active, expiring within 30 days, or expired.
+Widget _expiryChip(DateTime? date) {
+  if (date == null) return const SizedBox.shrink();
+  final days = date.difference(DateTime.now()).inDays;
+  return days < 0
+      ? const StateChip('EXPIRED', label: 'Expired')
+      : days < 30
+      ? const StateChip('PENDING', label: 'Expiring soon')
+      : const StateChip('ACTIVE', label: 'Active');
+}
+
+class _CertificateRow extends StatelessWidget {
+  const _CertificateRow(this.r);
+  final Resource r;
+
+  @override
+  Widget build(BuildContext context) {
+    final k = Tokens.of(context);
+    final type = r.str('certificateType') ?? '';
+    final distribution = type.contains('DISTRIBUTION');
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: distribution ? k.accentSoft : k.goodSoft,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(distribution ? Icons.cloud_upload_outlined : Icons.code, size: 18, color: distribution ? k.accentInk : k.good),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(prettyEnum(type), style: TextStyle(fontWeight: FontWeight.w700, color: k.ink)),
+                Text(r.str('displayName') ?? r.str('name') ?? '', style: TextStyle(color: k.body, fontSize: 13)),
+                Text(
+                  'Serial ${r.str('serialNumber') ?? '—'}',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontFamily: 'Menlo', fontSize: 11, color: k.muted),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          _Expiry(r.date('expirationDate')),
+          const SizedBox(width: 12),
+          _expiryChip(r.date('expirationDate')),
+        ],
+      ),
+    );
+  }
+}
+
+/// Counts across the four tabs, as tiles above them. Quiet if any of them cannot be read: each tab shows its own error.
+class _Summary extends StatelessWidget {
+  const _Summary({required this.client, required this.controller});
+  final AscClient client;
+  final ReloadController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return LoadView<List<ResourcePage>?>(
+      controller: controller,
+      load: () async {
+        try {
+          return await Future.wait([loadCertificates(client), loadBundleIds(client), loadProfiles(client), loadDevices(client)]);
+        } on AscException {
+          return null;
+        }
+      },
+      builder: (context, r) {
+        if (r == null) return const SizedBox.shrink();
+        final k = Tokens.of(context);
+        final now = DateTime.now();
+        bool soon(Resource x) {
+          final d = x.date('expirationDate');
+          return d != null && d.isAfter(now) && d.difference(now).inDays < 30;
+        }
+
+        final certs = r[0].data, ids = r[1].data, profiles = r[2].data, devices = r[3].data;
+        final validProfiles = profiles.where((p) => p.str('profileState') == 'ACTIVE').length;
+        final expiring = [...certs, ...profiles].where(soon).length;
+        final tiles = [
+          Stat(label: 'Signing certificates', value: '${certs.length}'),
+          Stat(label: 'Profiles valid', value: '$validProfiles / ${profiles.length}', tone: validProfiles < profiles.length ? k.warn : null),
+          Stat(label: 'Devices enabled', value: '${devices.where((d) => d.str('status') == 'ENABLED').length}'),
+          Stat(label: 'App IDs', value: '${ids.length}'),
+          if (expiring > 0) Stat(label: 'Expiring in 30 days', value: '$expiring', tone: k.warn),
+        ];
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 12),
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final cols = c.maxWidth > 900 ? tiles.length : 2;
+              final w = (c.maxWidth - 12 * (cols - 1)) / cols;
+              return Wrap(spacing: 12, runSpacing: 12, children: [for (final t in tiles) SizedBox(width: w, child: t)]);
+            },
+          ),
+        );
+      },
+    );
+  }
+}
 
 class _Expiry extends StatelessWidget {
   const _Expiry(this.date);
