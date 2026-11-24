@@ -152,7 +152,7 @@ void main() {
 
     testWidgets('shows the breakdown, an existing reply, and the filters', (tester) async {
       await pump(tester);
-      expect(find.text('2.8'), findsOneWidget);
+      expect(find.text('2.8  / 5.0', findRichText: true), findsOneWidget);
       expect(find.text('Your response'), findsOneWidget);
       expect(find.text('Sorry about that'), findsOneWidget);
       await tester.tap(find.textContaining('1-3★ Needs Reply'));

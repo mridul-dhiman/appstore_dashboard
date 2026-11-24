@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../api/asc_client.dart';
 import '../../api/reviews.dart';
+import '../../api/territories.dart';
 import '../../state/reply_templates.dart';
 import '../theme.dart';
 import '../widgets.dart';
@@ -132,13 +133,14 @@ class _ReviewsBodyState extends State<_ReviewsBody> {
             child: EmptyView('No reviews match.', icon: Icons.search_off),
           )
         else
-          Card(
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                for (var i = 0; i < shown.length; i++) ...[
-                  if (i > 0) Divider(color: k.line),
-                  _ReviewTile(
+          // One card per review, as in the design.
+          Column(
+            children: [
+              for (var i = 0; i < shown.length; i++) ...[
+                if (i > 0) const SizedBox(height: 12),
+                Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: _ReviewTile(
                     templates: widget.templates,
                     key: ValueKey(shown[i].id),
                     client: widget.client,
@@ -147,9 +149,9 @@ class _ReviewsBodyState extends State<_ReviewsBody> {
                     onCompose: (open) => setState(() => _composing = open ? shown[i].id : null),
                     onReplied: (res) => _replace(shown[i].id, (r) => r.withResponse(res)),
                   ),
-                ],
+                ),
               ],
-            ),
+            ],
           ),
         if (widget.data.total != null && widget.data.total! > _reviews.length)
           Padding(
@@ -180,10 +182,26 @@ class _Breakdown extends StatelessWidget {
             SizedBox(
               width: 170,
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    data.average.toStringAsFixed(1),
-                    style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w700, letterSpacing: -1),
+                    'OVERALL RATING',
+                    style: TextStyle(color: k.muted, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.6),
+                  ),
+                  const SizedBox(height: 4),
+                  Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: data.average.toStringAsFixed(1),
+                          style: TextStyle(fontSize: 44, fontWeight: FontWeight.w700, letterSpacing: -1, color: k.ink),
+                        ),
+                        TextSpan(
+                          text: '  / 5.0',
+                          style: TextStyle(fontSize: 13, color: k.muted),
+                        ),
+                      ],
+                    ),
                   ),
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -227,7 +245,10 @@ class _Breakdown extends StatelessWidget {
                                       value: n == 0 ? 0 : counts[i] / n,
                                       minHeight: 7,
                                       backgroundColor: k.inset,
-                                      color: stars == null || stars == 5 - i ? k.accent : k.accent.withValues(alpha: 0.3),
+                                      // Coloured by score, as in the design: good, middling, poor.
+                                      color: (5 - i >= 4 ? k.accent : (5 - i == 3 ? k.warn : k.bad)).withValues(
+                                        alpha: stars == null || stars == 5 - i ? 1 : 0.3,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -446,7 +467,7 @@ class _ReviewTileState extends State<_ReviewTile> {
                 ),
               ),
               Text(
-                '${fmtDate(r.created)}  ·  ${r.nickname}${r.territory.isEmpty ? '' : '  ·  ${r.territory}'}',
+                '${r.nickname}${r.territory.isEmpty ? '' : '  ·  ${territoryName(r.territory)}'}  ·  ${fmtDate(r.created)}',
                 style: TextStyle(color: k.muted, fontSize: 12.5),
               ),
             ],
@@ -458,19 +479,24 @@ class _ReviewTileState extends State<_ReviewTile> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: k.accentSoft, borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: k.inset,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: k.line),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.reply, size: 15, color: k.accentInk),
+                      Icon(Icons.reply, size: 15, color: k.muted),
                       const SizedBox(width: 6),
                       Text(
                         'Your response',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: k.accentInk),
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5, color: k.ink),
                       ),
-                      if (r.replyPending) ...[const SizedBox(width: 8), const StateChip('PENDING', label: 'Publishing')],
+                      const SizedBox(width: 8),
+                      r.replyPending ? const StateChip('PENDING', label: 'Publishing') : const StateChip('PUBLISHED', label: 'Published'),
                       const Spacer(),
                       TextButton(onPressed: _busy ? null : () => widget.onCompose(true), child: const Text('Edit')),
                       TextButton(
