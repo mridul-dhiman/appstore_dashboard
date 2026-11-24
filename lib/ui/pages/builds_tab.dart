@@ -190,39 +190,82 @@ class _BuildsTabState extends State<_BuildsTab> {
     final open = (expandedByDefault || live) != _toggled.contains(g.version);
     final count = g.uploads.length + g.builds.length;
     final allExpired = g.uploads.isEmpty && g.builds.every((b) => b.flag('expired') == true);
+    final rows = [for (final u in g.uploads) _uploadRow(u), for (final b in g.builds) _buildRow(context, p, b)];
+    // One card per version, its header inside, as in the design.
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: () => setState(() => _toggled.contains(g.version) ? _toggled.remove(g.version) : _toggled.add(g.version)),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-              child: Row(
-                children: [
-                  Icon(open ? Icons.expand_more : Icons.chevron_right, size: 20, color: k.muted),
-                  const SizedBox(width: 6),
-                  Text('Version ${g.version}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                  const SizedBox(width: 10),
-                  Text(
-                    '$count build${count == 1 ? '' : 's'}${allExpired ? ' · all expired' : ''}',
-                    style: TextStyle(color: k.muted, fontSize: 12.5),
-                  ),
-                  if (g.uploads.any((u) => u.processing)) ...[
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: () => setState(() => _toggled.contains(g.version) ? _toggled.remove(g.version) : _toggled.add(g.version)),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  children: [
+                    Icon(open ? Icons.expand_more : Icons.chevron_right, size: 20, color: k.muted),
+                    const SizedBox(width: 6),
+                    Text('Version ${g.version}', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: k.ink)),
                     const SizedBox(width: 10),
-                    const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.8)),
+                    Text(
+                      '$count build${count == 1 ? '' : 's'}${allExpired ? ' · all expired' : ''}',
+                      style: TextStyle(color: k.muted, fontSize: 12.5),
+                    ),
+                    // An open group shows these on its rows, so the header only summarises a closed one.
+                    if (!open && g.uploads.any((u) => u.processing)) ...[
+                      const SizedBox(width: 10),
+                      const StateChip('PROCESSING', label: 'Processing'),
+                    ],
+                    if (!open && live) ...[const SizedBox(width: 10), const StateChip('READY_FOR_SALE', label: 'Live on App Store')],
+                    const Spacer(),
+                    if (allExpired && !live) const StateChip(null, label: 'Archived'),
                   ],
-                  const Spacer(),
-                  if (live && !open) const StateChip('READY_FOR_SALE', label: 'Live on App Store'),
-                ],
+                ),
               ),
             ),
-          ),
-          if (open) RowsCard(children: [for (final u in g.uploads) _uploadRow(u), for (final b in g.builds) _buildRow(context, p, b)]),
-        ],
+            if (open)
+              for (final r in rows) ...[const Divider(), r],
+          ],
+        ),
       ),
+    );
+  }
+
+  /// A rounded icon tile, tinted by how the build stands.
+  Widget _tile(IconData icon, Color fg, Color bg) => Container(
+    width: 36,
+    height: 36,
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: fg.withValues(alpha: 0.25))),
+    child: Icon(icon, size: 19, color: fg),
+  );
+
+  /// "● Internal: In testing", the dot coloured by the state's tone.
+  Widget _betaState(String who, String? state) {
+    final k = Tokens.of(context);
+    final label = betaStateLabel(state);
+    final color = switch (toneFor(state)) {
+      Tone.good => k.good,
+      Tone.warn => k.warn,
+      Tone.bad => k.bad,
+      Tone.neutral => k.muted,
+    };
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 7, height: 7, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
+        const SizedBox(width: 6),
+        Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(text: '$who: ', style: TextStyle(color: k.muted)),
+              TextSpan(text: label, style: TextStyle(color: k.body, fontWeight: FontWeight.w500)),
+            ],
+          ),
+          style: const TextStyle(fontSize: 12.5),
+        ),
+      ],
     );
   }
 
@@ -239,12 +282,14 @@ class _BuildsTabState extends State<_BuildsTab> {
       waitDuration: const Duration(milliseconds: 500),
       child: ListTile(
         leading: u.processing
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: Padding(padding: EdgeInsets.all(3), child: CircularProgressIndicator(strokeWidth: 2.2)),
+            ? Container(
+                width: 36,
+                height: 36,
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(color: k.warnSoft, borderRadius: BorderRadius.circular(10)),
+                child: CircularProgressIndicator(strokeWidth: 2, color: k.warn),
               )
-            : Icon(u.failed ? Icons.error_outline : Icons.hourglass_empty, color: u.failed ? Theme.of(context).colorScheme.error : null),
+            : _tile(u.failed ? Icons.error_outline : Icons.hourglass_empty, u.failed ? k.bad : k.warn, u.failed ? k.badSoft : k.warnSoft),
         title: Text('Build ${u.buildNumber}', style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
           lines.join('\n'),
@@ -272,26 +317,68 @@ class _BuildsTabState extends State<_BuildsTab> {
     final internal = betaStateLabel(detail?.str('internalBuildState'));
     final external = betaStateLabel(detail?.str('externalBuildState'));
     final label = '${p.inc('preReleaseVersions', b.relId('preReleaseVersion'))?.str('version') ?? '—'} (${b.str('version')})';
-    return ListTile(
-      leading: const Icon(Icons.inventory_2_outlined),
-      title: Text('Build ${b.str('version') ?? '—'}', style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(
-        'Uploaded ${fmtDateTime(b.date('uploadedDate'))} · ${expired ? 'expired' : 'expires ${fmtDate(b.date('expirationDate'))}'} · iOS ${b.str('minOsVersion') ?? '—'}+'
-        '${!expired && (internal.isNotEmpty || external.isNotEmpty) ? '\nTestFlight: ${[if (internal.isNotEmpty) 'internal $internal', if (external.isNotEmpty) 'external $external'].join(' · ')}' : ''}',
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+    final k = Tokens.of(context);
+    final valid = !expired && b.str('processingState') == 'VALID';
+    final (icon, fg, bg) = expired
+        ? (Icons.inventory_2_outlined, k.muted, k.inset)
+        : live
+        ? (Icons.storefront_outlined, k.good, k.goodSoft)
+        : valid
+        ? (Icons.verified_outlined, k.good, k.goodSoft)
+        : (Icons.inventory_2_outlined, k.warn, k.warnSoft);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (live && !expired) ...[const StateChip('READY_FOR_SALE', label: 'Live on App Store'), const SizedBox(width: 8)],
-          StateChip(expired ? 'EXPIRED' : b.str('processingState')),
+          _tile(icon, fg, bg),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text('Build ${b.str('version') ?? '—'}', style: TextStyle(fontWeight: FontWeight.w700, color: k.ink)),
+                    StateChip(expired ? 'EXPIRED' : b.str('processingState')),
+                    if (live && !expired) const StateChip('READY_FOR_SALE', label: 'Live on App Store'),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'Uploaded ${fmtDateTime(b.date('uploadedDate'))} · ${expired ? 'expired' : 'expires ${fmtDate(b.date('expirationDate'))}'} · iOS ${b.str('minOsVersion') ?? '—'}+',
+                  style: TextStyle(color: k.muted, fontSize: 12.5),
+                ),
+                if (!expired && (internal.isNotEmpty || external.isNotEmpty)) ...[
+                  const SizedBox(height: 5),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 4,
+                    children: [
+                      if (internal.isNotEmpty) _betaState('Internal', detail?.str('internalBuildState')),
+                      if (external.isNotEmpty) _betaState('External', detail?.str('externalBuildState')),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
           if (!expired) ...[
             const SizedBox(width: 10),
             _expiring.contains(b.id)
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : OutlinedButton(
-                    style: OutlinedButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+                : OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: k.bad,
+                      side: BorderSide(color: k.bad.withValues(alpha: 0.35)),
+                      backgroundColor: k.badSoft,
+                    ),
                     onPressed: () => _expire(b, label, live: live),
-                    child: const Text('Expire'),
+                    icon: const Icon(Icons.timer_off_outlined, size: 16),
+                    label: const Text('Expire'),
                   ),
           ],
         ],

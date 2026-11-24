@@ -230,7 +230,8 @@ void main() {
     expect(find.text('Processing'), findsOneWidget);
     expect(find.text('Build 1'), findsOneWidget, reason: 'the finished build is still listed, and not shown twice');
     expect(find.textContaining('refreshes by itself'), findsOneWidget);
-    expect(find.textContaining('TestFlight: internal In testing · external Ready for beta review'), findsOneWidget);
+    expect(find.textContaining('In testing', findRichText: true), findsOneWidget);
+    expect(find.textContaining('Ready for beta review', findRichText: true), findsOneWidget);
 
     // Leave no pending poll timer behind.
     await tester.pumpWidget(const SizedBox());
