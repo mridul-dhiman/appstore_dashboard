@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../api/apps.dart';
 import '../../services/prefs.dart';
@@ -10,12 +11,15 @@ import '../widgets.dart';
 export '../../api/apps.dart';
 
 class AppsPage extends StatefulWidget {
-  const AppsPage({super.key, required this.store, required this.onOpen, this.prefs});
+  const AppsPage({super.key, required this.store, required this.onOpen, this.onOpenTestFlight, this.prefs});
   final AppsStore store;
 
   /// Remembers grid or list between launches.
   final Prefs? prefs;
   final void Function(AppSummary app) onOpen;
+
+  /// Opens the app straight on its TestFlight tab (the card's TestFlight button). Hidden when null.
+  final void Function(AppSummary app)? onOpenTestFlight;
 
   @override
   State<AppsPage> createState() => _AppsPageState();
@@ -132,7 +136,11 @@ class _AppsPageState extends State<AppsPage> {
                             for (final a in shown)
                               SizedBox(
                                 width: w,
-                                child: _AppCard(app: a, onTap: () => widget.onOpen(a)),
+                                child: _AppCard(
+                                  app: a,
+                                  onTap: () => widget.onOpen(a),
+                                  onTestFlight: widget.onOpenTestFlight == null ? null : () => widget.onOpenTestFlight!(a),
+                                ),
                               ),
                           ],
                         );
@@ -213,9 +221,10 @@ class _PlatformPill extends StatelessWidget {
 
 /// A card for one app. It carries no rating and no build number: those live inside the app.
 class _AppCard extends StatelessWidget {
-  const _AppCard({required this.app, required this.onTap});
+  const _AppCard({required this.app, required this.onTap, this.onTestFlight});
   final AppSummary app;
   final VoidCallback onTap;
+  final VoidCallback? onTestFlight;
 
   @override
   Widget build(BuildContext context) {
@@ -262,21 +271,60 @@ class _AppCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  Divider(color: k.line),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
+                  // Version and its state on one line, the SKU under it, so neither is cut off.
                   Row(
                     children: [
+                      Icon(Icons.sell_outlined, size: 15, color: k.muted),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          [if (app.versionString != null) 'v${app.versionString}', if (app.sku.isNotEmpty) 'SKU ${app.sku}'].join('  ·  '),
+                          app.versionString == null ? 'No version' : 'Version ${app.versionString}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: k.muted, fontSize: 12.5),
+                          style: TextStyle(color: k.body, fontSize: 13, fontWeight: FontWeight.w500),
                         ),
                       ),
                       const SizedBox(width: 8),
                       StatusBadge(app.state),
+                    ],
+                  ),
+                  if (app.sku.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, left: 21),
+                      child: Text(
+                        'SKU ${app.sku}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: k.muted, fontSize: 12),
+                      ),
+                    ),
+                  const SizedBox(height: 14),
+                  Divider(color: k.line),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: OutlinedButton(onPressed: onTap, child: const Text('Manage'))),
+                      if (onTestFlight != null) ...[
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: onTestFlight,
+                            icon: const Icon(Icons.flight_takeoff, size: 16),
+                            label: const Text('TestFlight'),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: 8),
+                      IconButton.outlined(
+                        style: IconButton.styleFrom(fixedSize: const Size(32, 32), minimumSize: const Size(32, 32), padding: EdgeInsets.zero),
+                        tooltip: 'Open in App Store Connect',
+                        onPressed: () => launchUrl(
+                          Uri.parse('https://appstoreconnect.apple.com/apps/${app.id}/distribution'),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                        icon: const Icon(Icons.open_in_new, size: 16),
+                      ),
                     ],
                   ),
                 ],

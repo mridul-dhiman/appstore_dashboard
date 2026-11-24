@@ -72,6 +72,9 @@ class AppDetailPage extends StatefulWidget {
   /// Tab index of "Upload .IPA", for shortcuts that jump straight to it.
   static const uploadTabIndex = _uploadTab;
 
+  /// Tab index of "TestFlight & Groups", for the app card's TestFlight button.
+  static const testFlightTabIndex = 1;
+
   @override
   State<AppDetailPage> createState() => _AppDetailPageState();
 }

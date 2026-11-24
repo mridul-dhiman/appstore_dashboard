@@ -89,7 +89,9 @@ void main() {
 
   testWidgets('each card shows the newest version and its status, and no rating or build number', (tester) async {
     await pump(tester);
-    expect(find.text('v2.0.0  ·  SKU VG1'), findsOneWidget, reason: 'the first version Apple lists is the newest');
+    expect(find.text('Version 2.0.0'), findsOneWidget, reason: 'the first version Apple lists is the newest');
+    expect(find.text('SKU VG1'), findsOneWidget);
+    expect(find.text('Manage'), findsWidgets);
     expect(find.text('Waiting for review'), findsOneWidget);
     expect(find.text('Ready for sale'), findsOneWidget);
     expect(find.byIcon(Icons.star), findsNothing);

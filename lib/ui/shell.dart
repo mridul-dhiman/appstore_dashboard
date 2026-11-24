@@ -280,7 +280,12 @@ class _ShellState extends State<Shell> {
       );
     }
     return switch (_index) {
-      0 => AppsPage(store: store, onOpen: _openApp, prefs: widget.state.prefs),
+      0 => AppsPage(
+        store: store,
+        onOpen: _openApp,
+        onOpenTestFlight: (a) => _openApp(a, tab: AppDetailPage.testFlightTabIndex),
+        prefs: widget.state.prefs,
+      ),
       1 => SalesPage(client: client, credentials: creds, state: widget.state),
       2 => AnalyticsPage(client: client, store: store),
       3 => SigningPage(client: client),
