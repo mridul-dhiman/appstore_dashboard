@@ -33,6 +33,10 @@ class _GroupDetailState extends State<_GroupDetail> {
   late final _limit = TextEditingController(text: _before.limit?.toString() ?? '');
   bool _saving = false;
 
+  /// Tester list filter: null shows everyone, otherwise one TestFlight state (INSTALLED, INVITED, ACCEPTED).
+  String? _testerState;
+  final _search = TextEditingController();
+
   bool get _internal => widget.group.flag('isInternalGroup') == true;
   bool get _allBuilds => widget.group.flag('hasAccessToAllBuilds') == true;
 
@@ -41,6 +45,7 @@ class _GroupDetailState extends State<_GroupDetail> {
     _members.dispose();
     _name.dispose();
     _limit.dispose();
+    _search.dispose();
     super.dispose();
   }
 
@@ -205,16 +210,22 @@ class _GroupDetailState extends State<_GroupDetail> {
       children: [
         Row(
           children: [
-            Flexible(
-              child: Text(
-                g.str('name') ?? 'Group',
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.4),
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      g.str('name') ?? 'Group',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.4),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  StateChip(_internal ? 'READY' : 'PENDING', label: _internal ? 'Internal' : 'External'),
+                ],
               ),
             ),
             const SizedBox(width: 12),
-            StateChip(_internal ? 'READY' : 'PENDING', label: _internal ? 'Internal' : 'External'),
-            const Spacer(),
             OutlinedButton(
               style: small.copyWith(foregroundColor: WidgetStatePropertyAll(t.colorScheme.error)),
               onPressed: _delete,
@@ -314,124 +325,197 @@ class _GroupDetailState extends State<_GroupDetail> {
             _currentTesters = r[0] as List<Resource>;
             return _Members(r[0] as List<Resource>, r[1] as Set<String>);
           },
-          builder: (context, m) => Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Card(
-                child: Column(
-                  children: [
-                    head(
-                      'Testers · ${m.testers.length}',
-                      trailing: FilledButton.icon(
-                        style: FilledButton.styleFrom(minimumSize: const Size(0, 32), padding: const EdgeInsets.symmetric(horizontal: 12)),
-                        onPressed: _addTester,
-                        icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
-                        label: Text(_internal ? 'Add team members' : 'Add tester'),
-                      ),
-                    ),
-                    if (m.testers.isEmpty) ...[
-                      const Divider(),
-                      Padding(
-                        padding: const EdgeInsets.all(28),
-                        child: Text('No testers in this group yet.', style: TextStyle(color: k.muted)),
-                      ),
-                    ],
-                    for (final x in m.testers) ...[
-                      const Divider(),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        child: Row(
-                          children: [
-                            Avatar(_testerName(x)),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(_testerName(x), style: const TextStyle(fontWeight: FontWeight.w600)),
-                                  Text(x.str('email') ?? '', style: TextStyle(color: k.muted, fontSize: 13)),
-                                ],
-                              ),
-                            ),
-                            if (x.str('state') != null) ...[
-                              StateChip(x.str('state'), label: prettyEnum(x.str('state')!)),
-                              const SizedBox(width: 12),
-                            ],
-                            OutlinedButton(style: small, onPressed: () => _removeTester(x), child: const Text('Remove')),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
+          builder: (context, m) {
+            int count(String state) => m.testers.where((x) => x.str('state') == state).length;
+            final q = _search.text.trim().toLowerCase();
+            final shown = [
+              for (final x in m.testers)
+                if ((_testerState == null || x.str('state') == _testerState) &&
+                    (q.isEmpty || _testerName(x).toLowerCase().contains(q) || (x.str('email') ?? '').toLowerCase().contains(q)))
+                  x,
+            ];
+            final filters = [
+              (null, 'All', m.testers.length),
+              ('INSTALLED', 'Installed', count('INSTALLED')),
+              ('INVITED', 'Invited', count('INVITED')),
+              ('ACCEPTED', 'Accepted', count('ACCEPTED')),
+            ];
+            final inGroup = _internal && _allBuilds ? null : widget.builds.where((b) => m.buildIds.contains(b.id)).length;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                LayoutBuilder(
+                  builder: (context, c) {
+                    final tiles = [
+                      Stat(label: 'Testers', value: '${m.testers.length}'),
+                      Stat(label: 'Installed', value: '${count('INSTALLED')}', tone: count('INSTALLED') > 0 ? k.good : null),
+                      Stat(label: 'Invites pending', value: '${count('INVITED')}', tone: count('INVITED') > 0 ? k.warn : null),
+                      Stat(label: 'Builds in group', value: inGroup == null ? 'All' : '$inGroup'),
+                    ];
+                    final w = c.maxWidth >= 720 ? (c.maxWidth - 36) / 4 : (c.maxWidth - 12) / 2;
+                    return Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [for (final t in tiles) SizedBox(width: w, child: t)],
+                    );
+                  },
                 ),
-              ),
-              if (!(_internal && _allBuilds)) ...[
                 const SizedBox(height: 18),
                 Card(
                   child: Column(
                     children: [
-                      head('Builds', subtitle: _internal ? null : 'External groups need Beta App Review for each version.'),
-                      if (widget.builds.isEmpty) ...[
+                      head(
+                        'Testers · ${m.testers.length}',
+                        trailing: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(0, 32),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                          ),
+                          onPressed: _addTester,
+                          icon: const Icon(Icons.person_add_alt_1_outlined, size: 16),
+                          label: Text(_internal ? 'Add team members' : 'Add tester'),
+                        ),
+                      ),
+                      if (m.testers.isNotEmpty)
+                        Container(
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+                          child: Wrap(
+                            spacing: 12,
+                            runSpacing: 10,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 260,
+                                height: 34,
+                                child: TextField(
+                                  controller: _search,
+                                  onChanged: (_) => setState(() {}),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Search name or email',
+                                    prefixIcon: Icon(Icons.search, size: 18),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                              SegmentedButton<String?>(
+                                showSelectedIcon: false,
+                                segments: [
+                                  for (final (value, label, n) in filters) ButtonSegment(value: value, label: Text('$label ($n)')),
+                                ],
+                                selected: {_testerState},
+                                onSelectionChanged: (v) => setState(() => _testerState = v.first),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (shown.isEmpty) ...[
                         const Divider(),
                         Padding(
                           padding: const EdgeInsets.all(28),
-                          child: Text('No builds uploaded yet.', style: TextStyle(color: k.muted)),
+                          child: Text(
+                            m.testers.isEmpty ? 'No testers in this group yet.' : 'No testers match.',
+                            style: TextStyle(color: k.muted),
+                          ),
                         ),
                       ],
-                      for (final b in widget.builds) ...[
+                      for (final x in shown) ...[
                         const Divider(),
-                        Builder(
-                          builder: (context) {
-                            final inGroup = m.buildIds.contains(b.id);
-                            final needsReview = !_internal && b.externalState == 'READY_FOR_BETA_SUBMISSION';
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.flight_takeoff, size: 20, color: k.muted),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(b.label, style: const TextStyle(fontWeight: FontWeight.w600)),
-                                        if (!_internal && b.externalState != null)
-                                          Text(prettyEnum(b.externalState!), style: TextStyle(color: k.muted, fontSize: 13)),
-                                      ],
-                                    ),
-                                  ),
-                                  if (needsReview) ...[
-                                    OutlinedButton(
-                                      style: small,
-                                      onPressed: () => _submitReview(b),
-                                      child: const Text('Submit for beta review'),
-                                    ),
-                                    const SizedBox(width: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          child: Row(
+                            children: [
+                              Avatar(_testerName(x)),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(_testerName(x), style: const TextStyle(fontWeight: FontWeight.w600)),
+                                    Text(x.str('email') ?? '', style: TextStyle(color: k.muted, fontSize: 13)),
                                   ],
-                                  if (inGroup)
-                                    OutlinedButton(style: small, onPressed: () => _toggleBuild(b, true), child: const Text('Remove'))
-                                  else
-                                    FilledButton(
-                                      style: FilledButton.styleFrom(
-                                        minimumSize: const Size(0, 30),
-                                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                                        textStyle: const TextStyle(fontSize: 12.5),
-                                      ),
-                                      onPressed: b.usable ? () => _toggleBuild(b, false) : null,
-                                      child: const Text('Add'),
-                                    ),
-                                ],
+                                ),
                               ),
-                            );
-                          },
+                              if (x.str('state') != null) ...[
+                                StateChip(x.str('state'), label: prettyEnum(x.str('state')!)),
+                                const SizedBox(width: 12),
+                              ],
+                              OutlinedButton(style: small, onPressed: () => _removeTester(x), child: const Text('Remove')),
+                            ],
+                          ),
                         ),
                       ],
                     ],
                   ),
                 ),
+                if (!(_internal && _allBuilds)) ...[
+                  const SizedBox(height: 18),
+                  Card(
+                    child: Column(
+                      children: [
+                        head('Builds', subtitle: _internal ? null : 'External groups need Beta App Review for each version.'),
+                        if (widget.builds.isEmpty) ...[
+                          const Divider(),
+                          Padding(
+                            padding: const EdgeInsets.all(28),
+                            child: Text('No builds uploaded yet.', style: TextStyle(color: k.muted)),
+                          ),
+                        ],
+                        for (final b in widget.builds) ...[
+                          const Divider(),
+                          Builder(
+                            builder: (context) {
+                              final inGroup = m.buildIds.contains(b.id);
+                              final needsReview = !_internal && b.externalState == 'READY_FOR_BETA_SUBMISSION';
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.flight_takeoff, size: 20, color: k.muted),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(b.label, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                          if (!_internal && b.externalState != null)
+                                            Text(prettyEnum(b.externalState!), style: TextStyle(color: k.muted, fontSize: 13)),
+                                        ],
+                                      ),
+                                    ),
+                                    if (needsReview) ...[
+                                      OutlinedButton(
+                                        style: small,
+                                        onPressed: () => _submitReview(b),
+                                        child: const Text('Submit for beta review'),
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
+                                    if (inGroup)
+                                      OutlinedButton(style: small, onPressed: () => _toggleBuild(b, true), child: const Text('Remove'))
+                                    else
+                                      FilledButton(
+                                        style: FilledButton.styleFrom(
+                                          minimumSize: const Size(0, 30),
+                                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                                          textStyle: const TextStyle(fontSize: 12.5),
+                                        ),
+                                        onPressed: b.usable ? () => _toggleBuild(b, false) : null,
+                                        child: const Text('Add'),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ],
-            ],
-          ),
+            );
+          },
         ),
       ],
     );
