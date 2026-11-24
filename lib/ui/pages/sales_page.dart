@@ -4,8 +4,10 @@ import 'package:intl/intl.dart';
 import '../../api/asc_client.dart';
 import '../../api/export.dart';
 import '../../api/sales.dart';
+import '../../api/territories.dart';
 import '../../state/app_state.dart';
 import '../export_button.dart';
+import '../theme.dart';
 import '../widgets.dart';
 
 class _Day {
@@ -145,7 +147,6 @@ class _Report extends StatelessWidget {
     if (all.isEmpty) {
       return EmptyView(failedNote ?? 'No sales in this period, or Apple has not published these days yet.', icon: Icons.bar_chart_outlined);
     }
-    int sum(Iterable<SalesRow> rows) => rows.fold(0, (a, r) => a + r.units);
     final proceeds = <String, double>{};
     for (final r in all) {
       if (r.proceeds != 0) proceeds[r.currency] = (proceeds[r.currency] ?? 0) + r.proceeds;
@@ -261,21 +262,158 @@ class _Report extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        RowsCard(
-          children: [
-            for (final e in byTitle.entries)
-              ListTile(
-                title: Text(e.key, style: const TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: Text(
-                  '${fmtNum(sum(e.value.where((r) => r.isDownload)))} downloads · ${fmtNum(sum(e.value.where((r) => r.isUpdate)))} updates · ${fmtNum(sum(e.value.where((r) => r.isPurchase)))} purchases',
-                ),
-                trailing: Text(_proceedsOf(e.value), style: const TextStyle(fontWeight: FontWeight.w700)),
-              ),
-          ],
+        LayoutBuilder(
+          builder: (context, c) {
+            final country = _byCountry(context, all);
+            final product = _byProduct(context, byTitle);
+            if (c.maxWidth < 900) return Column(children: [country, const SizedBox(height: 16), product]);
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: country),
+                const SizedBox(width: 16),
+                Expanded(child: product),
+              ],
+            );
+          },
         ),
       ],
     );
   }
+
+  Widget _panelHead(BuildContext context, String title, String note) {
+    final k = Tokens.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: k.ink),
+            ),
+          ),
+          Text(note, style: TextStyle(color: k.muted, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  /// Downloads per country, biggest first, as bars.
+  Widget _byCountry(BuildContext context, List<SalesRow> all) {
+    final k = Tokens.of(context);
+    final n = <String, int>{};
+    for (final r in all.where((r) => r.isDownload && r.country.isNotEmpty)) {
+      n[r.country] = (n[r.country] ?? 0) + r.units;
+    }
+    final top = n.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final max = top.isEmpty ? 1 : top.first.value;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _panelHead(context, 'By country', 'Downloads, top 8'),
+            if (top.isEmpty) Text('No downloads in this period.', style: TextStyle(color: k.muted)),
+            for (final e in top.take(8)) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      countryName(e.key),
+                      style: TextStyle(color: k.ink, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  Text(
+                    fmtNum(e.value),
+                    style: TextStyle(color: k.body, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(value: e.value / max, minHeight: 6, color: k.accent, backgroundColor: k.inset),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (top.length > 8) Text('and ${top.length - 8} more', style: TextStyle(color: k.muted, fontSize: 12.5)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Each app and in-app purchase with its units and proceeds.
+  Widget _byProduct(BuildContext context, Map<String, List<SalesRow>> byTitle) {
+    final k = Tokens.of(context);
+    final rows = byTitle.entries.toList()..sort((a, b) => sum(b.value).compareTo(sum(a.value)));
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _panelHead(context, 'By product', 'Units / proceeds'),
+            if (rows.isEmpty) Text('No sales in this period.', style: TextStyle(color: k.muted)),
+            for (final e in rows.take(10))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: e.value.any((r) => r.isPurchase) ? k.goodSoft : k.accentSoft,
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Icon(
+                        e.value.any((r) => r.isPurchase) ? Icons.shopping_bag_outlined : Icons.apps,
+                        size: 18,
+                        color: e.value.any((r) => r.isPurchase) ? k.good : k.accentInk,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            e.key,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: k.ink, fontWeight: FontWeight.w600),
+                          ),
+                          Text(
+                            e.value.any((r) => r.isPurchase)
+                                ? 'In-app purchase'
+                                : '${fmtNum(sum(e.value.where((r) => r.isDownload)))} downloads · ${fmtNum(sum(e.value.where((r) => r.isUpdate)))} updates',
+                            style: TextStyle(color: k.muted, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      fmtNum(sum(e.value.where((r) => r.isDownload || r.isPurchase))),
+                      style: TextStyle(color: k.body, fontWeight: FontWeight.w600),
+                    ),
+                    if (_proceedsOf(e.value) != '—') ...[
+                      Text('  /  ', style: TextStyle(color: k.muted)),
+                      Text(_proceedsOf(e.value), style: TextStyle(color: k.good, fontWeight: FontWeight.w600)),
+                    ],
+                  ],
+                ),
+              ),
+            if (rows.length > 10) Text('and ${rows.length - 10} more', style: TextStyle(color: k.muted, fontSize: 12.5)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  static int sum(Iterable<SalesRow> rows) => rows.fold(0, (a, r) => a + r.units);
 
   String _proceedsOf(List<SalesRow> rows) {
     final m = <String, double>{};
