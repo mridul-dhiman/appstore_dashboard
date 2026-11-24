@@ -241,7 +241,10 @@ List<Check> evaluatePreflight(PreflightData d) {
       ),
     );
   }
-  if (isVersionEditable(state)) {
+  // While it is with App Review the version's own state can read back stale, so it says nothing useful.
+  if (inFlight.isNotEmpty) {
+    // nothing: "Already submitted" above covers it
+  } else if (isVersionEditable(state)) {
     out.add(Check(CheckLevel.pass, 'Version can be submitted', 'Version $label is ${prettyState(state)}.'));
   } else {
     out.add(

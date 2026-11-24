@@ -104,4 +104,70 @@ void main() {
 
     expect(fake.log.where((r) => r.method != 'GET'), isEmpty, reason: 'looking around writes nothing');
   });
+
+  testWidgets('a version with App Review says so calmly: no failed check, no submit button, and the header hears the new state', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1300, 2200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    String? newest;
+    // Apple can still read the version back as prepare-for-submission right after submitting.
+    final fake = FakeAsc((r) {
+      if (r.method != 'GET') return null;
+      final p = r.path.split('?').first;
+      if (p == '/v1/apps/APP/appStoreVersions') {
+        return json({
+          'data': [
+            res('appStoreVersions', 'V1', {'versionString': '2.1.0', 'appStoreState': 'PREPARE_FOR_SUBMISSION', 'platform': 'IOS'}),
+          ],
+        });
+      }
+      if (p == '/v1/reviewSubmissions') {
+        return json({
+          'data': [
+            res('reviewSubmissions', 'S1', {'state': 'WAITING_FOR_REVIEW'}),
+          ],
+        });
+      }
+      if (p == '/v1/reviewSubmissions/S1/items') {
+        return json({
+          'data': [
+            res(
+              'reviewSubmissionItems',
+              'I1',
+              {'state': 'READY_FOR_REVIEW'},
+              {
+                'appStoreVersion': {
+                  'data': {'type': 'appStoreVersions', 'id': 'V1'},
+                },
+              },
+            ),
+          ],
+        });
+      }
+      return json({'data': []});
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SubmitTab(
+            client: fake.client,
+            appId: 'APP',
+            draft: ListingDraft(libraryId: 'APP'),
+            onNewestVersion: (v) => newest = v.str('versionString'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('In the review queue'), findsOneWidget);
+    expect(find.textContaining('With App Review'), findsOneWidget);
+    expect(find.text('Already submitted'), findsNothing);
+    expect(find.text('Version can be submitted'), findsNothing, reason: 'the stale prepare-for-submission state is not repeated');
+    expect(find.text('Submit 2.1.0 for review'), findsNothing);
+    expect(find.textContaining('to fix first'), findsNothing);
+    expect(newest, '2.1.0');
+  });
 }

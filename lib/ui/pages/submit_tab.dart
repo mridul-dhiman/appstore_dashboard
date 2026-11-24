@@ -27,10 +27,14 @@ String suggestNextVersion(String? latest) {
 
 /// The path to App Review: checks what Apple would refuse, fixes it from here, then submits.
 class SubmitTab extends StatefulWidget {
-  const SubmitTab({super.key, required this.client, required this.appId, required this.draft});
+  const SubmitTab({super.key, required this.client, required this.appId, required this.draft, this.onNewestVersion});
   final AscClient client;
   final String appId;
   final ListingDraft draft;
+
+  /// Called with the newest version each time the versions load, e.g. after submitting, so the page header can show its
+  /// current state.
+  final ValueChanged<Resource>? onNewestVersion;
 
   @override
   State<SubmitTab> createState() => _SubmitTabState();
@@ -49,7 +53,11 @@ class _SubmitTabState extends State<SubmitTab> {
   Widget build(BuildContext context) {
     return LoadView<ResourcePage>(
       controller: _reload,
-      load: () => loadVersions(widget.client, widget.appId),
+      load: () async {
+        final p = await loadVersions(widget.client, widget.appId);
+        if (p.data.isNotEmpty) widget.onNewestVersion?.call(p.data.first);
+        return p;
+      },
       builder: (context, p) => _Body(
         key: ValueKey(p.data.map((v) => v.id).join(',')),
         client: widget.client,
@@ -586,7 +594,16 @@ class _BodyState extends State<_Body> {
           color: soft,
           border: Border.all(color: color.withValues(alpha: 0.35)),
         ),
-        child: Icon(icon, color: color, size: 17, semanticLabel: switch (c.level) { CheckLevel.pass => 'Passed', CheckLevel.warn => 'Warning', CheckLevel.fail => 'Failed' }),
+        child: Icon(
+          icon,
+          color: color,
+          size: 17,
+          semanticLabel: switch (c.level) {
+            CheckLevel.pass => 'Passed',
+            CheckLevel.warn => 'Warning',
+            CheckLevel.fail => 'Failed',
+          },
+        ),
       ),
       title: Text(c.title, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: c.detail == null ? null : Text(c.detail!, style: TextStyle(color: c.level == CheckLevel.pass ? null : color)),
@@ -650,8 +667,14 @@ class _BodyState extends State<_Body> {
             builder: (context, d) => ListenableBuilder(
               listenable: widget.draft,
               builder: (context, _) {
-                final checks = [...evaluatePreflight(d), ..._draftChecks()];
-                final ready = canSubmit(checks);
+                final all = [...evaluatePreflight(d), ..._draftChecks()];
+                final ready = canSubmit(all);
+                // With App Review is a state, not a problem: say so once instead of listing it as a failed check.
+                final withReview = all.any((c) => c.title == 'Already submitted');
+                final checks = [
+                  for (final c in all)
+                    if (c.title != 'Already submitted') c,
+                ];
                 final blocked = checks.where((c) => c.level == CheckLevel.fail).length;
                 final cancelable = d.submissions.where((s) => const {'WAITING_FOR_REVIEW', 'IN_REVIEW'}.contains(s.state)).toList();
                 final rejection = _rejection(d);
@@ -667,7 +690,7 @@ class _BodyState extends State<_Body> {
                               ListTile(
                                 leading: const Icon(Icons.hourglass_top),
                                 title: const Text('In the review queue', style: TextStyle(fontWeight: FontWeight.w600)),
-                                subtitle: Text('Submission ${s.resource.id.substring(0, 8)}… · ${prettyState(s.state)}'),
+                                subtitle: Text('Submission ${s.resource.id.length > 8 ? '${s.resource.id.substring(0, 8)}…' : s.resource.id} · ${prettyState(s.state)}'),
                                 trailing: Wrap(
                                   spacing: 8,
                                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -688,24 +711,30 @@ class _BodyState extends State<_Body> {
                     const SizedBox(height: 16),
                     _phasedReleaseCard(),
                     const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        FilledButton.icon(
-                          onPressed: (!ready || _busy) ? null : _submit,
-                          icon: _busy
-                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                              : const Icon(Icons.send_outlined),
-                          label: Text('${rejection != null ? 'Resubmit' : 'Submit'} ${_version.str('versionString')} for review'),
-                        ),
-                        const SizedBox(width: 14),
-                        Flexible(
-                          child: Text(
-                            ready ? 'All required checks pass.' : '$blocked thing${blocked == 1 ? '' : 's'} to fix first.',
-                            style: t.textTheme.bodyMedium?.copyWith(color: ready ? Tokens.of(context).good : t.colorScheme.error),
+                    if (withReview)
+                      Text(
+                        'With App Review. Nothing to do until Apple responds; cancel the submission above to change anything.',
+                        style: t.textTheme.bodyMedium?.copyWith(color: Tokens.of(context).muted),
+                      )
+                    else
+                      Row(
+                        children: [
+                          FilledButton.icon(
+                            onPressed: (!ready || _busy) ? null : _submit,
+                            icon: _busy
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.send_outlined),
+                            label: Text('${rejection != null ? 'Resubmit' : 'Submit'} ${_version.str('versionString')} for review'),
                           ),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(width: 14),
+                          Flexible(
+                            child: Text(
+                              ready ? 'All required checks pass.' : '$blocked thing${blocked == 1 ? '' : 's'} to fix first.',
+                              style: t.textTheme.bodyMedium?.copyWith(color: ready ? Tokens.of(context).good : t.colorScheme.error),
+                            ),
+                          ),
+                        ],
+                      ),
                     const SizedBox(height: 10),
                     Text(
                       'The checks cover what the API can see. Apple can still ask for more at review time (for example age rating answers or pricing), and Submit asks you to confirm first.',

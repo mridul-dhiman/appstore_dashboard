@@ -141,7 +141,9 @@ class _ShellState extends State<Shell> {
 
   void _reloadPage() => _guard(() {
     if (_app != null) _appTab = _currentTab;
-    if (_index == 0 && _app == null) unawaited(_store?.refresh()); // the list is cached in the store, not the page
+    // The apps list is cached in the store, not the page; refresh it from inside an app too, so going back shows a state
+    // changed meanwhile (for example a submission).
+    if (_index == 0) unawaited(_store?.refresh());
     setState(() => _refresh++);
   });
 

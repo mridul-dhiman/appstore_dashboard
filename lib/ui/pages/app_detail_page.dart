@@ -83,6 +83,9 @@ class _AppDetailPageState extends State<AppDetailPage> {
   /// Staged listing edits, shared by the Listing tab (which edits them) and the Submit tab (which refuses to submit while
   /// they are unsent).
   late final _draft = ListingDraft(libraryId: widget.summary.app.id);
+
+  /// The newest version's state as the Submit tab last read it; fresher than [AppDetailPage.summary] after a submit.
+  String? _liveState;
   ReviewsData? _reviews;
 
   /// The shell's uploads (they outlive this page); a page shown on its own keeps its own.
@@ -172,7 +175,7 @@ class _AppDetailPageState extends State<AppDetailPage> {
                                       ),
                                     ),
                                     const SizedBox(width: 12),
-                                    StatusBadge(summary.state),
+                                    StatusBadge(_liveState ?? summary.state),
                                   ],
                                 ),
                                 const SizedBox(height: 4),
@@ -235,7 +238,15 @@ class _AppDetailPageState extends State<AppDetailPage> {
                       UploadTab(client: client, appId: id, bundleId: summary.bundleId, uploads: _uploads),
                       _PurchasesTab(client: client, appId: id, appName: summary.name),
                       PricingTab(client: client, appId: id),
-                      SubmitTab(client: client, appId: id, draft: _draft),
+                      SubmitTab(
+                        client: client,
+                        appId: id,
+                        draft: _draft,
+                        onNewestVersion: (v) {
+                          final s = v.str('appStoreState') ?? v.str('appVersionState');
+                          if (mounted && s != _liveState) setState(() => _liveState = s);
+                        },
+                      ),
                     ],
                   ),
                 ),
