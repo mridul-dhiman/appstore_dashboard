@@ -240,8 +240,8 @@ Tone toneFor(String? state) {
   final s = (state ?? '').toUpperCase();
   if (s.isEmpty) return Tone.neutral;
   if (RegExp(r'REJECT|INVALID|FAIL|EXPIRED|REVOKED|REMOVED|DEVELOPER_REMOVED|DISABLED|MISSING').hasMatch(s)) return Tone.bad;
-  if (RegExp(r'REVIEW|WAITING|PROCESSING|PENDING|PREPARE|METADATA|UPLOAD|SUBMIT').hasMatch(s)) return Tone.warn;
-  if (RegExp(r'READY|VALID|ACCEPT|APPROVED|ACTIVE|ENABLED|LIVE|DISTRIBUTION').hasMatch(s)) return Tone.good;
+  if (RegExp(r'REVIEW|WAITING|PROCESSING|PENDING|PREPARE|METADATA|UPLOAD|SUBMIT|INVITED').hasMatch(s)) return Tone.warn;
+  if (RegExp(r'READY|VALID|ACCEPT|APPROVED|ACTIVE|ENABLED|LIVE|DISTRIBUTION|INSTALLED').hasMatch(s)) return Tone.good;
   return Tone.neutral;
 }
 
@@ -252,8 +252,7 @@ class StateChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final (bg, fg) = _badgeColors(toneFor(state), dark);
+    final (bg, fg) = _badgeColors(toneFor(state), Tokens.of(context));
     // A Row (not `alignment:`) so the chip hugs its text instead of stretching to the width it is offered.
     return Container(
       height: 22,
@@ -431,11 +430,11 @@ class Debouncer {
   void dispose() => _t?.cancel();
 }
 
-(Color, Color) _badgeColors(Tone tone, bool dark) => switch (tone) {
-  Tone.good => dark ? (const Color(0x2410B981), const Color(0xFF34D399)) : (const Color(0xFFE4F7EA), const Color(0xFF13773B)),
-  Tone.warn => dark ? (const Color(0x24F59E0B), const Color(0xFFFBBF24)) : (const Color(0xFFFFF4E5), const Color(0xFF9A5B00)),
-  Tone.bad => dark ? (const Color(0x24F43F5E), const Color(0xFFFB7185)) : (const Color(0xFFFFEBEE), const Color(0xFFB4232C)),
-  Tone.neutral => dark ? (const Color(0xFF232832), const Color(0xFFC3CAD6)) : (const Color(0xFFEEF0F4), const Color(0xFF3A3A3C)),
+(Color, Color) _badgeColors(Tone tone, Tokens k) => switch (tone) {
+  Tone.good => (k.goodSoft, k.good),
+  Tone.warn => (k.warnSoft, k.warn),
+  Tone.bad => (k.badSoft, k.bad),
+  Tone.neutral => (k.neutralSoft, k.neutralInk),
 };
 
 /// A status pill with a live dot: green for ready for sale, amber while in review, red for rejected, grey otherwise.
@@ -448,7 +447,7 @@ class StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final tone = toneFor(state);
-    final (bg, fg) = _badgeColors(tone, dark);
+    final (bg, fg) = _badgeColors(tone, Tokens.of(context));
     return Container(
       height: 24,
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -562,13 +561,25 @@ class AppSquircleIcon extends StatelessWidget {
   }
 }
 
+String themeModeLabel(ThemeMode m) => switch (m) {
+  ThemeMode.system => 'System',
+  ThemeMode.light => 'Light',
+  ThemeMode.dark => 'Dark',
+};
+
+IconData _themeIcon(ThemeMode m) => switch (m) {
+  ThemeMode.system => Icons.brightness_auto_outlined,
+  ThemeMode.light => Icons.light_mode_outlined,
+  ThemeMode.dark => Icons.dark_mode_outlined,
+};
+
 /// The window's top bar: drag area, a search box that opens the command palette (⌘K), and the light/dark switch. On macOS it
 /// leaves room for the traffic-light buttons that float over its left end.
 class MacTitleBar extends StatelessWidget {
-  const MacTitleBar({super.key, required this.onSearch, required this.themeMode, required this.onToggleTheme, this.title});
+  const MacTitleBar({super.key, required this.onSearch, required this.themeMode, required this.onThemeMode, this.title});
   final VoidCallback onSearch;
   final ThemeMode themeMode;
-  final VoidCallback onToggleTheme;
+  final ValueChanged<ThemeMode> onThemeMode;
   final String? title;
 
   static bool get _isMac => defaultTargetPlatform == TargetPlatform.macOS;
@@ -576,7 +587,6 @@ class MacTitleBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final k = Tokens.of(context);
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final hint = _isMac && !kIsWeb ? '⌘K' : 'Ctrl K';
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
@@ -643,11 +653,18 @@ class MacTitleBar extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            IconButton(
-              tooltip: dark ? 'Switch to light mode' : 'Switch to dark mode',
-              visualDensity: VisualDensity.compact,
-              onPressed: onToggleTheme,
-              icon: Icon(dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 19, color: k.muted),
+            PopupMenuButton<ThemeMode>(
+              tooltip: 'Appearance: ${themeModeLabel(themeMode)}',
+              initialValue: themeMode,
+              onSelected: onThemeMode,
+              position: PopupMenuPosition.under,
+              itemBuilder: (_) => [
+                for (final m in ThemeMode.values) CheckedPopupMenuItem(value: m, checked: m == themeMode, child: Text(themeModeLabel(m))),
+              ],
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Icon(_themeIcon(themeMode), size: 19, color: k.muted),
+              ),
             ),
           ],
         ),

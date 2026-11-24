@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../api/asc_client.dart';
 import '../../api/listing_draft.dart';
 import '../../api/text_diff.dart';
+import '../theme.dart';
 
 enum _Phase { review, applying, done }
 
@@ -180,7 +181,7 @@ class _ChangelistDialogState extends State<ChangelistDialog> {
                       dense: true,
                       leading: Icon(
                         r.ok ? Icons.check_circle : Icons.error_outline,
-                        color: r.ok ? const Color(0xFF1F8F45) : t.colorScheme.error,
+                        color: r.ok ? Tokens.of(context).good : t.colorScheme.error,
                       ),
                       title: Text(r.title),
                       subtitle: r.ok ? null : SelectableText(r.error!, style: TextStyle(color: t.colorScheme.error)),

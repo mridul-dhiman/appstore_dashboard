@@ -16,7 +16,7 @@ Future<T?> showDrawer<T>(BuildContext context, WidgetBuilder builder) {
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Close',
-    barrierColor: const Color(0x6114171F),
+    barrierColor: Tokens.of(context).scrim,
     transitionDuration: const Duration(milliseconds: 200),
     pageBuilder: (ctx, _, _) => Align(alignment: Alignment.centerRight, child: builder(ctx)),
     transitionBuilder: (ctx, anim, _, child) => SlideTransition(
@@ -191,7 +191,7 @@ class _TeamPageState extends State<TeamPage> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
       child: Row(
         children: [
-          Avatar(name, color: invited ? (const Color(0xFFFFF1D6), const Color(0xFF7A4E00)) : null),
+          Avatar(name, color: invited ? (Tokens.light.warnSoft, Tokens.light.warn) : null),
           const SizedBox(width: 14),
           Expanded(
             child: Column(

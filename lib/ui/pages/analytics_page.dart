@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../api/analytics.dart';
 import '../../api/asc_client.dart';
 import '../../api/models.dart';
+import '../theme.dart';
 import '../widgets.dart';
 import 'apps_page.dart';
 
@@ -203,7 +204,7 @@ class _ReportsView extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  const Icon(Icons.analytics_outlined, size: 40, color: Color(0xFF0A84FF)),
+                  Icon(Icons.analytics_outlined, size: 40, color: Tokens.of(context).accent),
                   const SizedBox(height: 12),
                   const Text('No analytics report exists for this app yet.'),
                   const SizedBox(height: 8),

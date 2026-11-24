@@ -189,7 +189,7 @@ class _Breakdown extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       for (var i = 1; i <= 5; i++)
-                        Icon(i <= data.average.round() ? Icons.star : Icons.star_border, size: 16, color: const Color(0xFFFF9F0A)),
+                        Icon(i <= data.average.round() ? Icons.star : Icons.star_border, size: 16, color: Tokens.of(context).star),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -218,7 +218,7 @@ class _Breakdown extends StatelessWidget {
                                   width: 14,
                                   child: Text('${5 - i}', style: TextStyle(fontWeight: stars == 5 - i ? FontWeight.w700 : FontWeight.w500)),
                                 ),
-                                const Icon(Icons.star, size: 12, color: Color(0xFFFF9F0A)),
+                                Icon(Icons.star, size: 12, color: Tokens.of(context).star),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: ClipRRect(
@@ -436,7 +436,7 @@ class _ReviewTileState extends State<_ReviewTile> {
         children: [
           Row(
             children: [
-              for (var i = 1; i <= 5; i++) Icon(i <= r.rating ? Icons.star : Icons.star_border, size: 16, color: const Color(0xFFFF9F0A)),
+              for (var i = 1; i <= 5; i++) Icon(i <= r.rating ? Icons.star : Icons.star_border, size: 16, color: Tokens.of(context).star),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

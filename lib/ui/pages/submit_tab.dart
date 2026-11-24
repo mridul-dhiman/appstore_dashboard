@@ -9,6 +9,7 @@ import '../../api/listing_draft.dart';
 import '../../api/models.dart';
 import '../../api/queries.dart';
 import '../../api/submission.dart';
+import '../theme.dart';
 import '../widgets.dart';
 
 part 'submit_dialogs.dart';
@@ -498,9 +499,15 @@ class _BodyState extends State<_Body> {
 
   Widget _rejectedCard(PreflightData d, ActiveSubmission s) {
     final t = Theme.of(context);
+    final k = Tokens.of(context);
     final rejected = s.rejectedItems.length;
     return Card(
-      color: t.colorScheme.errorContainer.withValues(alpha: 0.35),
+      // A soft tint with a red edge, as in the design; a solid red fill shouts too loudly in dark mode.
+      color: Color.alphaBlend(k.badSoft, k.surface),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: k.bad.withValues(alpha: 0.35)),
+      ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
         child: Column(
@@ -508,7 +515,7 @@ class _BodyState extends State<_Body> {
           children: [
             Row(
               children: [
-                Icon(Icons.report_outlined, color: t.colorScheme.error),
+                Icon(Icons.report_outlined, color: k.bad),
                 const SizedBox(width: 10),
                 const Expanded(
                   child: Text('Rejected by App Review', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
@@ -552,11 +559,11 @@ class _BodyState extends State<_Body> {
   }
 
   Widget _checkRow(Check c, PreflightData d) {
-    final t = Theme.of(context);
-    final (icon, color) = switch (c.level) {
-      CheckLevel.pass => (Icons.check_circle, const Color(0xFF1F8F45)),
-      CheckLevel.warn => (Icons.warning_amber_rounded, const Color(0xFFB77300)),
-      CheckLevel.fail => (Icons.cancel, t.colorScheme.error),
+    final k = Tokens.of(context);
+    final (icon, color, soft) = switch (c.level) {
+      CheckLevel.pass => (Icons.check_rounded, k.good, k.goodSoft),
+      CheckLevel.warn => (Icons.priority_high_rounded, k.warn, k.warnSoft),
+      CheckLevel.fail => (Icons.close_rounded, k.bad, k.badSoft),
     };
     final fixLabel = switch (c.fix) {
       CheckFix.version => 'New version…',
@@ -568,10 +575,21 @@ class _BodyState extends State<_Body> {
       CheckFix.reply => 'Reply…',
       null => null,
     };
+    // Problems get a tinted row so they stand out from the passing checks, as in the design.
     return ListTile(
-      leading: Icon(icon, color: color),
+      tileColor: c.level == CheckLevel.pass ? null : soft,
+      leading: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: soft,
+          border: Border.all(color: color.withValues(alpha: 0.35)),
+        ),
+        child: Icon(icon, color: color, size: 17, semanticLabel: switch (c.level) { CheckLevel.pass => 'Passed', CheckLevel.warn => 'Warning', CheckLevel.fail => 'Failed' }),
+      ),
       title: Text(c.title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: c.detail == null ? null : Text(c.detail!),
+      subtitle: c.detail == null ? null : Text(c.detail!, style: TextStyle(color: c.level == CheckLevel.pass ? null : color)),
       trailing: c.level != CheckLevel.pass && c.fix != null && fixLabel != null
           ? OutlinedButton(onPressed: _busy ? null : () => _fix(c.fix!, d), child: Text(fixLabel))
           : null,
@@ -683,7 +701,7 @@ class _BodyState extends State<_Body> {
                         Flexible(
                           child: Text(
                             ready ? 'All required checks pass.' : '$blocked thing${blocked == 1 ? '' : 's'} to fix first.',
-                            style: t.textTheme.bodyMedium?.copyWith(color: ready ? const Color(0xFF1F8F45) : t.colorScheme.error),
+                            style: t.textTheme.bodyMedium?.copyWith(color: ready ? Tokens.of(context).good : t.colorScheme.error),
                           ),
                         ),
                       ],

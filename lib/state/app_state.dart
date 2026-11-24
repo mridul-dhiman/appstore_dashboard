@@ -44,12 +44,13 @@ class AppState extends ChangeNotifier {
   /// View choices kept between launches.
   final Prefs prefs;
 
-  /// Follows the system until the person flips the switch in the title bar; the choice is remembered.
+  /// Light, dark, or following the system (the default). Chosen in the title bar or View → Appearance; remembered.
   ThemeMode themeMode = ThemeMode.system;
 
-  void toggleTheme(Brightness current) {
-    themeMode = current == Brightness.dark ? ThemeMode.light : ThemeMode.dark;
-    unawaited(prefs.setTheme(themeMode));
+  void setThemeMode(ThemeMode mode) {
+    if (mode == themeMode) return;
+    themeMode = mode;
+    unawaited(prefs.setTheme(mode));
     notifyListeners();
   }
 

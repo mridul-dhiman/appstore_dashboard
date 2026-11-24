@@ -199,9 +199,15 @@ class _ShellState extends State<Shell> {
               onSelected: _reloadPage,
             ),
             PlatformMenuItem(label: 'Search…', shortcut: const SingleActivator(LogicalKeyboardKey.keyK, meta: true), onSelected: _palette),
-            PlatformMenuItem(
-              label: brightness == Brightness.dark ? 'Light Appearance' : 'Dark Appearance',
-              onSelected: () => widget.state.toggleTheme(brightness),
+            PlatformMenu(
+              label: 'Appearance',
+              menus: [
+                for (final m in ThemeMode.values)
+                  PlatformMenuItem(
+                    label: '${widget.state.themeMode == m ? '✓ ' : ''}${themeModeLabel(m)}',
+                    onSelected: () => widget.state.setThemeMode(m),
+                  ),
+              ],
             ),
           ],
         ),
@@ -295,11 +301,7 @@ class _ShellState extends State<Shell> {
         final body = KeyedSubtree(key: ValueKey('${creds.id}/$_index/$_refresh'), child: _page(client, creds, store));
         final wide = MediaQuery.sizeOf(context).width >= 860;
         final brightness = Theme.of(context).brightness;
-        final bar = MacTitleBar(
-          onSearch: _palette,
-          themeMode: widget.state.themeMode,
-          onToggleTheme: () => widget.state.toggleTheme(brightness),
-        );
+        final bar = MacTitleBar(onSearch: _palette, themeMode: widget.state.themeMode, onThemeMode: widget.state.setThemeMode);
         final shell = CallbackShortcuts(
           bindings: _shortcuts,
           child: Focus(
@@ -536,7 +538,7 @@ class ClientSwitcher extends StatelessWidget {
                     width: 10,
                     height: 10,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF34C759),
+                      color: Tokens.of(context).good,
                       shape: BoxShape.circle,
                       border: Border.all(color: Tokens.of(context).surface, width: 2),
                     ),

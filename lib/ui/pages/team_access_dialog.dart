@@ -134,7 +134,7 @@ class _AccessDialogState extends State<_AccessDialog> {
                       decoration: BoxDecoration(
                         color: on ? k.accent : Colors.transparent,
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: on ? k.accent : const Color(0xFFAEB4C0), width: 1.5),
+                        border: Border.all(color: on ? k.accent : Tokens.of(context).muted, width: 1.5),
                       ),
                       child: on ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
                     ),

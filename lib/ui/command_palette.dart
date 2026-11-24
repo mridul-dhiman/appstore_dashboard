@@ -53,7 +53,7 @@ Future<void> showCommandPalette(BuildContext context, PaletteActions actions) {
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Close',
-    barrierColor: const Color(0x66000000),
+    barrierColor: Tokens.of(context).scrim,
     transitionDuration: const Duration(milliseconds: 120),
     pageBuilder: (ctx, _, _) => Align(
       alignment: const Alignment(0, -0.45),

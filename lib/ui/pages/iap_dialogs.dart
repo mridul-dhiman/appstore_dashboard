@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../../api/asc_client.dart';
 import '../../api/iap_creator.dart';
+import '../theme.dart';
 
 const _csvTemplate =
     'product_id,reference_name,display_name,description,price,type\n'
@@ -116,7 +117,7 @@ class _NewIapDialogState extends State<NewIapDialog> {
                 children: [
                   Icon(
                     r.ok ? Icons.check_circle : Icons.error_outline,
-                    color: r.ok ? const Color(0xFF1F8F45) : t.colorScheme.error,
+                    color: r.ok ? Tokens.of(context).good : t.colorScheme.error,
                     size: 36,
                   ),
                   const SizedBox(height: 10),

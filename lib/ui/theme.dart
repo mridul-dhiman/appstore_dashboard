@@ -17,28 +17,58 @@ class Tokens {
     required this.sidebar,
     required this.titlebar,
     required this.shadow,
+    required this.good,
+    required this.goodSoft,
+    required this.warn,
+    required this.warnSoft,
+    required this.bad,
+    required this.badSoft,
+    required this.neutralInk,
+    required this.neutralSoft,
+    required this.star,
+    required this.scrim,
   });
 
   final Color ground, surface, inset, line, ink, body, muted, accent, accentSoft, accentInk, sidebar, titlebar;
+
+  /// Status colours: text/icon colour and its pale fill. Each pair keeps 4.5:1 contrast in its own theme.
+  final Color good, goodSoft, warn, warnSoft, bad, badSoft, neutralInk, neutralSoft;
+
+  /// Rating stars.
+  final Color star;
+
+  /// Dims the page behind dialogs and the command palette.
+  final Color scrim;
   final List<BoxShadow> shadow;
 
+  // Matches the light screens in the Stitch design: slate text on a cool grey canvas, white cards, blue accent.
   static const light = Tokens._(
-    ground: Color(0xFFF5F6F9),
+    ground: Color(0xFFF7F8FA),
     surface: Color(0xFFFFFFFF),
-    inset: Color(0xFFF0F2F5),
-    line: Color(0x14000000), // rgba(0,0,0,.08)
-    ink: Color(0xFF1D1D1F),
-    body: Color(0xFF3A3A3C),
-    muted: Color(0xFF6E6E73),
-    accent: Color(0xFF0071E3),
-    accentSoft: Color(0xFFEBF3FF),
-    accentInk: Color(0xFF0062C4),
-    sidebar: Color(0xEBF0F2F6),
-    titlebar: Color(0xF0F6F7FA),
+    inset: Color(0xFFF1F3F6),
+    line: Color(0xFFE4E7EC),
+    ink: Color(0xFF0F172A),
+    body: Color(0xFF334155),
+    muted: Color(0xFF64748B),
+    accent: Color(0xFF2563EB),
+    accentSoft: Color(0xFFEFF4FF),
+    accentInk: Color(0xFF1D4ED8),
+    sidebar: Color(0xF2F3F5F8),
+    titlebar: Color(0xF5F9FAFB),
     shadow: [
-      BoxShadow(color: Color(0x0A000000), blurRadius: 3, offset: Offset(0, 1)),
-      BoxShadow(color: Color(0x05000000), blurRadius: 2, offset: Offset(0, 1)),
+      BoxShadow(color: Color(0x0A0F172A), blurRadius: 3, offset: Offset(0, 1)),
+      BoxShadow(color: Color(0x050F172A), blurRadius: 2, offset: Offset(0, 1)),
     ],
+    good: Color(0xFF047857),
+    goodSoft: Color(0xFFECFDF5),
+    warn: Color(0xFFB45309),
+    warnSoft: Color(0xFFFFFBEB),
+    bad: Color(0xFFB91C1C),
+    badSoft: Color(0xFFFEF2F2),
+    neutralInk: Color(0xFF475569),
+    neutralSoft: Color(0xFFF1F5F9),
+    star: Color(0xFFF59E0B),
+    scrim: Color(0x660F172A),
   );
 
   static const dark = Tokens._(
@@ -55,6 +85,16 @@ class Tokens {
     sidebar: Color(0xE0121520),
     titlebar: Color(0xEB161922),
     shadow: [],
+    good: Color(0xFF34D399),
+    goodSoft: Color(0x2410B981),
+    warn: Color(0xFFFBBF24),
+    warnSoft: Color(0x24F59E0B),
+    bad: Color(0xFFFB7185),
+    badSoft: Color(0x24F43F5E),
+    neutralInk: Color(0xFFC3CAD6),
+    neutralSoft: Color(0xFF232832),
+    star: Color(0xFFFFB020),
+    scrim: Color(0x99000000),
   );
 
   static Tokens of(BuildContext c) => Theme.of(c).brightness == Brightness.dark ? dark : light;
@@ -76,7 +116,7 @@ ThemeData buildTheme(Brightness b) {
     surfaceContainerHighest: k.inset,
     surfaceContainerLow: k.inset,
     surfaceContainer: k.inset,
-    error: dark ? const Color(0xFFFF6B6B) : const Color(0xFFD70015),
+    error: k.bad,
   );
   final r9 = BorderRadius.circular(8);
   final borderStrong = dark ? const Color(0x24FFFFFF) : const Color(0x24000000);

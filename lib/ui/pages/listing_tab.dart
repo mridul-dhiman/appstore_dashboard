@@ -565,7 +565,7 @@ class _CharCount extends StatelessWidget {
                     value: ratio,
                     minHeight: 3,
                     backgroundColor: k.line,
-                    color: over ? Theme.of(context).colorScheme.error : (ratio > 0.85 ? const Color(0xFFF59E0B) : k.accent),
+                    color: over ? Theme.of(context).colorScheme.error : (ratio > 0.85 ? k.warn : k.accent),
                   ),
                 ),
               ),

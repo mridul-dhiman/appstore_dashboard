@@ -6,6 +6,7 @@ import '../../api/asc_client.dart';
 import '../../api/models.dart';
 import '../../api/queries.dart';
 import '../../services/profile_installer.dart';
+import '../theme.dart';
 import '../widgets.dart';
 
 /// Certificates, identifiers, profiles and devices: the Developer-portal side of the same API key.
@@ -234,7 +235,7 @@ class _BundleIdTileState extends State<_BundleIdTile> {
               for (final cap in _caps!)
                 ListTile(
                   dense: true,
-                  leading: const Icon(Icons.check_circle, size: 18, color: Color(0xFF1F8F45)),
+                  leading: Icon(Icons.check_circle, size: 18, color: Tokens.of(context).good),
                   title: Text(prettyCapability(cap.str('capabilityType') ?? '')),
                   trailing: OutlinedButton(
                     style: OutlinedButton.styleFrom(
@@ -821,9 +822,9 @@ class _Expiry extends StatelessWidget {
     if (date == null) return const SizedBox.shrink();
     final days = date!.difference(DateTime.now()).inDays;
     final color = days < 0
-        ? const Color(0xFFD13438)
+        ? Tokens.of(context).bad
         : days < 30
-        ? const Color(0xFFB77300)
+        ? Tokens.of(context).warn
         : Theme.of(context).colorScheme.onSurfaceVariant;
     return Text(
       days < 0 ? 'Expired ${fmtDate(date)}' : 'Expires ${fmtDate(date)}',
