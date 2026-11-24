@@ -172,6 +172,12 @@ class _EditorState extends State<_Editor> {
 
   Future<ResourcePage> _loadLocs() => loadVersionLocalizations(widget.client, _version.id);
 
+  /// The chosen locale, else en-US, else the first.
+  Resource _pick(List<Resource> locs) => locs.firstWhere(
+    (l) => l.str('locale') == _locale,
+    orElse: () => locs.firstWhere((l) => l.str('locale') == 'en-US', orElse: () => locs.first),
+  );
+
   Future<void> _clone(Resource source, List<Resource> locs, bool editable) async {
     final staged = await showDialog<int>(
       context: context,
@@ -196,32 +202,72 @@ class _EditorState extends State<_Editor> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(40, 8, 40, 40),
       children: [
-        Row(
-          children: [
-            SizedBox(
-              width: 300,
-              child: DropdownButtonFormField<String>(
-                isExpanded: true,
-                key: ValueKey('v${_version.id}'),
-                initialValue: _version.id,
-                decoration: const InputDecoration(labelText: 'Version', prefixIcon: Icon(Icons.sell_outlined, size: 18)),
-                items: [
-                  for (final v in widget.base.versions)
-                    DropdownMenuItem(
-                      value: v.id,
-                      child: Text('${v.str('versionString')} · ${prettyEnum(_versionState(v))}', overflow: TextOverflow.ellipsis),
-                    ),
-                ],
-                onChanged: (id) => setState(() {
-                  _version = widget.base.versions.firstWhere((v) => v.id == id);
-                  _locale = null;
-                  _locs = _loadLocs();
-                }),
-              ),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SizedBox(
+                  width: 300,
+                  child: DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    key: ValueKey('v${_version.id}'),
+                    initialValue: _version.id,
+                    decoration: const InputDecoration(labelText: 'Version', prefixIcon: Icon(Icons.sell_outlined, size: 18)),
+                    items: [
+                      for (final v in widget.base.versions)
+                        DropdownMenuItem(
+                          value: v.id,
+                          child: Text('${v.str('versionString')} · ${prettyEnum(_versionState(v))}', overflow: TextOverflow.ellipsis),
+                        ),
+                    ],
+                    onChanged: (id) => setState(() {
+                      _version = widget.base.versions.firstWhere((v) => v.id == id);
+                      _locale = null;
+                      _locs = _loadLocs();
+                    }),
+                  ),
+                ),
+                StateChip(_versionState(_version)),
+                // Locale picker and clone sit in the same bar, once the localizations are in.
+                FutureBuilder<ResourcePage>(
+                  future: _locs,
+                  builder: (context, snap) {
+                    final locs = snap.data?.data ?? const <Resource>[];
+                    if (locs.isEmpty) return const SizedBox.shrink();
+                    final loc = _pick(locs);
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 220,
+                          child: DropdownButtonFormField<String>(
+                            isExpanded: true,
+                            key: ValueKey('l${_version.id}'),
+                            initialValue: loc.str('locale'),
+                            decoration: const InputDecoration(labelText: 'Locale', prefixIcon: Icon(Icons.language, size: 18)),
+                            items: [for (final l in locs) DropdownMenuItem(value: l.str('locale'), child: Text(l.str('locale') ?? ''))],
+                            onChanged: (v) => setState(() => _locale = v),
+                          ),
+                        ),
+                        if (locs.length > 1) ...[
+                          const SizedBox(width: 12),
+                          OutlinedButton.icon(
+                            onPressed: () => _clone(loc, locs, isVersionEditable(_versionState(_version))),
+                            icon: const Icon(Icons.copy_all_outlined, size: 17),
+                            label: const Text('Clone to Other Locales'),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            StateChip(_versionState(_version)),
-          ],
+          ),
         ),
         const SizedBox(height: 12),
         if (!editable)
@@ -267,37 +313,11 @@ class _EditorState extends State<_Editor> {
             if (locs.isEmpty) {
               return const EmptyView('This version has no localizations yet.');
             }
-            final loc = locs.firstWhere(
-              (l) => l.str('locale') == _locale,
-              orElse: () => locs.firstWhere((l) => l.str('locale') == 'en-US', orElse: () => locs.first),
-            );
+            final loc = _pick(locs);
             final infoLoc = widget.base.infoLocs.where((l) => l.str('locale') == loc.str('locale')).firstOrNull;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    SizedBox(
-                      width: 300,
-                      child: DropdownButtonFormField<String>(
-                        isExpanded: true,
-                        key: ValueKey('l${_version.id}'),
-                        initialValue: loc.str('locale'),
-                        decoration: const InputDecoration(labelText: 'Locale', prefixIcon: Icon(Icons.language, size: 18)),
-                        items: [for (final l in locs) DropdownMenuItem(value: l.str('locale'), child: Text(l.str('locale') ?? ''))],
-                        onChanged: (v) => setState(() => _locale = v),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    if (locs.length > 1)
-                      OutlinedButton.icon(
-                        onPressed: () => _clone(loc, locs, editable),
-                        icon: const Icon(Icons.copy_all_outlined, size: 17),
-                        label: const Text('Clone to Other Locales'),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
                 _LocaleForm(
                   key: ValueKey('${_version.id}/${loc.id}'),
                   client: widget.client,
@@ -391,45 +411,85 @@ class _LocaleFormState extends State<_LocaleForm> {
   Widget _field(String prefix, ListingField f, bool editable) {
     final isVersion = prefix == 'v';
     final source = isVersion ? widget.versionLoc : widget.infoLoc;
+    final target = isVersion ? TextTarget.version : TextTarget.info;
     final ctl = _ctl['$prefix.${f.key}']!;
     final isUrl = f.key.endsWith('Url');
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: ctl,
-            readOnly: !editable,
-            minLines: f.lines,
-            maxLines: f.lines == 1 ? 1 : f.lines + 4,
-            onChanged: (v) => widget.draft.setText(
-              target: isVersion ? TextTarget.version : TextTarget.info,
-              locId: source!.id,
-              locale: _locale,
-              field: f,
-              before: source.str(f.key) ?? '',
-              after: v,
-            ),
-            decoration: InputDecoration(
-              labelText: f.label,
-              helperText: f.helper,
-              alignLabelWithHint: true,
-              filled: !editable,
-              prefixIcon: !editable ? const Padding(padding: EdgeInsets.only(left: 12, right: 4), child: Icon(Icons.lock_outline, size: 16)) : null,
-              prefixIconConstraints: !editable ? const BoxConstraints(minWidth: 0, minHeight: 0) : null,
-              suffixIcon: isUrl
-                  ? IconButton(
-                      icon: const Icon(Icons.open_in_new, size: 16),
-                      tooltip: 'Open in browser',
-                      onPressed: () => launchUrl(Uri.parse(ctl.text.trim()), mode: LaunchMode.externalApplication),
-                    )
-                  : null,
-            ),
+    final original = source?.str(f.key) ?? '';
+    return ListenableBuilder(
+      listenable: widget.draft,
+      builder: (context, _) {
+        final k = Tokens.of(context);
+        final modified = source != null && widget.draft.textOverride(target, source.id, f.key) != null;
+        // A staged edit is tinted, as in the design, and shows what is live now with a way back to it.
+        return Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: modified ? const EdgeInsets.fromLTRB(12, 10, 12, 6) : EdgeInsets.zero,
+          decoration: modified
+              ? BoxDecoration(
+                  color: k.warnSoft,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: k.warn.withValues(alpha: 0.35)),
+                )
+              : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(f.label, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: k.ink)),
+                  if (modified) ...[const SizedBox(width: 8), const StateChip('PENDING', label: 'Modified')],
+                  if (!editable) ...[const SizedBox(width: 6), Icon(Icons.lock_outline, size: 13, color: k.muted)],
+                  const Spacer(),
+                  if (f.max != null) _CharCount(controller: ctl, max: f.max!),
+                ],
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: ctl,
+                readOnly: !editable,
+                minLines: f.lines,
+                maxLines: f.lines == 1 ? 1 : f.lines + 4,
+                onChanged: (v) =>
+                    widget.draft.setText(target: target, locId: source!.id, locale: _locale, field: f, before: original, after: v),
+                decoration: InputDecoration(
+                  helperText: f.helper,
+                  filled: true,
+                  fillColor: editable ? k.surface : k.inset,
+                  isDense: f.lines == 1,
+                  suffixIcon: isUrl
+                      ? IconButton(
+                          icon: const Icon(Icons.open_in_new, size: 16),
+                          tooltip: 'Open in browser',
+                          onPressed: () => launchUrl(Uri.parse(ctl.text.trim()), mode: LaunchMode.externalApplication),
+                        )
+                      : null,
+                ),
+              ),
+              if (modified)
+                Row(
+                  children: [
+                    Text('Live: ', style: TextStyle(color: k.muted, fontSize: 12)),
+                    Expanded(
+                      child: Text(
+                        original.isEmpty ? '(empty)' : original.replaceAll('\n', ' '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: k.muted, fontSize: 12, decoration: TextDecoration.lineThrough),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        ctl.text = original;
+                        widget.draft.setText(target: target, locId: source.id, locale: _locale, field: f, before: original, after: original);
+                      },
+                      child: const Text('Revert'),
+                    ),
+                  ],
+                ),
+            ],
           ),
-          if (f.max != null) _CharCount(controller: ctl, max: f.max!),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -441,13 +501,13 @@ class _LocaleFormState extends State<_LocaleForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionHead(icon: Icons.info_outline, title: 'App Information', subtitle: 'Name, subtitle and privacy policy'),
         Card(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const _SectionHead(icon: Icons.info_outline, title: 'App Information', note: 'Shared by every version'),
                 if (infoLoc == null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
@@ -480,21 +540,21 @@ class _LocaleFormState extends State<_LocaleForm> {
             ),
           ),
         ),
-        const SizedBox(height: 28),
-        _SectionHead(icon: Icons.description_outlined, title: 'Version Listing', subtitle: 'Description, keywords and release notes'),
+        const SizedBox(height: 20),
         Card(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                _SectionHead(icon: Icons.description_outlined, title: 'Version Listing', note: _locale),
                 for (final f in versionFields) _field('v', f, isFieldEditable(f.key, versionEditable: widget.versionEditable)),
               ],
             ),
           ),
         ),
         const SizedBox(height: 28),
-        _SectionHead(icon: Icons.photo_library_outlined, title: 'Screenshots', subtitle: 'App Store screenshots by device'),
+        const _SectionHead(icon: Icons.photo_library_outlined, title: 'Screenshots & App Previews', note: 'By device size'),
         _ShotsEditor(
           client: widget.client,
           draft: widget.draft,
@@ -508,32 +568,24 @@ class _LocaleFormState extends State<_LocaleForm> {
 }
 
 class _SectionHead extends StatelessWidget {
-  const _SectionHead({required this.icon, required this.title, this.subtitle});
+  const _SectionHead({required this.icon, required this.title, this.note});
   final IconData icon;
   final String title;
-  final String? subtitle;
+
+  /// Small text on the right, e.g. which locale the section belongs to.
+  final String? note;
 
   @override
   Widget build(BuildContext context) {
     final k = Tokens.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(color: k.accentSoft, borderRadius: BorderRadius.circular(7)),
-            child: Icon(icon, size: 16, color: k.accentInk),
-          ),
+          Icon(icon, size: 20, color: k.muted),
           const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: k.ink)),
-              if (subtitle != null) Text(subtitle!, style: TextStyle(fontSize: 12, color: k.muted)),
-            ],
-          ),
+          Expanded(child: Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: k.ink))),
+          if (note != null) Text(note!, style: TextStyle(fontSize: 12, color: k.muted)),
         ],
       ),
     );
@@ -554,32 +606,27 @@ class _CharCount extends StatelessWidget {
         final len = controller.text.length;
         final ratio = (len / max).clamp(0.0, 1.0);
         final over = len > max;
-        return Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Row(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: ratio,
-                    minHeight: 3,
-                    backgroundColor: k.line,
-                    color: over ? Theme.of(context).colorScheme.error : (ratio > 0.85 ? k.warn : k.accent),
-                  ),
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 64,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: ratio,
+                  minHeight: 3,
+                  backgroundColor: k.line,
+                  color: over ? k.bad : (ratio > 0.85 ? k.warn : k.accent),
                 ),
               ),
-              const SizedBox(width: 10),
-              Text(
-                '$len / $max',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: over ? Theme.of(context).colorScheme.error : k.muted,
-                ),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$len / $max',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: over ? k.bad : (ratio > 0.85 ? k.warn : k.muted)),
+            ),
+          ],
         );
       },
     );

@@ -189,4 +189,18 @@ void main() {
     expect(find.textContaining('+ Line two'), findsOneWidget);
     expect(find.textContaining('- Old description'), findsOneWidget);
   });
+
+  testWidgets('an edited field is marked Modified, shows the live text, and Revert un-stages it', (tester) async {
+    final (_, draft) = await pumpTab(tester);
+    await tester.enterText(find.widgetWithText(TextField, 'Old description'), 'New description');
+    await tester.pump();
+    expect(find.text('Modified'), findsOneWidget);
+    expect(find.text('Old description'), findsOneWidget, reason: 'the live text, struck through under the field');
+
+    await tester.tap(find.text('Revert'));
+    await tester.pump();
+    expect(draft.isEmpty, isTrue);
+    expect(find.text('Modified'), findsNothing);
+    expect(find.widgetWithText(TextField, 'Old description'), findsOneWidget);
+  });
 }
