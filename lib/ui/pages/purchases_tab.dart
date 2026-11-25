@@ -51,6 +51,8 @@ class _PurchasesTabState extends State<_PurchasesTab> {
                 icon: const Icon(Icons.playlist_add),
                 label: const Text('Bulk create'),
               ),
+              const SizedBox(width: 8),
+              StoreKitButton(client: client, appId: appId, appName: widget.appName),
               const Spacer(),
               IconButton(tooltip: 'Refresh', onPressed: _reload.reload, icon: const Icon(Icons.refresh)),
             ],
@@ -158,9 +160,7 @@ class _IapTableState extends State<_IapTable> {
       for (final i in all)
         if ((_stage == null || _stageOf(i.str('state')) == _stage) &&
             (_type == null || i.str('inAppPurchaseType') == _type) &&
-            (q.isEmpty ||
-                (i.str('name') ?? '').toLowerCase().contains(q) ||
-                (i.str('productId') ?? '').toLowerCase().contains(q)))
+            (q.isEmpty || (i.str('name') ?? '').toLowerCase().contains(q) || (i.str('productId') ?? '').toLowerCase().contains(q)))
           i,
     ];
     int count(_IapStage s) => all.where((i) => _stageOf(i.str('state')) == s).length;
@@ -171,10 +171,19 @@ class _IapTableState extends State<_IapTable> {
         children: [
           Expanded(flex: 5, child: name),
           const SizedBox(width: 12),
-          Expanded(flex: 4, child: Align(alignment: Alignment.centerLeft, child: id)),
+          Expanded(
+            flex: 4,
+            child: Align(alignment: Alignment.centerLeft, child: id),
+          ),
           const SizedBox(width: 12),
-          SizedBox(width: 130, child: Align(alignment: Alignment.centerLeft, child: type)),
-          SizedBox(width: 150, child: Align(alignment: Alignment.centerRight, child: state)),
+          SizedBox(
+            width: 130,
+            child: Align(alignment: Alignment.centerLeft, child: type),
+          ),
+          SizedBox(
+            width: 150,
+            child: Align(alignment: Alignment.centerRight, child: state),
+          ),
         ],
       ),
     );
@@ -190,7 +199,10 @@ class _IapTableState extends State<_IapTable> {
               runSpacing: 10,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Text('In-app purchases', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: k.ink)),
+                Text(
+                  'In-app purchases',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: k.ink),
+                ),
                 const SizedBox(width: 4),
                 SizedBox(
                   width: 240,
@@ -215,12 +227,16 @@ class _IapTableState extends State<_IapTable> {
                 for (final st in _IapStage.values)
                   if (count(st) > 0)
                     FilterChip(
-                      avatar: Icon(Icons.circle, size: 8, color: switch (st) {
-                        _IapStage.approved => k.good,
-                        _IapStage.ready => k.accent,
-                        _IapStage.review => k.warn,
-                        _IapStage.attention => k.bad,
-                      }),
+                      avatar: Icon(
+                        Icons.circle,
+                        size: 8,
+                        color: switch (st) {
+                          _IapStage.approved => k.good,
+                          _IapStage.ready => k.accent,
+                          _IapStage.review => k.warn,
+                          _IapStage.attention => k.bad,
+                        },
+                      ),
                       label: Text('${_stageLabels[st]} (${count(st)})'),
                       selected: _stage == st,
                       showCheckmark: false,
@@ -249,7 +265,9 @@ class _IapTableState extends State<_IapTable> {
             const Divider(),
             Padding(
               padding: const EdgeInsets.all(28),
-              child: Center(child: Text('No in-app purchases match.', style: TextStyle(color: k.muted))),
+              child: Center(
+                child: Text('No in-app purchases match.', style: TextStyle(color: k.muted)),
+              ),
             ),
           ],
           for (final i in shown) ...[
@@ -263,7 +281,11 @@ class _IapTableState extends State<_IapTable> {
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(color: k.inset, borderRadius: BorderRadius.circular(5), border: Border.all(color: k.line)),
+                decoration: BoxDecoration(
+                  color: k.inset,
+                  borderRadius: BorderRadius.circular(5),
+                  border: Border.all(color: k.line),
+                ),
                 child: Text(
                   i.str('productId') ?? '—',
                   overflow: TextOverflow.ellipsis,
