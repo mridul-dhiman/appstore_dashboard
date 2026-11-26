@@ -139,10 +139,10 @@ Map<String, dynamic> iapPriceScheduleBody(String iapId, String territory, String
   ],
 };
 
-Map<String, dynamic> iapAvailabilityBody(String iapId, List<String> territoryIds) => {
+Map<String, dynamic> iapAvailabilityBody(String iapId, List<String> territoryIds, {bool availableInNewTerritories = true}) => {
   'data': {
     'type': 'inAppPurchaseAvailabilities',
-    'attributes': {'availableInNewTerritories': true},
+    'attributes': {'availableInNewTerritories': availableInNewTerritories},
     'relationships': {
       'inAppPurchase': {
         'data': {'type': 'inAppPurchases', 'id': iapId},

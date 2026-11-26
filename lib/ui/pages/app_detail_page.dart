@@ -19,6 +19,7 @@ import '../widgets.dart';
 import 'apps_page.dart';
 import 'groups_tab.dart';
 import 'iap_dialogs.dart';
+import 'iap_editor.dart';
 import 'listing_tab.dart';
 import 'pricing_tab.dart';
 import 'reviews_tab.dart';

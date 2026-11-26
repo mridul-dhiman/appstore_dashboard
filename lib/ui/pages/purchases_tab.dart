@@ -19,6 +19,9 @@ class _PurchasesTab extends StatefulWidget {
 class _PurchasesTabState extends State<_PurchasesTab> {
   final _reload = ReloadController();
 
+  /// The in-app purchase open in the editor, or null for the list.
+  String? _editing;
+
   @override
   void dispose() {
     _reload.dispose();
@@ -34,6 +37,15 @@ class _PurchasesTabState extends State<_PurchasesTab> {
   Widget build(BuildContext context) {
     final client = widget.client;
     final appId = widget.appId;
+    if (_editing case final id?) {
+      return IapEditor(
+        key: ValueKey(id),
+        client: client,
+        iapId: id,
+        onBack: () => setState(() => _editing = null),
+        onChanged: _reload.reload,
+      );
+    }
     return Column(
       children: [
         Padding(
@@ -73,7 +85,7 @@ class _PurchasesTabState extends State<_PurchasesTab> {
                 padding: const EdgeInsets.all(40),
                 children: [
                   if (d.iaps.data.isNotEmpty) ...[
-                    _IapTable(page: d.iaps),
+                    _IapTable(page: d.iaps, onOpen: (id) => setState(() => _editing = id)),
                     TruncatedNote(d.iaps, 'in-app purchases'),
                     const SizedBox(height: 20),
                   ],
@@ -132,8 +144,9 @@ const _stageLabels = {
 
 /// The in-app purchases as a searchable table, with a summary by state and a filter by type, as in the design.
 class _IapTable extends StatefulWidget {
-  const _IapTable({required this.page});
+  const _IapTable({required this.page, required this.onOpen});
   final ResourcePage page;
+  final ValueChanged<String> onOpen;
 
   @override
   State<_IapTable> createState() => _IapTableState();
@@ -272,7 +285,9 @@ class _IapTableState extends State<_IapTable> {
           ],
           for (final i in shown) ...[
             const Divider(),
-            cells(
+            InkWell(
+              onTap: () => widget.onOpen(i.id),
+              child: cells(
               Text(
                 i.str('name') ?? i.str('productId') ?? '—',
                 maxLines: 2,
@@ -294,6 +309,7 @@ class _IapTableState extends State<_IapTable> {
               ),
               StateChip(null, label: prettyEnum(i.str('inAppPurchaseType'))),
               StateChip(i.str('state')),
+              ),
             ),
           ],
         ],
