@@ -17,6 +17,7 @@ import '../storekit_button.dart';
 import '../theme.dart';
 import '../widgets.dart';
 import 'apps_page.dart';
+import 'draft_submission_tab.dart';
 import 'groups_tab.dart';
 import 'iap_dialogs.dart';
 import 'iap_editor.dart';
@@ -38,6 +39,7 @@ const _tabLabels = [
   'In-App Purchases',
   'Pricing',
   'App Review Preflight',
+  'Draft Submission',
 ];
 const _uploadTab = 4;
 
@@ -249,6 +251,7 @@ class _AppDetailPageState extends State<AppDetailPage> {
                           if (mounted && s != _liveState) setState(() => _liveState = s);
                         },
                       ),
+                      DraftSubmissionTab(client: client, appId: id),
                     ],
                   ),
                 ),
