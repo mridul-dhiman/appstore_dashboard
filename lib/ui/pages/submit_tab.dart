@@ -266,7 +266,7 @@ class _BodyState extends State<_Body> {
       ),
     );
     if (ok != true) return;
-    final done = await _run(() => _flow.release(_version.id));
+    final done = await _run(() async => _flow.release(_version.id));
     if (done) {
       _releaseRequested.add(_version.id);
       if (mounted) {
@@ -781,7 +781,15 @@ class _BodyState extends State<_Body> {
             ),
             StateChip(_state(_version)),
             OutlinedButton.icon(onPressed: _busy ? null : _newVersion, icon: const Icon(Icons.add), label: const Text('New version')),
-            IconButton(tooltip: 'Re-check', onPressed: _pre.reload, icon: const Icon(Icons.refresh)),
+            // Reloads the versions too: their state (approved, released, live) comes from that list, not the checks.
+            IconButton(
+              tooltip: 'Re-check',
+              onPressed: () {
+                widget.onVersionsChanged();
+                _pre.reload();
+              },
+              icon: const Icon(Icons.refresh),
+            ),
           ],
         ),
         const SizedBox(height: 16),

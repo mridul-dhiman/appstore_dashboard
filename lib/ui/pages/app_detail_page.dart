@@ -55,11 +55,16 @@ class AppDetailPage extends StatefulWidget {
     this.onTabChanged,
     this.templates,
     this.onUnsavedChanged,
+    this.onStateChanged,
   });
   final AscClient client;
 
   /// The shell's build uploads. Null when the page is shown on its own (tests).
   final UploadJobs? uploads;
+
+  /// Told when the newest version's state differs from the one in [summary] (submitted, approved, released), so the
+  /// apps list, which holds its own copy, can reload.
+  final VoidCallback? onStateChanged;
 
   /// Told whether the listing has edits that are not sent yet, so leaving the page can ask first.
   final ValueChanged<bool>? onUnsavedChanged;
@@ -249,6 +254,7 @@ class _AppDetailPageState extends State<AppDetailPage> {
                         onNewestVersion: (v) {
                           final s = v.str('appStoreState') ?? v.str('appVersionState');
                           if (mounted && s != _liveState) setState(() => _liveState = s);
+                          if (s != summary.state) widget.onStateChanged?.call();
                         },
                       ),
                       DraftSubmissionTab(client: client, appId: id),

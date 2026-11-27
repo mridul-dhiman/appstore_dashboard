@@ -96,7 +96,14 @@ class _ShellState extends State<Shell> {
     }
   }
 
+  /// An app page saw a version state the apps list does not have; the list reloads when shown again.
+  bool _appsStale = false;
+
   void _select(int i) => _guard(() {
+    if (i == 0 && _appsStale) {
+      _appsStale = false;
+      unawaited(_store?.refresh());
+    }
     setState(() {
       _index = i;
       _app = null;
@@ -278,6 +285,7 @@ class _ShellState extends State<Shell> {
           _remember(_app?.id, t);
         },
         onUnsavedChanged: (v) => _unsaved = v,
+        onStateChanged: () => _appsStale = true,
         onBack: () => _select(0),
       );
     }

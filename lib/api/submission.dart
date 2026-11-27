@@ -610,7 +610,19 @@ class SubmissionFlow {
   }
 
   /// Puts an approved version on the App Store. With a phased release set up, this starts the rollout instead.
-  Future<void> release(String versionId) => client.post('/v1/appStoreVersionReleaseRequests', releaseRequestBody(versionId));
+  ///
+  /// Returns the version's state once Apple has moved it on (it reads back as Pending Developer Release for a few
+  /// seconds after the request), or null if it has not by the last try.
+  Future<String?> release(String versionId) async {
+    await client.post('/v1/appStoreVersionReleaseRequests', releaseRequestBody(versionId));
+    for (var i = 0; i < 6; i++) {
+      await Future<void>.delayed(settleDelay);
+      final v = await client.page('/v1/appStoreVersions/$versionId', {'fields[appStoreVersions]': 'appStoreState'});
+      final state = v.data.firstOrNull?.str('appStoreState');
+      if (state != null && state != 'PENDING_DEVELOPER_RELEASE') return state;
+    }
+    return null;
+  }
 
   Future<void> cancel(String submissionId) => client.patch('/v1/reviewSubmissions/$submissionId', cancelSubmissionBody(submissionId));
 }

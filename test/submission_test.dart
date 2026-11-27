@@ -40,6 +40,32 @@ PreflightData good() =>
 List<Check> fails(PreflightData d) => evaluatePreflight(d).where((c) => c.level == CheckLevel.fail).toList();
 
 void main() {
+  test('release waits for Apple to move the version on before reporting its state', () async {
+    var reads = 0;
+    final fake = FakeAsc((r) {
+      if (r.method == 'POST' && r.path == '/v1/appStoreVersionReleaseRequests') {
+        return json({
+          'data': {'type': 'appStoreVersionReleaseRequests', 'id': 'RR1'},
+        }, 201);
+      }
+      if (r.method == 'GET' && r.path.startsWith('/v1/appStoreVersions/V1')) {
+        reads++;
+        return json({
+          'data': {
+            'type': 'appStoreVersions',
+            'id': 'V1',
+            'attributes': {'appStoreState': reads < 2 ? 'PENDING_DEVELOPER_RELEASE' : 'PROCESSING_FOR_APP_STORE'},
+          },
+        });
+      }
+      return null;
+    });
+    final state = await SubmissionFlow(fake.client, 'A1', settleDelay: Duration.zero).release('V1');
+    expect(state, 'PROCESSING_FOR_APP_STORE');
+    expect(reads, 2);
+    expect(fake.log.where((r) => r.method == 'POST'), hasLength(1));
+  });
+
   group('preflight', () {
     test('a complete version passes with no failures', () {
       final checks = evaluatePreflight(good());
