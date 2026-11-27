@@ -114,9 +114,9 @@ Future<IapDetails> loadIapDetails(AscClient c, String iapId) async {
   if (avail != null && avail.data.isNotEmpty) {
     availabilityId = avail.data.first.id;
     inNew = avail.data.first.flag('availableInNewTerritories') ?? false;
-    available = (await c.all('/v1/inAppPurchaseAvailabilities/$availabilityId/availableTerritories', {'limit': '200'}, 2)).data
-        .map((t) => t.id)
-        .toSet();
+    available = (await c.all('/v1/inAppPurchaseAvailabilities/$availabilityId/availableTerritories', {
+      'limit': '200',
+    }, 2)).data.map((t) => t.id).toSet();
   }
 
   final shot = r[4] as ResourcePage?;
@@ -167,17 +167,18 @@ Map<String, dynamic> iapLocalizationUpdateBody(String locId, {required String na
   },
 };
 
-Map<String, dynamic> iapLocalizationCreateBody(String iapId, {required String locale, required String name, required String description}) => {
-  'data': {
-    'type': 'inAppPurchaseLocalizations',
-    'attributes': {'name': name, 'locale': locale, 'description': description},
-    'relationships': {
-      'inAppPurchaseV2': {
-        'data': {'type': 'inAppPurchases', 'id': iapId},
+Map<String, dynamic> iapLocalizationCreateBody(String iapId, {required String locale, required String name, required String description}) =>
+    {
+      'data': {
+        'type': 'inAppPurchaseLocalizations',
+        'attributes': {'name': name, 'locale': locale, 'description': description},
+        'relationships': {
+          'inAppPurchaseV2': {
+            'data': {'type': 'inAppPurchases', 'id': iapId},
+          },
+        },
       },
-    },
-  },
-};
+    };
 
 Map<String, dynamic> iapScreenshotReserveBody(String iapId, {required String fileName, required int fileSize}) => {
   'data': {
@@ -296,8 +297,7 @@ class IapDraft {
 
   bool get generalChanged => name != savedName || note != savedNote || family != savedFamily;
   bool get availabilityChanged =>
-      inNew != savedInNew ||
-      (territories != null && (savedTerritories == null || !_sameSet(territories!, savedTerritories!)));
+      inNew != savedInNew || (territories != null && (savedTerritories == null || !_sameSet(territories!, savedTerritories!)));
 
   static bool _sameSet(Set<String> a, Set<String> b) => a.length == b.length && a.containsAll(b);
 
@@ -322,16 +322,31 @@ class IapDraft {
   /// Ready-for-review checklist. Anything [IapCheckLevel.bad] blocks submitting; [IapCheckLevel.warn] is an unsaved change.
   List<IapCheck> get checks {
     final c = <IapCheck>[];
-    c.add(name.trim().isEmpty || name.length > iapReferenceMax
-        ? const IapCheck('Reference name missing or too long', IapCheckLevel.bad)
-        : const IapCheck('Reference name', IapCheckLevel.ok));
-    c.add(savedPrice != null || newPrice != null ? const IapCheck('Price set', IapCheckLevel.ok) : const IapCheck('No price set', IapCheckLevel.bad));
+    c.add(
+      name.trim().isEmpty || name.length > iapReferenceMax
+          ? const IapCheck('Reference name missing or too long', IapCheckLevel.bad)
+          : const IapCheck('Reference name', IapCheckLevel.ok),
+    );
+    c.add(
+      savedPrice != null || newPrice != null
+          ? const IapCheck('Price set', IapCheckLevel.ok)
+          : const IapCheck('No price set', IapCheckLevel.bad),
+    );
     final count = territories?.length ?? 0;
-    c.add(count > 0 ? const IapCheck('Available in at least one territory', IapCheckLevel.ok) : const IapCheck('Not available anywhere', IapCheckLevel.bad));
+    c.add(
+      count > 0
+          ? const IapCheck('Available in at least one territory', IapCheckLevel.ok)
+          : const IapCheck('Not available anywhere', IapCheckLevel.bad),
+    );
     if (locs.isEmpty) c.add(const IapCheck('No localization', IapCheckLevel.bad));
     for (final l in locs) {
       final bad = l.name.trim().isEmpty || l.name.length > iapNameMax || l.description.length > iapDescriptionMax;
-      c.add(IapCheck(bad ? '${l.locale} display name or description invalid' : '${l.locale} localization', bad ? IapCheckLevel.bad : IapCheckLevel.ok));
+      c.add(
+        IapCheck(
+          bad ? '${l.locale} display name or description invalid' : '${l.locale} localization',
+          bad ? IapCheckLevel.bad : IapCheckLevel.ok,
+        ),
+      );
     }
     if (details.screenshot == null && shot == null) c.add(const IapCheck('App Review screenshot missing', IapCheckLevel.bad));
     if (note.length > iapReviewNoteMax) c.add(const IapCheck('Review notes too long', IapCheckLevel.bad));
@@ -436,7 +451,10 @@ class IapSaver {
     if (d.availabilityChanged) {
       await step('Availability', () async {
         final t = d.territories ?? const <String>{};
-        await client.post('/v1/inAppPurchaseAvailabilities', iapAvailabilityBody(id, t.toList()..sort(), availableInNewTerritories: d.inNew));
+        await client.post(
+          '/v1/inAppPurchaseAvailabilities',
+          iapAvailabilityBody(id, t.toList()..sort(), availableInNewTerritories: d.inNew),
+        );
         d.savedTerritories = {...t};
         d.savedInNew = d.inNew;
       });
@@ -455,7 +473,10 @@ class IapSaver {
             UploadOp.fromJson((o as Map).cast<String, dynamic>()),
         ];
         await putParts(ops, s.bytes, (_) {});
-        await client.patch('/v1/inAppPurchaseAppStoreReviewScreenshots/${reserved.id}', iapScreenshotCommitBody(reserved.id, md5Hex(s.bytes)));
+        await client.patch(
+          '/v1/inAppPurchaseAppStoreReviewScreenshots/${reserved.id}',
+          iapScreenshotCommitBody(reserved.id, md5Hex(s.bytes)),
+        );
         d.shot = null;
       });
     }

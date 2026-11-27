@@ -37,7 +37,12 @@ void main() {
 
   testWidgets('status chips take their colours from the active theme', (tester) async {
     for (final b in Brightness.values) {
-      await tester.pumpWidget(MaterialApp(theme: buildTheme(b), home: const Scaffold(body: StateChip('READY_FOR_SALE'))));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildTheme(b),
+          home: const Scaffold(body: StateChip('READY_FOR_SALE')),
+        ),
+      );
       await tester.pumpAndSettle(); // the theme animates between brightnesses
       final k = b == Brightness.dark ? Tokens.dark : Tokens.light;
       final text = tester.widget<Text>(find.text('Ready for sale'));

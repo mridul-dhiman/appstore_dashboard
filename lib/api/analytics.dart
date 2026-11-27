@@ -46,10 +46,7 @@ Future<List<Resource>> loadReportRequests(AscClient c, String appId) async =>
 
 Future<List<AnalyticsReport>> loadReports(AscClient c, String requestId) async {
   final p = await c.all('/v1/analyticsReportRequests/$requestId/reports', {'limit': '200'}, 3);
-  return [
-    for (final r in p.data)
-      AnalyticsReport(id: r.id, category: r.str('category') ?? '', name: r.str('name') ?? ''),
-  ];
+  return [for (final r in p.data) AnalyticsReport(id: r.id, category: r.str('category') ?? '', name: r.str('name') ?? '')];
 }
 
 Future<List<ReportInstance>> loadReportInstances(AscClient c, String reportId) async {

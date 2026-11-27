@@ -304,7 +304,9 @@ class _AppCard extends StatelessWidget {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(child: OutlinedButton(onPressed: onTap, child: const Text('Manage'))),
+                      Expanded(
+                        child: OutlinedButton(onPressed: onTap, child: const Text('Manage')),
+                      ),
                       if (onTestFlight != null) ...[
                         const SizedBox(width: 8),
                         Expanded(
@@ -317,7 +319,11 @@ class _AppCard extends StatelessWidget {
                       ],
                       const SizedBox(width: 8),
                       IconButton.outlined(
-                        style: IconButton.styleFrom(fixedSize: const Size(32, 32), minimumSize: const Size(32, 32), padding: EdgeInsets.zero),
+                        style: IconButton.styleFrom(
+                          fixedSize: const Size(32, 32),
+                          minimumSize: const Size(32, 32),
+                          padding: EdgeInsets.zero,
+                        ),
                         tooltip: 'Open in App Store Connect',
                         onPressed: () => launchUrl(
                           Uri.parse('https://appstoreconnect.apple.com/apps/${app.id}/distribution'),

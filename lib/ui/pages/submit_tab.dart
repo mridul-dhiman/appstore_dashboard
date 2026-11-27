@@ -270,9 +270,8 @@ class _BodyState extends State<_Body> {
     if (done) {
       _releaseRequested.add(_version.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$v released. App Store Connect shows it as Processing for App Store until it is live.')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$v released. App Store Connect shows it as Processing for App Store until it is live.')));
       }
       widget.onVersionsChanged();
     }
@@ -313,7 +312,13 @@ class _BodyState extends State<_Body> {
                   'it is usually live within 24 hours.'
             : '$v is being processed for the App Store. It is usually live within 24 hours.',
       ),
-      ReleaseStage.live => (Icons.storefront_outlined, k.good, k.goodSoft, 'On the App Store', '$v is live. To change anything, create a new version.'),
+      ReleaseStage.live => (
+        Icons.storefront_outlined,
+        k.good,
+        k.goodSoft,
+        'On the App Store',
+        '$v is live. To change anything, create a new version.',
+      ),
     };
     if (stage == ReleaseStage.notApproved) return null;
     return Container(
@@ -328,7 +333,11 @@ class _BodyState extends State<_Body> {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(color: k.surface, shape: BoxShape.circle, border: Border.all(color: color.withValues(alpha: 0.3))),
+            decoration: BoxDecoration(
+              color: k.surface,
+              shape: BoxShape.circle,
+              border: Border.all(color: color.withValues(alpha: 0.3)),
+            ),
             child: Icon(icon, color: color, size: 20),
           ),
           const SizedBox(width: 14),
@@ -336,7 +345,10 @@ class _BodyState extends State<_Body> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: TextStyle(color: k.ink, fontWeight: FontWeight.w700, fontSize: 15)),
+                Text(
+                  title,
+                  style: TextStyle(color: k.ink, fontWeight: FontWeight.w700, fontSize: 15),
+                ),
                 const SizedBox(height: 2),
                 Text(body, style: TextStyle(color: k.body, fontSize: 13)),
               ],
@@ -841,7 +853,9 @@ class _BodyState extends State<_Body> {
                               ListTile(
                                 leading: const Icon(Icons.hourglass_top),
                                 title: const Text('In the review queue', style: TextStyle(fontWeight: FontWeight.w600)),
-                                subtitle: Text('Submission ${s.resource.id.length > 8 ? '${s.resource.id.substring(0, 8)}…' : s.resource.id} · ${prettyState(s.state)}'),
+                                subtitle: Text(
+                                  'Submission ${s.resource.id.length > 8 ? '${s.resource.id.substring(0, 8)}…' : s.resource.id} · ${prettyState(s.state)}',
+                                ),
                                 trailing: Wrap(
                                   spacing: 8,
                                   crossAxisAlignment: WrapCrossAlignment.center,

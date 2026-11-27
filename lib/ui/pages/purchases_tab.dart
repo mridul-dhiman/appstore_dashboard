@@ -288,27 +288,27 @@ class _IapTableState extends State<_IapTable> {
             InkWell(
               onTap: () => widget.onOpen(i.id),
               child: cells(
-              Text(
-                i.str('name') ?? i.str('productId') ?? '—',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontWeight: FontWeight.w600, color: k.ink),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: k.inset,
-                  borderRadius: BorderRadius.circular(5),
-                  border: Border.all(color: k.line),
-                ),
-                child: Text(
-                  i.str('productId') ?? '—',
+                Text(
+                  i.str('name') ?? i.str('productId') ?? '—',
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: 'Menlo', fontSize: 11.5, color: k.body),
+                  style: TextStyle(fontWeight: FontWeight.w600, color: k.ink),
                 ),
-              ),
-              StateChip(null, label: prettyEnum(i.str('inAppPurchaseType'))),
-              StateChip(i.str('state')),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: k.inset,
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(color: k.line),
+                  ),
+                  child: Text(
+                    i.str('productId') ?? '—',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontFamily: 'Menlo', fontSize: 11.5, color: k.body),
+                  ),
+                ),
+                StateChip(null, label: prettyEnum(i.str('inAppPurchaseType'))),
+                StateChip(i.str('state')),
               ),
             ),
           ],

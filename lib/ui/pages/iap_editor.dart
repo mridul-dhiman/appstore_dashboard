@@ -241,7 +241,12 @@ class _IapEditorState extends State<IapEditor> {
     final d = _draft!;
     final picked = await showDialog<Resource>(
       context: context,
-      builder: (_) => _PricePointDialog(client: widget.client, iapId: widget.iapId, territory: d.details.baseTerritory ?? 'USA', currency: d.details.currency),
+      builder: (_) => _PricePointDialog(
+        client: widget.client,
+        iapId: widget.iapId,
+        territory: d.details.baseTerritory ?? 'USA',
+        currency: d.details.currency,
+      ),
     );
     if (picked == null) return;
     _changed(() => d.newPrice = picked.str('customerPrice') == d.savedPrice?.customerPrice ? null : picked);
@@ -294,7 +299,13 @@ class _IapEditorState extends State<IapEditor> {
     if (d == null) return const Center(child: CircularProgressIndicator());
     final k = Tokens.of(context);
     final editable = !d.details.locked && !_busy;
-    final left = [_general(d, editable), const SizedBox(height: 20), _localizations(d, editable), const SizedBox(height: 20), _screenshot(d, editable)];
+    final left = [
+      _general(d, editable),
+      const SizedBox(height: 20),
+      _localizations(d, editable),
+      const SizedBox(height: 20),
+      _screenshot(d, editable),
+    ];
     final right = [_price(d, editable), const SizedBox(height: 20), _availability(d, editable), const SizedBox(height: 20), _readiness(d)];
     return ListView(
       padding: const EdgeInsets.fromLTRB(40, 20, 40, 40),
@@ -352,7 +363,10 @@ class _IapEditorState extends State<IapEditor> {
             ),
             OutlinedButton(
               onPressed: _busy ? null : _delete,
-              style: OutlinedButton.styleFrom(foregroundColor: k.bad, side: BorderSide(color: k.bad.withValues(alpha: 0.4))),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: k.bad,
+                side: BorderSide(color: k.bad.withValues(alpha: 0.4)),
+              ),
               child: const Text('Delete in-app purchase…'),
             ),
           ],
@@ -386,7 +400,10 @@ class _IapEditorState extends State<IapEditor> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.chevron_left, size: 18, color: k.accent),
-                    Text('In-App Purchases', style: TextStyle(color: k.accent, fontWeight: FontWeight.w500)),
+                    Text(
+                      'In-App Purchases',
+                      style: TextStyle(color: k.accent, fontWeight: FontWeight.w500),
+                    ),
                   ],
                 ),
               ),
@@ -429,7 +446,10 @@ class _IapEditorState extends State<IapEditor> {
                         d.savedName.isEmpty ? d.details.productId : d.savedName,
                         style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: k.ink),
                       ),
-                      StateChip(null, label: iapTypes[d.details.iap.str('inAppPurchaseType')] ?? prettyEnum(d.details.iap.str('inAppPurchaseType'))),
+                      StateChip(
+                        null,
+                        label: iapTypes[d.details.iap.str('inAppPurchaseType')] ?? prettyEnum(d.details.iap.str('inAppPurchaseType')),
+                      ),
                       StatusBadge(d.details.state),
                     ],
                   ),
@@ -451,7 +471,10 @@ class _IapEditorState extends State<IapEditor> {
                           children: [
                             Icon(Icons.lock_outline, size: 12, color: k.muted),
                             const SizedBox(width: 6),
-                            SelectableText(d.details.productId, style: TextStyle(fontFamily: 'Menlo', fontSize: 11.5, color: k.body)),
+                            SelectableText(
+                              d.details.productId,
+                              style: TextStyle(fontFamily: 'Menlo', fontSize: 11.5, color: k.body),
+                            ),
                           ],
                         ),
                       ),
@@ -499,7 +522,10 @@ class _IapEditorState extends State<IapEditor> {
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(10)),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.22),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                               child: Text('${d.changes.length}', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
                             ),
                           ],
@@ -546,7 +572,10 @@ class _IapEditorState extends State<IapEditor> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Family Sharing', style: TextStyle(fontWeight: FontWeight.w600, color: k.ink)),
+                    Text(
+                      'Family Sharing',
+                      style: TextStyle(fontWeight: FontWeight.w600, color: k.ink),
+                    ),
                     const SizedBox(height: 2),
                     Text(
                       d.savedFamily
@@ -637,7 +666,10 @@ class _IapEditorState extends State<IapEditor> {
       child: loc == null
           ? Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Text('No localizations. Add one: Apple needs a display name to review this purchase.', style: TextStyle(color: k.muted)),
+              child: Text(
+                'No localizations. Add one: Apple needs a display name to review this purchase.',
+                style: TextStyle(color: k.muted),
+              ),
             )
           : Column(
               key: ValueKey(loc.locale),
@@ -715,7 +747,11 @@ class _IapEditorState extends State<IapEditor> {
                     child: d.shot != null
                         ? Image.memory(d.shot!.bytes, fit: BoxFit.cover)
                         : url != null
-                        ? Image.network(url, fit: BoxFit.cover, errorBuilder: (_, _, _) => Icon(Icons.image_outlined, color: k.muted))
+                        ? Image.network(
+                            url,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Icon(Icons.image_outlined, color: k.muted),
+                          )
                         : Icon(Icons.image_outlined, color: k.muted),
                   ),
                 ),
@@ -762,8 +798,14 @@ class _IapEditorState extends State<IapEditor> {
                       Text.rich(
                         TextSpan(
                           children: [
-                            TextSpan(text: 'Add a screenshot  ', style: TextStyle(color: k.ink, fontWeight: FontWeight.w600)),
-                            TextSpan(text: 'Choose file', style: TextStyle(color: k.accent, fontWeight: FontWeight.w600)),
+                            TextSpan(
+                              text: 'Add a screenshot  ',
+                              style: TextStyle(color: k.ink, fontWeight: FontWeight.w600),
+                            ),
+                            TextSpan(
+                              text: 'Choose file',
+                              style: TextStyle(color: k.accent, fontWeight: FontWeight.w600),
+                            ),
                           ],
                         ),
                       ),
@@ -780,7 +822,12 @@ class _IapEditorState extends State<IapEditor> {
             ),
           if (missing) ...[
             const SizedBox(height: 14),
-            _Banner(icon: Icons.error_outline, color: k.bad, fill: k.badSoft, text: "Missing — Apple won't review this purchase without it."),
+            _Banner(
+              icon: Icons.error_outline,
+              color: k.bad,
+              fill: k.badSoft,
+              text: "Missing — Apple won't review this purchase without it.",
+            ),
           ],
         ],
       ),
@@ -801,15 +848,24 @@ class _IapEditorState extends State<IapEditor> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (price == null)
-            Text('No price set', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: k.bad))
+            Text(
+              'No price set',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: k.bad),
+            )
           else
-            Text(money(cur, price), style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: k.ink, letterSpacing: -0.5)),
+            Text(
+              money(cur, price),
+              style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: k.ink, letterSpacing: -0.5),
+            ),
           const SizedBox(height: 4),
           if (d.details.baseTerritory != null)
             Text('Base territory · ${territoryName(d.details.baseTerritory!)}', style: TextStyle(color: k.muted, fontSize: 12.5)),
           if (proceeds != null) ...[
             const SizedBox(height: 4),
-            Text('You receive ${money(cur, proceeds)}', style: TextStyle(color: k.good, fontWeight: FontWeight.w600, fontSize: 13)),
+            Text(
+              'You receive ${money(cur, proceeds)}',
+              style: TextStyle(color: k.good, fontWeight: FontWeight.w600, fontSize: 13),
+            ),
           ],
           if (shown != null) ...[
             const SizedBox(height: 8),
@@ -849,7 +905,9 @@ class _IapEditorState extends State<IapEditor> {
                     children: [
                       Expanded(
                         child: Text(
-                          p.startsAfter(now) ? 'From ${fmtDate(p.start)} · ${money(cur, p.customerPrice)}' : 'Now · ${money(cur, p.customerPrice)}',
+                          p.startsAfter(now)
+                              ? 'From ${fmtDate(p.start)} · ${money(cur, p.customerPrice)}'
+                              : 'Now · ${money(cur, p.customerPrice)}',
                           style: TextStyle(color: k.ink, fontSize: 13),
                         ),
                       ),
@@ -879,7 +937,10 @@ class _IapEditorState extends State<IapEditor> {
     final k = Tokens.of(context);
     final all = d.details.allTerritories;
     final on = d.territories ?? const <String>{};
-    final missing = [for (final t in all) if (!on.contains(t)) t];
+    final missing = [
+      for (final t in all)
+        if (!on.contains(t)) t,
+    ];
     // Name whichever side is shorter: "only in India" says more than 174 places it is not sold.
     final onlyIn = on.length < missing.length;
     final ratio = all.isEmpty ? 0.0 : on.length / all.length;
@@ -908,7 +969,9 @@ class _IapEditorState extends State<IapEditor> {
           const SizedBox(height: 14),
           Row(
             children: [
-              Expanded(child: Text('Make available in new territories', style: TextStyle(color: k.body))),
+              Expanded(
+                child: Text('Make available in new territories', style: TextStyle(color: k.body)),
+              ),
               Switch(value: d.inNew, onChanged: editable ? (v) => _changed(() => d.inNew = v) : null),
             ],
           ),
@@ -1094,10 +1157,16 @@ class _Field extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: k.ink)),
+            Text(
+              label,
+              style: TextStyle(fontWeight: FontWeight.w600, color: k.ink),
+            ),
             if (modified) ...[
               const SizedBox(width: 8),
-              Text('Modified', style: TextStyle(color: k.warn, fontSize: 11.5, fontWeight: FontWeight.w600)),
+              Text(
+                'Modified',
+                style: TextStyle(color: k.warn, fontSize: 11.5, fontWeight: FontWeight.w600),
+              ),
             ],
             const Spacer(),
             Text(
@@ -1113,16 +1182,9 @@ class _Field extends StatelessWidget {
           minLines: lines,
           maxLines: lines == 1 ? 1 : lines + 4,
           onChanged: onChanged,
-          decoration: InputDecoration(
-            hintText: hint,
-            isDense: true,
-            errorText: over ? 'Over $max characters' : null,
-          ),
+          decoration: InputDecoration(hintText: hint, isDense: true, errorText: over ? 'Over $max characters' : null),
         ),
-        if (helper != null) ...[
-          const SizedBox(height: 6),
-          Text(helper!, style: TextStyle(color: k.muted, fontSize: 12.5)),
-        ],
+        if (helper != null) ...[const SizedBox(height: 6), Text(helper!, style: TextStyle(color: k.muted, fontSize: 12.5))],
       ],
     );
   }
@@ -1150,7 +1212,10 @@ class _Banner extends StatelessWidget {
           Icon(icon, size: 18, color: color),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w500, fontSize: 13)),
+            child: Text(
+              text,
+              style: TextStyle(color: color, fontWeight: FontWeight.w500, fontSize: 13),
+            ),
           ),
           ?action,
         ],
@@ -1218,14 +1283,21 @@ class _PricePointDialogState extends State<_PricePointDialog> {
             if (s.hasError) return ErrorView(error: s.error!);
             if (!s.hasData) return const Center(child: CircularProgressIndicator());
             final q = _search.text.trim();
-            final shown = [for (final p in s.data!) if (q.isEmpty || (p.str('customerPrice') ?? '').startsWith(q)) p];
+            final shown = [
+              for (final p in s.data!)
+                if (q.isEmpty || (p.str('customerPrice') ?? '').startsWith(q)) p,
+            ];
             return Column(
               children: [
                 TextField(
                   controller: _search,
                   autofocus: true,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(hintText: 'Type a price, e.g. 9.99', prefixIcon: Icon(Icons.search, size: 18), isDense: true),
+                  decoration: const InputDecoration(
+                    hintText: 'Type a price, e.g. 9.99',
+                    prefixIcon: Icon(Icons.search, size: 18),
+                    isDense: true,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Expanded(
@@ -1233,7 +1305,10 @@ class _PricePointDialogState extends State<_PricePointDialog> {
                     itemCount: shown.length,
                     itemBuilder: (context, i) => ListTile(
                       dense: true,
-                      title: Text(money(cur, shown[i].str('customerPrice')), style: TextStyle(color: k.ink, fontWeight: FontWeight.w600)),
+                      title: Text(
+                        money(cur, shown[i].str('customerPrice')),
+                        style: TextStyle(color: k.ink, fontWeight: FontWeight.w600),
+                      ),
                       trailing: Text('you receive ${money(cur, shown[i].str('proceeds'))}', style: TextStyle(color: k.muted, fontSize: 12)),
                       onTap: () => Navigator.pop(context, shown[i]),
                     ),
@@ -1289,7 +1364,11 @@ class _TerritoriesDialogState extends State<_TerritoriesDialog> {
                   child: TextField(
                     controller: _search,
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(hintText: 'Search territories', prefixIcon: Icon(Icons.search, size: 18), isDense: true),
+                    decoration: const InputDecoration(
+                      hintText: 'Search territories',
+                      prefixIcon: Icon(Icons.search, size: 18),
+                      isDense: true,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),

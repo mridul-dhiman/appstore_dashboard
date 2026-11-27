@@ -26,7 +26,12 @@ FakeAsc fakeIap({String state = 'READY_TO_SUBMIT', bool family = false}) => Fake
     if (p.startsWith('/v2/inAppPurchases/I1/inAppPurchaseLocalizations')) {
       return json({
         'data': [
-          res('inAppPurchaseLocalizations', 'L1', {'locale': 'en-US', 'name': 'Pro Lifetime', 'description': 'Unlock every Pro feature.', 'state': 'APPROVED'}),
+          res('inAppPurchaseLocalizations', 'L1', {
+            'locale': 'en-US',
+            'name': 'Pro Lifetime',
+            'description': 'Unlock every Pro feature.',
+            'state': 'APPROVED',
+          }),
         ],
       });
     }
@@ -41,10 +46,12 @@ FakeAsc fakeIap({String state = 'READY_TO_SUBMIT', bool family = false}) => Fake
     if (p.startsWith('/v1/inAppPurchasePriceSchedules/I1/manualPrices')) {
       return json({
         'data': [
-          res('inAppPurchasePrices', 'P1', {'startDate': null, 'endDate': null}, {
-            'territory': rel('territories', 'USA'),
-            'inAppPurchasePricePoint': rel('inAppPurchasePricePoints', 'PP1'),
-          }),
+          res(
+            'inAppPurchasePrices',
+            'P1',
+            {'startDate': null, 'endDate': null},
+            {'territory': rel('territories', 'USA'), 'inAppPurchasePricePoint': rel('inAppPurchasePricePoints', 'PP1')},
+          ),
         ],
         'included': [
           res('inAppPurchasePricePoints', 'PP1', {'customerPrice': '9.99', 'proceeds': '8.49'}),
@@ -52,7 +59,9 @@ FakeAsc fakeIap({String state = 'READY_TO_SUBMIT', bool family = false}) => Fake
       });
     }
     if (p.startsWith('/v2/inAppPurchases/I1/inAppPurchaseAvailability')) {
-      return json({'data': res('inAppPurchaseAvailabilities', 'AV1', {'availableInNewTerritories': true})});
+      return json({
+        'data': res('inAppPurchaseAvailabilities', 'AV1', {'availableInNewTerritories': true}),
+      });
     }
     if (p.startsWith('/v1/inAppPurchaseAvailabilities/AV1/availableTerritories')) {
       return json({
@@ -151,11 +160,18 @@ void main() {
     final d = IapDraft(await loadIapDetails(f.client, 'I1'));
     f.log.clear();
     d.name = 'Pro Forever';
-    d.locs.add(IapLocDraft(locale: 'de-DE', savedName: '', savedDescription: '')
-      ..name = 'Pro für immer'
-      ..description = 'Alles freischalten.');
+    d.locs.add(
+      IapLocDraft(locale: 'de-DE', savedName: '', savedDescription: '')
+        ..name = 'Pro für immer'
+        ..description = 'Alles freischalten.',
+    );
     d.inNew = false;
-    d.newPrice = Resource(id: 'PP2', type: 'inAppPurchasePricePoints', attributes: {'customerPrice': '12.99', 'proceeds': '11.04'}, relationships: const {});
+    d.newPrice = Resource(
+      id: 'PP2',
+      type: 'inAppPurchasePricePoints',
+      attributes: {'customerPrice': '12.99', 'proceeds': '11.04'},
+      relationships: const {},
+    );
 
     await IapSaver(f.client).save(d);
 
@@ -178,7 +194,11 @@ void main() {
 
   test('a failed step keeps the later changes unsaved and names the step', () async {
     final base = fakeIap();
-    final f = FakeAsc((r) => r.method == 'PATCH' && r.path.startsWith('/v1/inAppPurchaseLocalizations') ? apiError(409, 'Conflict', 'Locked') : base.responder(r));
+    final f = FakeAsc(
+      (r) => r.method == 'PATCH' && r.path.startsWith('/v1/inAppPurchaseLocalizations')
+          ? apiError(409, 'Conflict', 'Locked')
+          : base.responder(r),
+    );
     final d = IapDraft(await loadIapDetails(f.client, 'I1'));
     d.name = 'Pro Forever';
     d.locs.single.name = 'Pro';

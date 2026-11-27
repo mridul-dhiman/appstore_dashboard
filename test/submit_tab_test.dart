@@ -213,7 +213,11 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: SubmitTab(client: fake.client, appId: 'APP', draft: ListingDraft(libraryId: 'APP')),
+          body: SubmitTab(
+            client: fake.client,
+            appId: 'APP',
+            draft: ListingDraft(libraryId: 'APP'),
+          ),
         ),
       ),
     );

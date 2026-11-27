@@ -94,7 +94,11 @@ class _BodyState extends State<_Body> {
               Expanded(child: right),
             ],
           )
-        else ...[left, const SizedBox(height: 16), right],
+        else ...[
+          left,
+          const SizedBox(height: 16),
+          right,
+        ],
       ],
     );
   }
@@ -114,7 +118,10 @@ class _BodyState extends State<_Body> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: k.ink)),
+              Text(
+                title,
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: k.ink),
+              ),
               if (subtitle != null) Text(subtitle, style: TextStyle(color: k.muted, fontSize: 12.5)),
             ],
           ),
@@ -139,7 +146,10 @@ class _BodyState extends State<_Body> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(color: k.accentSoft, borderRadius: BorderRadius.circular(20)),
-      child: Text(label, style: TextStyle(color: k.accentInk, fontSize: 12, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: TextStyle(color: k.accentInk, fontSize: 12, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
@@ -149,7 +159,10 @@ class _BodyState extends State<_Body> {
     final today = DateTime.now();
     final base = price.baseTerritory;
     final now = base == null ? null : price.priceIn(base, today);
-    final schedule = [for (final p in price.baseSchedule) if (p.activeOn(today) || p.startsAfter(today)) p];
+    final schedule = [
+      for (final p in price.baseSchedule)
+        if (p.activeOn(today) || p.startsAfter(today)) p,
+    ];
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -161,11 +174,18 @@ class _BodyState extends State<_Body> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: k.inset, borderRadius: BorderRadius.circular(10), border: Border.all(color: k.line)),
+              decoration: BoxDecoration(
+                color: k.inset,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: k.line),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('CURRENT PRICE', style: TextStyle(color: k.muted, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.6)),
+                  Text(
+                    'CURRENT PRICE',
+                    style: TextStyle(color: k.muted, fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.6),
+                  ),
                   const SizedBox(height: 6),
                   Text(
                     now == null ? (base == null ? 'Free or not set' : '—') : _money(now),
@@ -183,7 +203,10 @@ class _BodyState extends State<_Body> {
                 Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: k.line)),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: k.line),
+                  ),
                   child: Row(
                     children: [
                       Container(
@@ -206,7 +229,10 @@ class _BodyState extends State<_Body> {
                           ],
                         ),
                       ),
-                      Text(_money(p), style: TextStyle(fontWeight: FontWeight.w700, color: k.ink)),
+                      Text(
+                        _money(p),
+                        style: TextStyle(fontWeight: FontWeight.w700, color: k.ink),
+                      ),
                       const SizedBox(width: 10),
                       StateChip(p.activeOn(today) ? 'ACTIVE' : 'PENDING', label: p.activeOn(today) ? 'Current' : 'Scheduled'),
                     ],
@@ -242,7 +268,10 @@ class _BodyState extends State<_Body> {
     final a = widget.data.availability;
     final total = a.territories.length;
     final on = a.availableCount;
-    final off = [for (final r in a.territories) if (!TerritoryAvailability.isAvailable(r)) TerritoryAvailability.territoryOf(r)]..sort();
+    final off = [
+      for (final r in a.territories)
+        if (!TerritoryAvailability.isAvailable(r)) TerritoryAvailability.territoryOf(r),
+    ]..sort();
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(18),
@@ -257,7 +286,10 @@ class _BodyState extends State<_Body> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Auto-available in new territories', style: TextStyle(fontWeight: FontWeight.w600, color: k.ink)),
+                      Text(
+                        'Auto-available in new territories',
+                        style: TextStyle(fontWeight: FontWeight.w600, color: k.ink),
+                      ),
                       Text('When Apple adds a territory, the app goes on sale there.', style: TextStyle(color: k.muted, fontSize: 12.5)),
                     ],
                   ),
@@ -270,7 +302,12 @@ class _BodyState extends State<_Body> {
               const SizedBox(height: 16),
               Row(
                 children: [
-                  Expanded(child: Text('Coverage', style: TextStyle(fontWeight: FontWeight.w600, color: k.ink))),
+                  Expanded(
+                    child: Text(
+                      'Coverage',
+                      style: TextStyle(fontWeight: FontWeight.w600, color: k.ink),
+                    ),
+                  ),
                   Text('$on / $total territories', style: TextStyle(color: k.muted, fontSize: 12.5)),
                 ],
               ),
@@ -286,7 +323,10 @@ class _BodyState extends State<_Body> {
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
-                children: [for (final t in off.take(40)) StateChip('REMOVED', label: territoryName(t)), if (off.length > 40) Text('+${off.length - 40} more')],
+                children: [
+                  for (final t in off.take(40)) StateChip('REMOVED', label: territoryName(t)),
+                  if (off.length > 40) Text('+${off.length - 40} more'),
+                ],
               ),
             ],
           ],
@@ -299,14 +339,17 @@ class _BodyState extends State<_Body> {
     final k = Tokens.of(context);
     final price = widget.data.price;
     final today = DateTime.now();
-    final rows = [
-      for (final r in widget.data.availability.territories)
-        (
-          territory: TerritoryAvailability.territoryOf(r),
-          available: TerritoryAvailability.isAvailable(r),
-          price: price.priceIn(TerritoryAvailability.territoryOf(r), today),
-        ),
-    ]..sort((a, b) => a.territory == price.baseTerritory ? -1 : (b.territory == price.baseTerritory ? 1 : a.territory.compareTo(b.territory)));
+    final rows =
+        [
+          for (final r in widget.data.availability.territories)
+            (
+              territory: TerritoryAvailability.territoryOf(r),
+              available: TerritoryAvailability.isAvailable(r),
+              price: price.priceIn(TerritoryAvailability.territoryOf(r), today),
+            ),
+        ]..sort(
+          (a, b) => a.territory == price.baseTerritory ? -1 : (b.territory == price.baseTerritory ? 1 : a.territory.compareTo(b.territory)),
+        );
     int count(_Filter f) => rows.where((r) => _matches(r.available, r.price, f)).length;
     final q = _search.text.trim().toLowerCase();
     final shown = [
@@ -325,8 +368,14 @@ class _BodyState extends State<_Body> {
         children: [
           Expanded(flex: 3, child: c[0]),
           Expanded(flex: 2, child: c[1]),
-          Expanded(flex: 3, child: Align(alignment: Alignment.centerRight, child: c[2])),
-          Expanded(flex: 3, child: Align(alignment: Alignment.centerRight, child: c[3])),
+          Expanded(
+            flex: 3,
+            child: Align(alignment: Alignment.centerRight, child: c[2]),
+          ),
+          Expanded(
+            flex: 3,
+            child: Align(alignment: Alignment.centerRight, child: c[3]),
+          ),
           const SizedBox(width: 20),
           Expanded(flex: 3, child: c[4]),
           SizedBox(width: 56, child: Center(child: c[5])),
@@ -404,15 +453,23 @@ class _BodyState extends State<_Body> {
             if (shown.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(28),
-                child: Center(child: Text('No territories match.', style: TextStyle(color: k.muted))),
+                child: Center(
+                  child: Text('No territories match.', style: TextStyle(color: k.muted)),
+                ),
               ),
             for (final r in shown.take(_shown)) ...[
               cells([
                 Text.rich(
                   TextSpan(
                     children: [
-                      TextSpan(text: '${r.territory}  ', style: TextStyle(color: k.muted, fontSize: 11.5, fontFamily: 'Menlo')),
-                      TextSpan(text: territoryName(r.territory), style: TextStyle(fontWeight: FontWeight.w600, color: k.ink)),
+                      TextSpan(
+                        text: '${r.territory}  ',
+                        style: TextStyle(color: k.muted, fontSize: 11.5, fontFamily: 'Menlo'),
+                      ),
+                      TextSpan(
+                        text: territoryName(r.territory),
+                        style: TextStyle(fontWeight: FontWeight.w600, color: k.ink),
+                      ),
                     ],
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -450,8 +507,7 @@ class _BodyState extends State<_Body> {
                       style: TextStyle(color: k.muted, fontSize: 12.5),
                     ),
                   ),
-                  if (shown.length > _shown)
-                    TextButton(onPressed: () => setState(() => _shown += 50), child: const Text('Show more')),
+                  if (shown.length > _shown) TextButton(onPressed: () => setState(() => _shown += 50), child: const Text('Show more')),
                 ],
               ),
             ),

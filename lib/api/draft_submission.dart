@@ -104,7 +104,10 @@ class DraftOverview {
   final int versionCount;
 
   PastSubmission? get unresolved => open.where((s) => s.state == 'UNRESOLVED_ISSUES').firstOrNull;
-  List<DraftEntry> get blocked => [for (final i in items) if (!i.ready) i];
+  List<DraftEntry> get blocked => [
+    for (final i in items)
+      if (!i.ready) i,
+  ];
 }
 
 const _editableVersionStates = 'PREPARE_FOR_SUBMISSION,DEVELOPER_REJECTED,REJECTED,METADATA_REJECTED,INVALID_BINARY';
@@ -139,10 +142,12 @@ Future<DraftOverview> loadDraftOverview(AscClient c, String appId, {String platf
     c.all('/v1/reviewSubmissions', {'filter[app]': appId, 'filter[platform]': platform, 'limit': '200', 'include': 'submittedByActor'}, 5),
     c.page('/v1/apps/$appId/appStoreVersions', {'filter[platform]': platform, 'limit': '20', 'include': 'build'}),
     c.all('/v1/apps/$appId/appEvents', {'limit': '50'}, 2).then<ResourcePage?>((p) => p).catchError((_) => null),
-    c.page('/v1/apps/$appId/appCustomProductPages', {'limit': '50', 'include': 'appCustomProductPageVersions'})
+    c
+        .page('/v1/apps/$appId/appCustomProductPages', {'limit': '50', 'include': 'appCustomProductPageVersions'})
         .then<ResourcePage?>((p) => p)
         .catchError((_) => null),
-    c.all('/v1/apps/$appId/inAppPurchasesV2', {'limit': '200', 'filter[state]': 'READY_TO_SUBMIT'}, 2)
+    c
+        .all('/v1/apps/$appId/inAppPurchasesV2', {'limit': '200', 'filter[state]': 'READY_TO_SUBMIT'}, 2)
         .then<ResourcePage?>((p) => p)
         .catchError((_) => null),
   ]);
@@ -172,13 +177,20 @@ Future<DraftOverview> loadDraftOverview(AscClient c, String appId, {String platf
     by: _actorName(subs.inc('actors', s.relId('submittedByActor'))),
     items: items,
   );
-  final others = [for (final s in subs.data) if (s.id != draft?.id) past(s)]
-    ..sort((a, b) => (b.submitted ?? DateTime(0)).compareTo(a.submitted ?? DateTime(0)));
+  final others = [
+    for (final s in subs.data)
+      if (s.id != draft?.id) past(s),
+  ]..sort((a, b) => (b.submitted ?? DateTime(0)).compareTo(a.submitted ?? DateTime(0)));
   final open = await Future.wait([
     for (final s in others)
       if (s.withReview)
-        loadSubmissionItems(c, s.id, versions: versions, pageNames: pageNameByVersion, checkReady: false)
-            .then((items) => past(subs.data.firstWhere((r) => r.id == s.id), items: items)),
+        loadSubmissionItems(
+          c,
+          s.id,
+          versions: versions,
+          pageNames: pageNameByVersion,
+          checkReady: false,
+        ).then((items) => past(subs.data.firstWhere((r) => r.id == s.id), items: items)),
   ]);
 
   final inDraft = {for (final i in items) i.targetId};
@@ -232,7 +244,10 @@ Future<DraftOverview> loadDraftOverview(AscClient c, String appId, {String platf
     items: items,
     addable: addable,
     open: open,
-    history: [for (final s in others) if (!s.withReview) s],
+    history: [
+      for (final s in others)
+        if (!s.withReview) s,
+    ],
     versionCount: versions.data.length,
   );
 }
@@ -365,7 +380,8 @@ class DraftActions {
   Future<String> create(String platform) async =>
       (await client.post('/v1/reviewSubmissions', submissionCreateBody(appId, platform))).data.first.id;
 
-  Future<void> add(String submissionId, DraftEntry e) => client.post('/v1/reviewSubmissionItems', draftItemBody(submissionId, e.kind, e.targetId));
+  Future<void> add(String submissionId, DraftEntry e) =>
+      client.post('/v1/reviewSubmissionItems', draftItemBody(submissionId, e.kind, e.targetId));
 
   Future<void> remove(DraftEntry e) => client.delete('/v1/reviewSubmissionItems/${e.itemId}');
 

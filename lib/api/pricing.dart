@@ -26,7 +26,10 @@ class AppPriceInfo {
 
   /// The base territory's manual prices, oldest first: the price now and any scheduled change.
   List<TerritoryPrice> get baseSchedule {
-    final l = [for (final p in manualPrices) if (p.territory == baseTerritory) p];
+    final l = [
+      for (final p in manualPrices)
+        if (p.territory == baseTerritory) p,
+    ];
     l.sort((a, b) => (a.start ?? DateTime(0)).compareTo(b.start ?? DateTime(0)));
     return l;
   }
@@ -99,13 +102,11 @@ Future<TerritoryAvailability> loadAppAvailability(AscClient c, String appId) asy
 }
 
 /// Apple's price tiers for a territory.
-Future<List<Resource>> loadAppPricePoints(AscClient c, String appId, String territoryId) async =>
-    (await c.all('/v1/apps/$appId/appPricePoints', {
-      'filter[territory]': territoryId,
-      'limit': '200',
-      'fields[appPricePoints]': 'customerPrice,proceeds,priceTier',
-    }, 4))
-        .data;
+Future<List<Resource>> loadAppPricePoints(AscClient c, String appId, String territoryId) async => (await c.all(
+  '/v1/apps/$appId/appPricePoints',
+  {'filter[territory]': territoryId, 'limit': '200', 'fields[appPricePoints]': 'customerPrice,proceeds,priceTier'},
+  4,
+)).data;
 
 Map<String, dynamic> appPriceScheduleBody(String appId, String territory, String pricePointId) => {
   'data': {

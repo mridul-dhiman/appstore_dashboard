@@ -207,7 +207,10 @@ class _BuildsTabState extends State<_BuildsTab> {
                   children: [
                     Icon(open ? Icons.expand_more : Icons.chevron_right, size: 20, color: k.muted),
                     const SizedBox(width: 6),
-                    Text('Version ${g.version}', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: k.ink)),
+                    Text(
+                      'Version ${g.version}',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: k.ink),
+                    ),
                     const SizedBox(width: 10),
                     Text(
                       '$count build${count == 1 ? '' : 's'}${allExpired ? ' · all expired' : ''}',
@@ -237,7 +240,11 @@ class _BuildsTabState extends State<_BuildsTab> {
   Widget _tile(IconData icon, Color fg, Color bg) => Container(
     width: 36,
     height: 36,
-    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: fg.withValues(alpha: 0.25))),
+    decoration: BoxDecoration(
+      color: bg,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: fg.withValues(alpha: 0.25)),
+    ),
     child: Icon(icon, size: 19, color: fg),
   );
 
@@ -254,13 +261,23 @@ class _BuildsTabState extends State<_BuildsTab> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(width: 7, height: 7, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+        ),
         const SizedBox(width: 6),
         Text.rich(
           TextSpan(
             children: [
-              TextSpan(text: '$who: ', style: TextStyle(color: k.muted)),
-              TextSpan(text: label, style: TextStyle(color: k.body, fontWeight: FontWeight.w500)),
+              TextSpan(
+                text: '$who: ',
+                style: TextStyle(color: k.muted),
+              ),
+              TextSpan(
+                text: label,
+                style: TextStyle(color: k.body, fontWeight: FontWeight.w500),
+              ),
             ],
           ),
           style: const TextStyle(fontSize: 12.5),
@@ -342,7 +359,10 @@ class _BuildsTabState extends State<_BuildsTab> {
                   runSpacing: 4,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Text('Build ${b.str('version') ?? '—'}', style: TextStyle(fontWeight: FontWeight.w700, color: k.ink)),
+                    Text(
+                      'Build ${b.str('version') ?? '—'}',
+                      style: TextStyle(fontWeight: FontWeight.w700, color: k.ink),
+                    ),
                     StateChip(expired ? 'EXPIRED' : b.str('processingState')),
                     if (live && !expired) const StateChip('READY_FOR_SALE', label: 'Live on App Store'),
                   ],

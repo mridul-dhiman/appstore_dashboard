@@ -96,26 +96,17 @@ class _ShotsEditor extends StatelessWidget {
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: t.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        decoration: BoxDecoration(color: t.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(10)),
                         child: Text(
                           '${s.liveCount} / $maxScreenshotsPerSet',
                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: t.colorScheme.onSurfaceVariant),
                         ),
                       ),
-                      if (!s.exists) ...[
-                        const SizedBox(width: 8),
-                        const StateChip('PENDING', label: 'New group'),
-                      ],
+                      if (!s.exists) ...[const SizedBox(width: 8), const StateChip('PENDING', label: 'New group')],
                       if (specs != null && specs.sizesByGroup.containsKey(s.group))
                         Padding(
                           padding: const EdgeInsets.only(left: 8),
-                          child: Text(
-                            specs.sizesLabel(s.group),
-                            style: TextStyle(fontSize: 12, color: t.colorScheme.onSurfaceVariant),
-                          ),
+                          child: Text(specs.sizesLabel(s.group), style: TextStyle(fontSize: 12, color: t.colorScheme.onSurfaceVariant)),
                         ),
                       const Spacer(),
                       if (editable)

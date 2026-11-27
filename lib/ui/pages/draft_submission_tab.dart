@@ -90,7 +90,10 @@ class _DraftBodyState extends State<_DraftBody> {
   }
 
   Future<void> _addPicked() async {
-    final entries = [for (final e in d.addable) if (_picked.contains(e.targetId)) e];
+    final entries = [
+      for (final e in d.addable)
+        if (_picked.contains(e.targetId)) e,
+    ];
     if (entries.isEmpty) return;
     if (d.draft == null) {
       final ok = await _confirm(
@@ -176,7 +179,14 @@ class _DraftBodyState extends State<_DraftBody> {
   Widget build(BuildContext context) {
     final k = Tokens.of(context);
     final left = [_itemsCard(), const SizedBox(height: 20), _addCard()];
-    final right = [_summaryCard(), const SizedBox(height: 20), if (_versionItem != null) ...[_PreflightCard(client: widget.client, appId: widget.appId, version: _versionItem!, hasPriorVersion: d.versionCount > 1), const SizedBox(height: 20)]];
+    final right = [
+      _summaryCard(),
+      const SizedBox(height: 20),
+      if (_versionItem != null) ...[
+        _PreflightCard(client: widget.client, appId: widget.appId, version: _versionItem!, hasPriorVersion: d.versionCount > 1),
+        const SizedBox(height: 20),
+      ],
+    ];
     return ListView(
       padding: const EdgeInsets.fromLTRB(40, 4, 40, 40),
       children: [
@@ -347,7 +357,10 @@ class _DraftBodyState extends State<_DraftBody> {
               child: FittedBox(fit: BoxFit.scaleDown, child: status),
             ),
           ),
-          SizedBox(width: 80, child: Align(alignment: Alignment.centerRight, child: action)),
+          SizedBox(
+            width: 80,
+            child: Align(alignment: Alignment.centerRight, child: action),
+          ),
         ],
       ),
     );
@@ -415,9 +428,7 @@ class _DraftBodyState extends State<_DraftBody> {
                       if (e.problem != null) Text(e.problem!, style: TextStyle(color: k.bad, fontSize: 12.5)),
                     ],
                   ),
-                  e.ready
-                      ? StatusBadge(e.state ?? e.itemState ?? 'READY')
-                      : StatusBadge('REJECTED', label: 'Needs attention'),
+                  e.ready ? StatusBadge(e.state ?? e.itemState ?? 'READY') : StatusBadge('REJECTED', label: 'Needs attention'),
                   e.kind == DraftItemKind.other
                       ? const SizedBox()
                       : TextButton(
@@ -506,10 +517,7 @@ class _DraftBodyState extends State<_DraftBody> {
                   ),
                   child: Column(
                     children: [
-                      for (final (i, e) in list.indexed) ...[
-                        if (i > 0) Divider(height: 1, color: k.line),
-                        _addRow(e),
-                      ],
+                      for (final (i, e) in list.indexed) ...[if (i > 0) Divider(height: 1, color: k.line), _addRow(e)],
                     ],
                   ),
                 ),
@@ -558,15 +566,24 @@ class _DraftBodyState extends State<_DraftBody> {
             else
               Checkbox(
                 value: _picked.contains(e.targetId),
-                onChanged: e.ready && !_busy ? (v) => setState(() => v == true ? _picked.add(e.targetId) : _picked.remove(e.targetId)) : null,
+                onChanged: e.ready && !_busy
+                    ? (v) => setState(() => v == true ? _picked.add(e.targetId) : _picked.remove(e.targetId))
+                    : null,
               ),
             const SizedBox(width: 4),
             Expanded(
               child: Text.rich(
                 TextSpan(
                   children: [
-                    TextSpan(text: e.kind == DraftItemKind.version ? 'Version ${e.name}' : e.name, style: TextStyle(fontWeight: FontWeight.w600, color: k.ink)),
-                    if (e.detail != null) TextSpan(text: '  ·  ${e.detail}', style: TextStyle(color: k.muted, fontSize: 12.5)),
+                    TextSpan(
+                      text: e.kind == DraftItemKind.version ? 'Version ${e.name}' : e.name,
+                      style: TextStyle(fontWeight: FontWeight.w600, color: k.ink),
+                    ),
+                    if (e.detail != null)
+                      TextSpan(
+                        text: '  ·  ${e.detail}',
+                        style: TextStyle(color: k.muted, fontSize: 12.5),
+                      ),
                   ],
                 ),
                 overflow: TextOverflow.ellipsis,
@@ -576,11 +593,10 @@ class _DraftBodyState extends State<_DraftBody> {
             if (e.problem != null)
               Text(e.problem!, style: TextStyle(color: k.muted, fontSize: 12))
             else
-              Flexible(child: FittedBox(fit: BoxFit.scaleDown, child: StatusBadge(e.state ?? 'READY'))),
-            if (iap) ...[
-              const SizedBox(width: 8),
-              TextButton(onPressed: _busy ? null : () => _submitIap(e), child: const Text('Submit…')),
-            ],
+              Flexible(
+                child: FittedBox(fit: BoxFit.scaleDown, child: StatusBadge(e.state ?? 'READY')),
+              ),
+            if (iap) ...[const SizedBox(width: 8), TextButton(onPressed: _busy ? null : () => _submitIap(e), child: const Text('Submit…'))],
           ],
         ),
       ),
@@ -593,7 +609,9 @@ class _DraftBodyState extends State<_DraftBody> {
       padding: const EdgeInsets.symmetric(vertical: 9),
       child: Row(
         children: [
-          Expanded(child: Text(label, style: TextStyle(color: k.body))),
+          Expanded(
+            child: Text(label, style: TextStyle(color: k.body)),
+          ),
           Text(
             value,
             style: TextStyle(color: color ?? k.ink, fontWeight: FontWeight.w600),
@@ -668,10 +686,7 @@ class _DraftBodyState extends State<_DraftBody> {
                 ],
                 if (all.length > list.length) ...[
                   Divider(height: 1, color: k.line),
-                  TextButton(
-                    onPressed: () => setState(() => _showAllHistory = true),
-                    child: Text('Show all ${all.length} submissions'),
-                  ),
+                  TextButton(onPressed: () => setState(() => _showAllHistory = true), child: Text('Show all ${all.length} submissions')),
                 ],
               ],
             ),
@@ -758,19 +773,24 @@ class _SubmissionTileState extends State<_SubmissionTile> {
                 if (!snap.hasData) return const Padding(padding: EdgeInsets.all(8), child: LinearProgressIndicator());
                 // Items the API does not identify (in-app purchases that went with the version, usually) are folded
                 // into one line: a row each says nothing more and can run to dozens.
-                final unknown = [for (final e in snap.data!) if (e.kind == DraftItemKind.other) e];
+                final unknown = [
+                  for (final e in snap.data!)
+                    if (e.kind == DraftItemKind.other) e,
+                ];
                 final byState = <String, int>{};
                 for (final e in unknown) {
                   byState.update(prettyEnum(e.itemState), (n) => n + 1, ifAbsent: () => 1);
                 }
                 final items = [
-                  for (final e in snap.data!) if (e.kind != DraftItemKind.other) e,
+                  for (final e in snap.data!)
+                    if (e.kind != DraftItemKind.other) e,
                   if (unknown.isNotEmpty)
                     DraftEntry(
                       kind: DraftItemKind.other,
                       targetId: 'other',
                       name: '${unknown.length} item${unknown.length == 1 ? '' : 's'} not identified by the API',
-                      detail: 'Usually in-app purchases that went with the version · '
+                      detail:
+                          'Usually in-app purchases that went with the version · '
                           '${byState.entries.map((e) => '${e.value} ${e.key.toLowerCase()}').join(', ')}',
                       itemState: unknown.every((e) => e.itemState == unknown.first.itemState) ? unknown.first.itemState : null,
                     ),
@@ -796,7 +816,10 @@ class _SubmissionTileState extends State<_SubmissionTile> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(e.kind == DraftItemKind.other ? e.name : e.title, style: TextStyle(color: k.ink, fontWeight: FontWeight.w600, fontSize: 13)),
+                                    Text(
+                                      e.kind == DraftItemKind.other ? e.name : e.title,
+                                      style: TextStyle(color: k.ink, fontWeight: FontWeight.w600, fontSize: 13),
+                                    ),
                                     if (e.detail != null) Text(e.detail!, style: TextStyle(color: k.muted, fontSize: 12)),
                                   ],
                                 ),
@@ -851,7 +874,11 @@ class _PreflightCardState extends State<_PreflightCard> {
         future: _checks,
         builder: (context, s) {
           if (s.hasError) return Text('Could not run the checks: ${s.error}', style: TextStyle(color: k.bad));
-          if (!s.hasData) return const Padding(padding: EdgeInsets.all(12), child: Center(child: CircularProgressIndicator()));
+          if (!s.hasData)
+            return const Padding(
+              padding: EdgeInsets.all(12),
+              child: Center(child: CircularProgressIndicator()),
+            );
           final checks = s.data!;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

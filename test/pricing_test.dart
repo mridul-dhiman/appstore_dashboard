@@ -52,7 +52,13 @@ void main() {
       if (r.path.startsWith('/v1/appPriceSchedules/A/manualPrices')) {
         return json({
           'data': [price('m1', 'USA', 'p1'), price('m2', 'USA', 'p3', start: '2999-01-01'), price('m3', 'GBR', 'p4')],
-          'included': [point('p1', '4.99', '4.24'), point('p3', '5.99', '5.09'), point('p4', '3.99', '2.79'), territory('USA', 'USD'), territory('GBR', 'GBP')],
+          'included': [
+            point('p1', '4.99', '4.24'),
+            point('p3', '5.99', '5.09'),
+            point('p4', '3.99', '2.79'),
+            territory('USA', 'USD'),
+            territory('GBR', 'GBP'),
+          ],
         });
       }
       if (r.path.startsWith('/v1/appPriceSchedules/A/automaticPrices')) {

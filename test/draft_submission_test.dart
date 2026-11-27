@@ -54,16 +54,22 @@ FakeAsc fakeApp({bool withDraft = true}) => FakeAsc((r) {
         ],
       });
     }
-    if (p.contains('/appStoreVersions/V0/build')) return json({'data': res('builds', 'B1', {'version': '1'})});
+    if (p.contains('/appStoreVersions/V0/build'))
+      return json({
+        'data': res('builds', 'B1', {'version': '1'}),
+      });
     if (p.startsWith('/v1/reviewSubmissions')) {
       return json({
         'data': [
           if (withDraft) res('reviewSubmissions', 'D1', {'platform': 'IOS', 'state': 'READY_FOR_REVIEW'}),
           res('reviewSubmissions', 'S1', {'platform': 'IOS', 'state': 'CANCELING', 'submittedDate': '2026-10-01T10:00:00Z'}),
           res('reviewSubmissions', 'R1', {'platform': 'IOS', 'state': 'WAITING_FOR_REVIEW', 'submittedDate': '2026-11-25T10:00:00Z'}),
-          res('reviewSubmissions', 'S0', {'platform': 'IOS', 'state': 'COMPLETE', 'submittedDate': '2026-11-12T10:00:00Z'}, {
-            'submittedByActor': rel('actors', 'A1'),
-          }),
+          res(
+            'reviewSubmissions',
+            'S0',
+            {'platform': 'IOS', 'state': 'COMPLETE', 'submittedDate': '2026-11-12T10:00:00Z'},
+            {'submittedByActor': rel('actors', 'A1')},
+          ),
         ],
         'included': [
           res('actors', 'A1', {'actorType': 'USER', 'userFirstName': 'Sam', 'userLastName': 'Lee'}),
@@ -73,7 +79,12 @@ FakeAsc fakeApp({bool withDraft = true}) => FakeAsc((r) {
     if (p.startsWith('/v1/apps/APP/appStoreVersions')) {
       return json({
         'data': [
-          res('appStoreVersions', 'V2', {'versionString': '1.2.0', 'appStoreState': 'PREPARE_FOR_SUBMISSION'}, {'build': rel('builds', 'B42')}),
+          res(
+            'appStoreVersions',
+            'V2',
+            {'versionString': '1.2.0', 'appStoreState': 'PREPARE_FOR_SUBMISSION'},
+            {'build': rel('builds', 'B42')},
+          ),
           res('appStoreVersions', 'V1', {'versionString': '1.1.0', 'appStoreState': 'READY_FOR_SALE'}),
         ],
         'included': [
@@ -91,13 +102,18 @@ FakeAsc fakeApp({bool withDraft = true}) => FakeAsc((r) {
     if (p.startsWith('/v1/apps/APP/appCustomProductPages')) {
       return json({
         'data': [
-          res('appCustomProductPages', 'CP1', {'name': 'Students'}, {
-            'appCustomProductPageVersions': {
-              'data': [
-                {'type': 'appCustomProductPageVersions', 'id': 'CPV1'},
-              ],
+          res(
+            'appCustomProductPages',
+            'CP1',
+            {'name': 'Students'},
+            {
+              'appCustomProductPageVersions': {
+                'data': [
+                  {'type': 'appCustomProductPageVersions', 'id': 'CPV1'},
+                ],
+              },
             },
-          }),
+          ),
         ],
         'included': [
           res('appCustomProductPageVersions', 'CPV1', {'version': '1', 'state': 'READY_FOR_REVIEW'}),
@@ -107,13 +123,21 @@ FakeAsc fakeApp({bool withDraft = true}) => FakeAsc((r) {
     if (p.startsWith('/v1/apps/APP/inAppPurchasesV2')) {
       return json({
         'data': [
-          res('inAppPurchases', 'I1', {'name': 'Coins 100', 'productId': 'com.acme.coins100', 'inAppPurchaseType': 'CONSUMABLE', 'state': 'READY_TO_SUBMIT'}),
+          res('inAppPurchases', 'I1', {
+            'name': 'Coins 100',
+            'productId': 'com.acme.coins100',
+            'inAppPurchaseType': 'CONSUMABLE',
+            'state': 'READY_TO_SUBMIT',
+          }),
         ],
       });
     }
     if (p.startsWith('/v1/appStoreVersions/')) return json({'data': null});
   }
-  if (r.method == 'POST' && p == '/v1/reviewSubmissions') return json({'data': res('reviewSubmissions', 'D9', {'state': 'READY_FOR_REVIEW'})}, 201);
+  if (r.method == 'POST' && p == '/v1/reviewSubmissions')
+    return json({
+      'data': res('reviewSubmissions', 'D9', {'state': 'READY_FOR_REVIEW'}),
+    }, 201);
   if (r.method == 'POST') return json({'data': res('x', 'x', {})}, 201);
   if (r.method == 'PATCH') return json({'data': res('x', 'x', {})});
   if (r.method == 'DELETE') return noContent();
@@ -186,7 +210,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildTheme(Brightness.light),
-        home: Scaffold(body: DraftSubmissionTab(client: f.client, appId: 'APP')),
+        home: Scaffold(
+          body: DraftSubmissionTab(client: f.client, appId: 'APP'),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -195,7 +221,14 @@ void main() {
     expect(find.text('App Store Version · 1.2.0'), findsOneWidget);
     expect(find.text('In-App Event · Winter Writing Challenge'), findsOneWidget);
     expect(find.text('Fix or remove 1 item first'), findsOneWidget);
-    expect(tester.widget<FilledButton>(find.ancestor(of: find.text('Submit to App Review'), matching: find.byWidgetPredicate((w) => w is FilledButton))).onPressed, isNull);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.ancestor(of: find.text('Submit to App Review'), matching: find.byWidgetPredicate((w) => w is FilledButton)),
+          )
+          .onPressed,
+      isNull,
+    );
     expect(find.textContaining('Students', findRichText: true), findsOneWidget);
     expect(find.text('With App Review'), findsOneWidget);
     expect(find.text('Submission history'), findsOneWidget);

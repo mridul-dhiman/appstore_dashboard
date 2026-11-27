@@ -401,7 +401,10 @@ class _Report extends StatelessWidget {
                     ),
                     if (_proceedsOf(e.value) != '—') ...[
                       Text('  /  ', style: TextStyle(color: k.muted)),
-                      Text(_proceedsOf(e.value), style: TextStyle(color: k.good, fontWeight: FontWeight.w600)),
+                      Text(
+                        _proceedsOf(e.value),
+                        style: TextStyle(color: k.good, fontWeight: FontWeight.w600),
+                      ),
                     ],
                   ],
                 ),

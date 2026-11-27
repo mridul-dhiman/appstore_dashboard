@@ -96,10 +96,7 @@ class _ListingTabState extends State<ListingTab> {
                   Container(
                     width: 32,
                     height: 32,
-                    decoration: BoxDecoration(
-                      color: t.colorScheme.primary.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    decoration: BoxDecoration(color: t.colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
                     child: Icon(Icons.edit_note_rounded, size: 18, color: t.colorScheme.primary),
                   ),
                   const SizedBox(width: 14),
@@ -292,10 +289,7 @@ class _EditorState extends State<_Editor> {
             ),
           )
         else
-          Text(
-            'Changes are staged locally and sent when you apply the changelist.',
-            style: TextStyle(color: k.muted, fontSize: 12.5),
-          ),
+          Text('Changes are staged locally and sent when you apply the changelist.', style: TextStyle(color: k.muted, fontSize: 12.5)),
         const SizedBox(height: 16),
         FutureBuilder<ResourcePage>(
           future: _locs,
@@ -436,7 +430,10 @@ class _LocaleFormState extends State<_LocaleForm> {
             children: [
               Row(
                 children: [
-                  Text(f.label, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: k.ink)),
+                  Text(
+                    f.label,
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: k.ink),
+                  ),
                   if (modified) ...[const SizedBox(width: 8), const StateChip('PENDING', label: 'Modified')],
                   if (!editable) ...[const SizedBox(width: 6), Icon(Icons.lock_outline, size: 13, color: k.muted)],
                   const Spacer(),
@@ -480,7 +477,14 @@ class _LocaleFormState extends State<_LocaleForm> {
                     TextButton(
                       onPressed: () {
                         ctl.text = original;
-                        widget.draft.setText(target: target, locId: source.id, locale: _locale, field: f, before: original, after: original);
+                        widget.draft.setText(
+                          target: target,
+                          locId: source.id,
+                          locale: _locale,
+                          field: f,
+                          before: original,
+                          after: original,
+                        );
                       },
                       child: const Text('Revert'),
                     ),
@@ -584,7 +588,12 @@ class _SectionHead extends StatelessWidget {
         children: [
           Icon(icon, size: 20, color: k.muted),
           const SizedBox(width: 10),
-          Expanded(child: Text(title, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: k.ink))),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: k.ink),
+            ),
+          ),
           if (note != null) Text(note!, style: TextStyle(fontSize: 12, color: k.muted)),
         ],
       ),

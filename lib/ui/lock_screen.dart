@@ -53,7 +53,10 @@ class _LockScreenState extends State<LockScreen> {
                             child: Icon(Icons.lock_outline, size: 30, color: k.accentInk),
                           ),
                           const SizedBox(height: 18),
-                          Text('App Store Dashboard', style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: k.ink)),
+                          Text(
+                            'App Store Dashboard',
+                            style: t.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700, color: k.ink),
+                          ),
                           const SizedBox(height: 6),
                           Text(
                             'Unlock with Touch ID or your computer password to open your App Store Connect keys.',
@@ -62,7 +65,11 @@ class _LockScreenState extends State<LockScreen> {
                           ),
                           if (s.message != null) ...[
                             const SizedBox(height: 14),
-                            Text(s.message!, textAlign: TextAlign.center, style: TextStyle(color: k.bad)),
+                            Text(
+                              s.message!,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: k.bad),
+                            ),
                           ],
                           const SizedBox(height: 24),
                           SizedBox(
@@ -86,7 +93,10 @@ class _LockScreenState extends State<LockScreen> {
                         Icon(Icons.shield_outlined, size: 14, color: k.muted),
                         const SizedBox(width: 6),
                         Flexible(
-                          child: Text('Your API keys stay in your system keychain while locked', style: TextStyle(color: k.muted, fontSize: 12.5)),
+                          child: Text(
+                            'Your API keys stay in your system keychain while locked',
+                            style: TextStyle(color: k.muted, fontSize: 12.5),
+                          ),
                         ),
                       ],
                     ),

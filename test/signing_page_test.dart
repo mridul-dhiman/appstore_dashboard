@@ -81,11 +81,18 @@ void main() {
         });
       }
       // No profileContent in the reply, so nothing is installed on the machine running the test.
-      if (r.method == 'POST' && p == '/v1/profiles') return json({'data': res('profiles', 'NEW', {'name': 'X'})}, 201);
+      if (r.method == 'POST' && p == '/v1/profiles')
+        return json({
+          'data': res('profiles', 'NEW', {'name': 'X'}),
+        }, 201);
       if (r.method == 'GET') return json({'data': []});
       return null;
     });
-    await tester.pumpWidget(MaterialApp(home: Scaffold(body: SigningPage(client: fake.client))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: SigningPage(client: fake.client)),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Profiles'));
     await tester.pumpAndSettle();

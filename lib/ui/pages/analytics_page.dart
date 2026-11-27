@@ -189,11 +189,7 @@ class _ReportsView extends StatelessWidget {
                 ],
               ),
             ),
-            OutlinedButton.icon(
-              onPressed: onClearApp,
-              icon: const Icon(Icons.swap_horiz, size: 16),
-              label: const Text('Change app'),
-            ),
+            OutlinedButton.icon(onPressed: onClearApp, icon: const Icon(Icons.swap_horiz, size: 16), label: const Text('Change app')),
           ],
         ),
         const SizedBox(height: 24),
@@ -213,17 +209,15 @@ class _ReportsView extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: onCreateRequest,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Request analytics report'),
-                  ),
+                  FilledButton.icon(onPressed: onCreateRequest, icon: const Icon(Icons.add), label: const Text('Request analytics report')),
                 ],
               ),
             ),
           ),
         ] else if (creating) ...[
-          const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator())),
+          const Center(
+            child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()),
+          ),
         ] else ...[
           Card(
             child: ListTile(
@@ -271,7 +265,9 @@ class _ReportsView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SectionLabel(category.value),
-                    RowsCard(children: [for (final report in catReports) _ReportRow(client: client, report: report)]),
+                    RowsCard(
+                      children: [for (final report in catReports) _ReportRow(client: client, report: report)],
+                    ),
                     const SizedBox(height: 16),
                   ],
                 );
@@ -341,7 +337,9 @@ class _ReportRowState extends State<_ReportRow> {
                 for (final inst in _instances!.take(10))
                   Row(
                     children: [
-                      Expanded(child: Text('${inst.processingDate} · ${prettyEnum(inst.granularity)}', style: const TextStyle(fontSize: 13))),
+                      Expanded(
+                        child: Text('${inst.processingDate} · ${prettyEnum(inst.granularity)}', style: const TextStyle(fontSize: 13)),
+                      ),
                       TextButton.icon(
                         onPressed: () => _download(inst),
                         icon: const Icon(Icons.download, size: 16),

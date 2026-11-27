@@ -51,12 +51,7 @@ class _SigningPageState extends State<SigningPage> {
           Expanded(
             child: TabBarView(
               children: [
-                _List(
-                  controller: _reload,
-                  load: () => loadCertificates(c),
-                  empty: 'No certificates.',
-                  tile: (r, _) => _CertificateRow(r),
-                ),
+                _List(controller: _reload, load: () => loadCertificates(c), empty: 'No certificates.', tile: (r, _) => _CertificateRow(r)),
                 _IdentifiersTab(client: c, controller: _reload),
                 _ProfilesTab(client: c, controller: _reload),
                 _DevicesTab(client: c, controller: _reload),
@@ -829,10 +824,7 @@ class _CertificateRow extends StatelessWidget {
           Container(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(
-              color: distribution ? k.accentSoft : k.goodSoft,
-              borderRadius: BorderRadius.circular(10),
-            ),
+            decoration: BoxDecoration(color: distribution ? k.accentSoft : k.goodSoft, borderRadius: BorderRadius.circular(10)),
             child: Icon(distribution ? Icons.cloud_upload_outlined : Icons.code, size: 18, color: distribution ? k.accentInk : k.good),
           ),
           const SizedBox(width: 14),
@@ -840,7 +832,10 @@ class _CertificateRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(prettyEnum(type), style: TextStyle(fontWeight: FontWeight.w700, color: k.ink)),
+                Text(
+                  prettyEnum(type),
+                  style: TextStyle(fontWeight: FontWeight.w700, color: k.ink),
+                ),
                 Text(r.str('displayName') ?? r.str('name') ?? '', style: TextStyle(color: k.body, fontSize: 13)),
                 Text(
                   'Serial ${r.str('serialNumber') ?? '—'}',
@@ -891,7 +886,11 @@ class _Summary extends StatelessWidget {
         final expiring = [...certs, ...profiles].where(soon).length;
         final tiles = [
           Stat(label: 'Signing certificates', value: '${certs.length}'),
-          Stat(label: 'Profiles valid', value: '$validProfiles / ${profiles.length}', tone: validProfiles < profiles.length ? k.warn : null),
+          Stat(
+            label: 'Profiles valid',
+            value: '$validProfiles / ${profiles.length}',
+            tone: validProfiles < profiles.length ? k.warn : null,
+          ),
           Stat(label: 'Devices enabled', value: '${devices.where((d) => d.str('status') == 'ENABLED').length}'),
           Stat(label: 'App IDs', value: '${ids.length}'),
           if (expiring > 0) Stat(label: 'Expiring in 30 days', value: '$expiring', tone: k.warn),
@@ -902,7 +901,11 @@ class _Summary extends StatelessWidget {
             builder: (context, c) {
               final cols = c.maxWidth > 900 ? tiles.length : 2;
               final w = (c.maxWidth - 12 * (cols - 1)) / cols;
-              return Wrap(spacing: 12, runSpacing: 12, children: [for (final t in tiles) SizedBox(width: w, child: t)]);
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [for (final t in tiles) SizedBox(width: w, child: t)],
+              );
             },
           ),
         );
