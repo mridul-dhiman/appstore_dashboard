@@ -4,8 +4,8 @@ import 'package:appstore_dashboard/main.dart';
 import 'package:appstore_dashboard/services/device_lock.dart';
 import 'package:appstore_dashboard/state/app_state.dart';
 import 'package:appstore_dashboard/ui/lock_screen.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'support/fake_asc.dart';
 import 'support/fake_state.dart';

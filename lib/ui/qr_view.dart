@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:qr/qr.dart';
 
 /// A QR code for [data], black on white with a quiet border, so a phone camera reads it in light and dark mode alike.

@@ -1,8 +1,8 @@
 import 'package:appstore_dashboard/ui/theme.dart';
 import 'package:appstore_dashboard/ui/widgets.dart';
 import 'package:flutter/gestures.dart' show kDoubleTapTimeout;
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 double _contrast(Color a, Color b) {
   final la = a.computeLuminance(), lb = b.computeLuminance();

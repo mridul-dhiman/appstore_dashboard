@@ -1,6 +1,6 @@
 import 'package:appstore_dashboard/ui/pages/signing_page.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'support/fake_asc.dart';
 
@@ -81,10 +81,11 @@ void main() {
         });
       }
       // No profileContent in the reply, so nothing is installed on the machine running the test.
-      if (r.method == 'POST' && p == '/v1/profiles')
+      if (r.method == 'POST' && p == '/v1/profiles') {
         return json({
           'data': res('profiles', 'NEW', {'name': 'X'}),
         }, 201);
+      }
       if (r.method == 'GET') return json({'data': []});
       return null;
     });

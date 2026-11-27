@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Design tokens: a native-macOS look in light and dark. Light is a white card on a pale canvas with Apple's developer
 /// blue; dark is deep graphite with a brighter blue.

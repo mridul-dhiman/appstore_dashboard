@@ -1,8 +1,8 @@
 import 'package:appstore_dashboard/api/draft_submission.dart';
 import 'package:appstore_dashboard/ui/pages/draft_submission_tab.dart';
 import 'package:appstore_dashboard/ui/theme.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'support/fake_asc.dart';
 
@@ -54,10 +54,11 @@ FakeAsc fakeApp({bool withDraft = true}) => FakeAsc((r) {
         ],
       });
     }
-    if (p.contains('/appStoreVersions/V0/build'))
+    if (p.contains('/appStoreVersions/V0/build')) {
       return json({
         'data': res('builds', 'B1', {'version': '1'}),
       });
+    }
     if (p.startsWith('/v1/reviewSubmissions')) {
       return json({
         'data': [
@@ -134,10 +135,11 @@ FakeAsc fakeApp({bool withDraft = true}) => FakeAsc((r) {
     }
     if (p.startsWith('/v1/appStoreVersions/')) return json({'data': null});
   }
-  if (r.method == 'POST' && p == '/v1/reviewSubmissions')
+  if (r.method == 'POST' && p == '/v1/reviewSubmissions') {
     return json({
       'data': res('reviewSubmissions', 'D9', {'state': 'READY_FOR_REVIEW'}),
     }, 201);
+  }
   if (r.method == 'POST') return json({'data': res('x', 'x', {})}, 201);
   if (r.method == 'PATCH') return json({'data': res('x', 'x', {})});
   if (r.method == 'DELETE') return noContent();

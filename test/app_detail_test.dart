@@ -3,8 +3,8 @@ import 'package:appstore_dashboard/ui/pages/app_detail_page.dart';
 import 'package:appstore_dashboard/ui/pages/apps_page.dart';
 import 'package:appstore_dashboard/ui/pages/upload_tab.dart';
 import 'package:appstore_dashboard/ui/widgets.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'support/fake_asc.dart';
 

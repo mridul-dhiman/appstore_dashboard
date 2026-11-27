@@ -4,8 +4,8 @@ import 'package:appstore_dashboard/api/build_uploader.dart';
 import 'package:appstore_dashboard/api/ipa_info.dart';
 import 'package:appstore_dashboard/state/upload_jobs.dart';
 import 'package:appstore_dashboard/ui/pages/upload_tab.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'support/fake_asc.dart';
 

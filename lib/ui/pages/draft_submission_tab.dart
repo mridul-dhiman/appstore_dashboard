@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../api/asc_client.dart';
 import '../../api/draft_submission.dart';
@@ -874,11 +874,12 @@ class _PreflightCardState extends State<_PreflightCard> {
         future: _checks,
         builder: (context, s) {
           if (s.hasError) return Text('Could not run the checks: ${s.error}', style: TextStyle(color: k.bad));
-          if (!s.hasData)
+          if (!s.hasData) {
             return const Padding(
               padding: EdgeInsets.all(12),
               child: Center(child: CircularProgressIndicator()),
             );
+          }
           final checks = s.data!;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

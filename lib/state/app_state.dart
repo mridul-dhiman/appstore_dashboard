@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show ThemeMode;
 import 'package:http/http.dart' as http;
+import 'package:material_ui/material_ui.dart' show ThemeMode;
 
 import '../api/asc_client.dart';
 import '../services/device_lock.dart';
