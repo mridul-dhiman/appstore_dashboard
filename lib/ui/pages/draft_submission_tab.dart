@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../api/asc_client.dart';
@@ -704,9 +706,11 @@ class _SubmissionTileState extends State<_SubmissionTile> {
   void initState() {
     super.initState();
     _loaded = s.items;
-    _items.then((v) {
-      if (mounted) setState(() => _loaded = v);
-    }, onError: (_) {});
+    unawaited(
+      _items.then((v) {
+        if (mounted) setState(() => _loaded = v);
+      }, onError: (_) {}),
+    );
   }
 
   @override
