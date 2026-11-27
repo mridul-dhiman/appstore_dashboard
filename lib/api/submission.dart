@@ -141,6 +141,30 @@ String notesWithReply(String? existing, String reply, DateTime at) {
   return before.isEmpty ? block : '$before\n\n$block';
 }
 
+/// Releases an approved version that is Pending Developer Release. Apple answers with the request; the version moves
+/// to Processing for App Store and then Ready for Distribution on its own.
+Map<String, dynamic> releaseRequestBody(String versionId) => {
+  'data': {
+    'type': 'appStoreVersionReleaseRequests',
+    'relationships': {
+      'appStoreVersion': {
+        'data': {'type': 'appStoreVersions', 'id': versionId},
+      },
+    },
+  },
+};
+
+/// Where a version stands once App Review is done with it.
+enum ReleaseStage { notApproved, waitingForYou, scheduled, releasing, live }
+
+ReleaseStage releaseStageOf(String? appStoreState) => switch (appStoreState) {
+  'PENDING_DEVELOPER_RELEASE' => ReleaseStage.waitingForYou,
+  'PENDING_APPLE_RELEASE' => ReleaseStage.scheduled,
+  'PROCESSING_FOR_APP_STORE' || 'PROCESSING_FOR_DISTRIBUTION' => ReleaseStage.releasing,
+  'READY_FOR_SALE' || 'READY_FOR_DISTRIBUTION' || 'REPLACED_WITH_NEW_VERSION' => ReleaseStage.live,
+  _ => ReleaseStage.notApproved,
+};
+
 Map<String, dynamic> cancelSubmissionBody(String submissionId) => {
   'data': {
     'type': 'reviewSubmissions',
@@ -584,6 +608,9 @@ class SubmissionFlow {
       demoAccountRequired: reviewDetail?.flag('demoAccountRequired') ?? false,
     );
   }
+
+  /// Puts an approved version on the App Store. With a phased release set up, this starts the rollout instead.
+  Future<void> release(String versionId) => client.post('/v1/appStoreVersionReleaseRequests', releaseRequestBody(versionId));
 
   Future<void> cancel(String submissionId) => client.patch('/v1/reviewSubmissions/$submissionId', cancelSubmissionBody(submissionId));
 }

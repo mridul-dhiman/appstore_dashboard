@@ -1,4 +1,5 @@
 import 'package:appstore_dashboard/api/listing_draft.dart';
+import 'package:appstore_dashboard/api/submission.dart';
 import 'package:appstore_dashboard/ui/pages/submit_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -169,5 +170,81 @@ void main() {
     expect(find.text('Submit 2.1.0 for review'), findsNothing);
     expect(find.textContaining('to fix first'), findsNothing);
     expect(newest, '2.1.0');
+  });
+
+  test('release request body and where a version stands after review', () {
+    expect(releaseRequestBody('V1'), {
+      'data': {
+        'type': 'appStoreVersionReleaseRequests',
+        'relationships': {
+          'appStoreVersion': {
+            'data': {'type': 'appStoreVersions', 'id': 'V1'},
+          },
+        },
+      },
+    });
+    expect(releaseStageOf('PENDING_DEVELOPER_RELEASE'), ReleaseStage.waitingForYou);
+    expect(releaseStageOf('PENDING_APPLE_RELEASE'), ReleaseStage.scheduled);
+    expect(releaseStageOf('PROCESSING_FOR_APP_STORE'), ReleaseStage.releasing);
+    expect(releaseStageOf('READY_FOR_SALE'), ReleaseStage.live);
+    expect(releaseStageOf('WAITING_FOR_REVIEW'), ReleaseStage.notApproved);
+    expect(releaseStageOf(null), ReleaseStage.notApproved);
+  });
+
+  testWidgets('an approved version offers Release instead of the checklist, and releases only after confirming', (tester) async {
+    tester.view.physicalSize = const Size(1300, 2200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final fake = FakeAsc((r) {
+      final p = r.path.split('?').first;
+      if (r.method == 'POST' && p == '/v1/appStoreVersionReleaseRequests') {
+        return json({'data': res('appStoreVersionReleaseRequests', 'RR1', {})}, 201);
+      }
+      if (r.method != 'GET') return null;
+      if (p == '/v1/apps/APP/appStoreVersions') {
+        return json({
+          'data': [
+            res('appStoreVersions', 'V1', {'versionString': '1.1.17', 'appStoreState': 'PENDING_DEVELOPER_RELEASE', 'platform': 'IOS'}),
+          ],
+        });
+      }
+      return json({'data': []});
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SubmitTab(client: fake.client, appId: 'APP', draft: ListingDraft(libraryId: 'APP')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Approved · ready to release'), findsOneWidget);
+    expect(find.text('Release 1.1.17'), findsOneWidget);
+    expect(find.text('Submit 1.1.17 for review'), findsNothing);
+    expect(find.textContaining('to fix first'), findsNothing);
+    expect(find.text('Phased Release'), findsOneWidget);
+
+    // Backing out sends nothing.
+    await tester.tap(find.text('Release 1.1.17'));
+    await tester.pumpAndSettle();
+    expect(find.text('Release 1.1.17 to the App Store?'), findsOneWidget);
+    await tester.tap(find.text('Not yet'));
+    await tester.pumpAndSettle();
+    expect(fake.log.where((r) => r.method != 'GET'), isEmpty);
+
+    await tester.tap(find.text('Release 1.1.17'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Release'));
+    await tester.pumpAndSettle();
+    final writes = fake.log.where((r) => r.method != 'GET').toList();
+    expect(writes.map((r) => '${r.method} ${r.path}'), ['POST /v1/appStoreVersionReleaseRequests']);
+    expect(((writes.single.body!['data'] as Map)['relationships'] as Map)['appStoreVersion'], {
+      'data': {'type': 'appStoreVersions', 'id': 'V1'},
+    });
+
+    // Apple still reads the version back as pending developer release: no second Release button.
+    expect(find.text('Release requested'), findsOneWidget);
+    expect(find.text('Release 1.1.17'), findsNothing);
   });
 }

@@ -231,6 +231,133 @@ class _BodyState extends State<_Body> {
     }
   }
 
+  // ---- Release ----
+
+  /// Versions released from here this session. Apple keeps reading them back as Pending Developer Release for a while
+  /// after the request, so without this the Release button would come back and invite a second request.
+  final _releaseRequested = <String>{};
+
+  Future<void> _releaseNow() async {
+    final k = Tokens.of(context);
+    final v = _version.str('versionString');
+    final phased = _phasedRelease != null;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Release $v to the App Store?'),
+        content: SizedBox(
+          width: 440,
+          child: Text(
+            phased
+                ? 'Phased release is set up, so $v starts rolling out to users with automatic updates over 7 days. '
+                      'Anyone can download it from the App Store straight away. This cannot be undone; a problem needs a new version.'
+                : '$v goes on sale for everyone in every territory the app is available in, usually within 24 hours. '
+                      'This cannot be undone; a problem needs a new version.',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Not yet')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: k.good),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Release'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final done = await _run(() => _flow.release(_version.id));
+    if (done) {
+      _releaseRequested.add(_version.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$v released. App Store Connect shows it as Processing for App Store until it is live.')),
+        );
+      }
+      widget.onVersionsChanged();
+    }
+  }
+
+  /// For a version App Review has finished with: release it, or say what happens next. Null before approval.
+  Widget? _releaseCard() {
+    final k = Tokens.of(context);
+    final v = _version.str('versionString');
+    var stage = releaseStageOf(_version.str('appStoreState'));
+    final requested = stage == ReleaseStage.waitingForYou && _releaseRequested.contains(_version.id);
+    if (requested) stage = ReleaseStage.releasing;
+    final (IconData icon, Color color, Color fill, String title, String body) = switch (stage) {
+      ReleaseStage.notApproved => (Icons.circle, k.muted, k.inset, '', ''),
+      ReleaseStage.waitingForYou => (
+        Icons.rocket_launch_outlined,
+        k.good,
+        k.goodSoft,
+        'Approved · ready to release',
+        'App Review approved $v. It stays off the App Store until you release it'
+            '${_phasedRelease != null ? '; phased release is on, so releasing starts the 7-day rollout' : ''}.',
+      ),
+      ReleaseStage.scheduled => (
+        Icons.event_available_outlined,
+        k.accentInk,
+        k.accentSoft,
+        'Approved · scheduled',
+        'Apple releases $v automatically'
+            '${_version.date('earliestReleaseDate') == null ? ' on the scheduled date' : ' on ${fmtDateTime(_version.date('earliestReleaseDate'))}'}.',
+      ),
+      ReleaseStage.releasing => (
+        Icons.sync,
+        k.accentInk,
+        k.accentSoft,
+        requested ? 'Release requested' : 'Releasing',
+        requested
+            ? 'Apple accepted the release of $v. App Store Connect can take a few minutes to show Processing for App Store; '
+                  'it is usually live within 24 hours.'
+            : '$v is being processed for the App Store. It is usually live within 24 hours.',
+      ),
+      ReleaseStage.live => (Icons.storefront_outlined, k.good, k.goodSoft, 'On the App Store', '$v is live. To change anything, create a new version.'),
+    };
+    if (stage == ReleaseStage.notApproved) return null;
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(fill, k.surface),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: k.surface, shape: BoxShape.circle, border: Border.all(color: color.withValues(alpha: 0.3))),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(color: k.ink, fontWeight: FontWeight.w700, fontSize: 15)),
+                const SizedBox(height: 2),
+                Text(body, style: TextStyle(color: k.body, fontSize: 13)),
+              ],
+            ),
+          ),
+          if (stage == ReleaseStage.waitingForYou) ...[
+            const SizedBox(width: 14),
+            FilledButton.icon(
+              onPressed: _busy ? null : _releaseNow,
+              style: FilledButton.styleFrom(backgroundColor: k.good),
+              icon: _busy
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.rocket_launch_outlined, size: 18),
+              label: Text('Release $v'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   // ---- Phased release ----
 
   Resource? _phasedRelease;
@@ -678,6 +805,22 @@ class _BodyState extends State<_Body> {
                 final blocked = checks.where((c) => c.level == CheckLevel.fail).length;
                 final cancelable = d.submissions.where((s) => const {'WAITING_FOR_REVIEW', 'IN_REVIEW'}.contains(s.state)).toList();
                 final rejection = _rejection(d);
+                final release = _releaseCard();
+                if (release != null) {
+                  // App Review is done with this version: what is left is releasing it, not the submission checklist.
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      release,
+                      const SizedBox(height: 16),
+                      _buildCard(d),
+                      if (releaseStageOf(_version.str('appStoreState')) != ReleaseStage.live) ...[
+                        const SizedBox(height: 16),
+                        _phasedReleaseCard(),
+                      ],
+                    ],
+                  );
+                }
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
